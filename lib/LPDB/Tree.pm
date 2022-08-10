@@ -8,7 +8,6 @@ LPDB::Tree - navigate a logical tree of pictures in sqlite
 
 use strict;
 use warnings;
-use Image::Magick;
 use LPDB::Schema;
 use LPDB::Schema::Object;	# object extensions by twitham
 

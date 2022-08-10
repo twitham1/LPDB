@@ -13,7 +13,7 @@ goto endofperl
 #!/usr/bin/perl
 #line 15
 
-# picasagallery.bat wrapper for Windows by twitham@sbcglobal.net, 2013-12
+# *.bat wrapper for Windows by twitham@sbcglobal.net, 2013-12
 
 (my $real = $0) =~ s@.bat$@@i;
 

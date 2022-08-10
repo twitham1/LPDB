@@ -6,9 +6,8 @@ use strict;
 use warnings;
 use Prima;
 use Prima::Application name => "LPGallery";
-use Prima::Image::Magick qw/:all/;
-use LPDB;
 use Prima::LPDB::ThumbViewer;
+use LPDB;
 
 my $usage = "usage: $0 [startup perl configuration files, see manual]";
 
