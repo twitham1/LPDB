@@ -211,6 +211,9 @@ sub _wanted {
 	&_savepathfile(strftime("/[Timeline]/Months/%Y/%m-%b/",
 				localtime $time), $row->file_id);
 
+	&_savepathfile("/[Captions]/", $row->file_id)
+	    if $row->caption;
+
 	my %tags; map { $tags{$_}++ } split /,\s*/,
 		      $info->{Keywords} || $info->{Subject} || '';
 	for my $tag (keys %tags) {
