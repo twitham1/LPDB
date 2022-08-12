@@ -1,0 +1,6 @@
+! big dark theme for using lpgallery from the couch
+! say "xrdb -merge .Xdefaults" to use this
+Prima.Color: white
+Prima.Back: black
+Prima.HiliteBackColor: gray33
+Prima.Font: Helvetica-20
