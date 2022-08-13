@@ -62,6 +62,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     $lpdb = new LPDB($conf);
     $lpdb->create if $create;
     $lpdb->update('.');
+    $lpdb->cleanup;
     warn "$0: $$ done updating $conf->{dbfile}\n";
     exit;
 }

@@ -23,7 +23,7 @@ use Carp;
 use DBI;
 use POSIX qw/strftime/;
 use LPDB::Schema;		# from dbicdump dbicdump.conf
-use LPDB::Filesystem qw(update create);
+use LPDB::Filesystem;
 use Time::HiRes qw(gettimeofday tv_interval); # for profiling
 use Data::Dumper;
 

@@ -16,7 +16,7 @@ use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
 use base 'Exporter::Tiny';
-our @EXPORT = qw(update create);
+our @EXPORT = qw(update create cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
@@ -280,6 +280,31 @@ sub _wanted {
     # 	$tmp and $tmp->{children} and $db->{dir} = $db->{file} = $tmp;
     # }
     &{$conf->{update}};
+}
+
+sub cleanup {			# remove records of deleted files
+    my $self = shift;		# requires a stat of all files
+    status "cleaning removed files from DB";
+    my $tschema = $self->tschema;
+    $schema->txn_begin; $tschema->txn_begin;
+    my $rs = $schema->resultset('Picture');
+    my $ts = $tschema->resultset('Thumb');
+    while (my $pic = $rs->next) {
+	my $file = $pic->pathtofile or next;
+	-f $file and next;
+	if (my $thumbs = $ts->search({ file_id => $pic->file_id })) {
+#	    warn "removing thumbs of ", $pic->file_id;
+	    $thumbs->delete_all;
+	}
+#	warn "removing $file";
+	$pic->delete;
+	unless (++$done % 100) { # fix this!!! make configurable??...
+	    $schema->txn_commit; $tschema->txn_commit;
+	    status "committed $done";
+	    $schema->txn_begin; $tschema->txn_begin;
+	}
+    }
+    $schema->txn_commit; $tschema->txn_commit;
 }
 
 1;				# LPDB::Filesystem.pm
