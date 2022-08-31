@@ -35,7 +35,7 @@ sub profile_default
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
-	buffer => 1,		# undecided on which is better...
+	buffered => 1,		# undecided on which is better...
 	popupItems => [
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
@@ -158,7 +158,9 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     my($w, $h) = $self->size;
     my $each = $w / $y;	   # TODO: move to a new frame progress object
     $self->color(cl::LightGreen);
-    $self->bar($each * ($x - 1), $h, $each * $x, $h - 10);
+    $self->lineWidth(10);
+    $self->lineEnd(le::Round);
+    $self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
     unless ($self->popup->checked('info')) {
 	$self->NORTH->hide;
 	$self->SOUTH->hide;
@@ -203,7 +205,7 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     $self->SOUTH->show;
     $each = $h / $y;	   # TODO: move to a new frame progress object
     $self->color(cl::LightGreen);
-    $self->bar(0, $h - $each * ($x - 1), 5, $h - $each * $x);
+    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
     $self->color(cl::Fore);
 }
 
