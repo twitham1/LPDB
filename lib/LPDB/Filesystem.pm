@@ -15,6 +15,7 @@ use Date::Parse;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
+#use LPDB::Picasa;		# !!!TODO
 use base 'Exporter::Tiny';
 our @EXPORT = qw(update create cleanup);
 
@@ -152,6 +153,9 @@ sub _wanted {
     #    $dir = '' if $dir eq '.';
     status "checking: $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini') {
+	# my $tmp = LPDB::Picasa::readini($_);
+	# use Data::Dumper;
+	# print Dumper $tmp;
 	# &_understand($db, _readfile($_));
 	# $db->{dirs}{$dir}{'<<updated>>'} = $modified;
 	return;
@@ -298,6 +302,20 @@ sub cleanup {			# remove records of deleted files
 	}
 #	warn "removing $file";
 	$pic->delete;
+	unless (++$done % 100) { # fix this!!! make configurable??...
+	    $schema->txn_commit; $tschema->txn_commit;
+	    status "committed $done";
+	    $schema->txn_begin; $tschema->txn_begin;
+	}
+    }
+    my $paths = $schema->resultset('Path'); # clean paths of no more pictures
+    while (my $path = $paths->next) {
+	my $pics = $schema->resultset('PathView')->search(
+	    {path => { like => $path->path . '%'},
+	     time => { '!=' => undef }});
+	$pics->count and next;
+#	warn "removing empty ", $path->path;
+	$path->delete;
 	unless (++$done % 100) { # fix this!!! make configurable??...
 	    $schema->txn_commit; $tschema->txn_commit;
 	    status "committed $done";
