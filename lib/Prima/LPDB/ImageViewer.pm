@@ -156,11 +156,14 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     my $x = $th->focusedItem + 1;
     my $y = $th->count;
     my($w, $h) = $self->size;
-    my $each = $w / $y;	   # TODO: move to a new frame progress object
-    $self->color(cl::LightGreen);
-    $self->lineWidth(10);
-    $self->lineEnd(le::Round);
-    $self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
+    if ($self->autoZoom and $y > 1) {
+	my $each = $w / $y; # TODO: move to a new frame progress object
+	$self->color(cl::LightGreen);
+	$self->lineWidth(10);
+	$self->lineEnd(le::Round);
+	$self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
+	$self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
+    }
     unless ($self->popup->checked('info')) {
 	$self->NORTH->hide;
 	$self->SOUTH->hide;
@@ -203,10 +206,13 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     $self->SOUTH->SW->text(scalar localtime $im->time);
     $self->NORTH->show;
     $self->SOUTH->show;
-    $each = $h / $y;	   # TODO: move to a new frame progress object
-    $self->color(cl::LightGreen);
-    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
-    $self->color(cl::Fore);
+    if ($self->autoZoom and $y > 1) {
+	my $each = $h / $y; # TODO: move to a new frame progress object
+	$self->color(cl::LightGreen);
+	$self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
+	$self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
+	$self->color(cl::Fore);
+    }
 }
 
 sub on_close {
