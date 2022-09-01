@@ -172,24 +172,30 @@ presents a single picture.  The B<Escape> key moves back up to the
 parent path.  Metadata about the selected path is displayed above and
 below the grid.
 
-The top level virtual directories are:
+The top level virtual paths are:
 
 =over
 
 =item [Folders]
 
 Literal filesystem layout of picture files.  Any directory containing
-images is called a "gallery".  By default images remain grouped in
-these physical gallery collections in all virtual paths that follow
-unless the Sort -> Gallery Groups menu option is changed to Ungrouped.
+images is hereafter called a "gallery".  By default images remain
+grouped in these physical gallery collections in all virtual paths
+that follow unless the Sort -> Gallery Groups menu option is changed
+to Ungrouped.
+
+=item [Timeline]
+
+Pictures grouped chronologically into years or months or even all time
+(be patient, selecting all files may be slow).
+
+=item [Captions]
+
+caption strings found in EXIF picture metadata
 
 =item [Tags]
 
 tag strings found in EXIF picture metadata
-
-=item [Timeline]
-
-pictures grouped chronologically into years or months
 
 =item [Albums]
 
@@ -197,7 +203,7 @@ pictures organized by Albums (Picasa only)
 
 =item [People]
 
-thumbnails of named face rectangles from the images (Picasa only)
+pictures of recognized named faces (Picasa only)
 
 =item [Stars]
 
@@ -209,19 +215,23 @@ pictures marked with stars as favorites (Picasa only)
 
 A second window opens when hitting B<Enter> on an image from the grid.
 This displays one picture at maximum size for the window.  Arrow keys
-will now navigate both windows.  B<Enter> again will zoom to original
-size.  Scroll with the arrow keys for images larger than the window.
-Finally, B<Escape> returns back to the thumbnail browser.
+will now navigate both windows.  B<Enter> key will toggle between
+original size and auto zoom.  Scroll with the arrow keys for images
+larger than the window.  Finally, B<Escape> returns back to the
+thumbnail browser.
 
-The B<i> "info" key cycles through metadata overlay levels.  This adds
-common picture and camera metadata in the corners and (for Picasa
+The B<i> key cycles through metadata "info" overlay levels.  This adds
+common picture and camera metadata to the corners and (for Picasa
 only) draws named rectangles around recognized faces.
 
 =head1 OPTIONS
 
 The B<M> key brings up a Menu of options including sorting, filtering,
-starting a slide show and so on.  Refer to the menu to find other
-keyboard shortcuts.
+and navigating to other locations of this picture in the tree.  In the
+Image Viewer, B<M> can start and stop a slide show or adjust
+information overlay.  Refer to the menu to discover other keyboard
+shortcuts like B<Z> and B<Q> to zoom in and out respectively in either
+window.
 
 =head1 TODO
 
