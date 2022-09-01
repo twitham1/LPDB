@@ -11,7 +11,7 @@ panel preferences.
 
 =cut
 
-package Prima::Fullscreen;
+package Prima::LPDB::Fullscreen;
 use strict;
 use warnings;
 use Prima::Classes;

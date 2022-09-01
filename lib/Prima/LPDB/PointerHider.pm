@@ -11,7 +11,7 @@ Simply move the mouse to bring it back.
 
 # TODO: confiugurable time, methods to enable/disable
 
-package Prima::PointerHider;
+package Prima::LPDB::PointerHider;
 use strict;
 use warnings;
 use Prima::Classes;

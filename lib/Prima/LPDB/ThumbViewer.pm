@@ -16,17 +16,17 @@ use strict;
 use warnings;
 use LPDB::Tree;
 use LPDB::Thumbnail;
-use Prima::LPDB::TileViewer;	# could someday promote to Prima
+use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
 use POSIX qw/strftime/;
 use Prima::LPDB::ImageViewer;
-use Prima::LPDB::Fullscreen;	# could someday promote to Prima
-use Prima::LPDB::PointerHider;	# could someday promote to Prima
+use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
+use Prima::LPDB::PointerHider;	# could someday promote to Prima?
 
 use vars qw(@ISA);
-@ISA = qw(Prima::TileViewer Prima::Fullscreen);
+@ISA = qw(Prima::LPDB::TileViewer Prima::LPDB::Fullscreen);
 
 my $lv;
 sub profile_default
@@ -132,8 +132,8 @@ sub init {
     $self->{lpdb}->{tschema}->txn_begin;
     $self->{timer}->start;
 
-    $self->insert('Prima::PointerHider');
-    $self->insert('Prima::Fullscreen', window => $self->owner);
+    $self->insert('Prima::LPDB::PointerHider');
+    $self->insert('Prima::LPDB::Fullscreen', window => $self->owner);
 
     $self->packForget; # to get packs around the perimeter of the SUPER widget
 

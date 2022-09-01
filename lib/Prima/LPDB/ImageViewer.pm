@@ -17,10 +17,10 @@ package Prima::LPDB::ImageViewer;
 use strict;
 use warnings;
 use Prima::ImageViewer;
-use Prima::Fullscreen;
+use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 
 use vars qw(@ISA);
-@ISA = qw(Prima::ImageViewer Prima::Fullscreen);
+@ISA = qw(Prima::ImageViewer Prima::LPDB::Fullscreen);
 
 sub profile_default
 {
@@ -71,7 +71,7 @@ sub init {
     $self->{exif} = new Image::ExifTool; # for collecting picture metadata
     $self->{exif}->Options(FastScan => 1); # , DateFormat => $conf->{datefmt});
 
-    $self->insert('Prima::Fullscreen', window => $self->owner);
+    $self->insert('Prima::LPDB::Fullscreen', window => $self->owner);
 
     # my $pad = $self->{pad} = sv::XScrollbar; # too small
     # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
@@ -91,7 +91,7 @@ sub init {
     $self->insert(@opt, name => 'SW', left => $pad, bottom => $pad);
     $self->insert(@opt, name => 'SE', growMode => gm::GrowLoX,
 		  bottom => $pad, right => $w - $pad,
-		  # transparent => 1,
+		  transparent => 1, # nice to see image through this big box
 		  alignment => ta::Right);
     $self->insert(@opt, name => 'S', growMode => gm::XCenter, bottom => $pad,
 		  alignment => ta::Center);

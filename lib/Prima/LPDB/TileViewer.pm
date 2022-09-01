@@ -10,7 +10,7 @@ Number keys now scroll to tenths of the list, handy for long lists.
 
 =cut
 
-package Prima::TileViewer;
+package Prima::LPDB::TileViewer;
 
 use strict;
 use warnings;
