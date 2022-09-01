@@ -17,6 +17,7 @@ package Prima::LPDB::ImageViewer;
 use strict;
 use warnings;
 use Prima::ImageViewer;
+use Prima::Edit;		# for ExifTool metadata window
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 
 use vars qw(@ISA);
@@ -42,6 +43,7 @@ sub profile_default
 	    [],
 	    ['@info', '~Information', 'i', ord 'i' => sub { $_[0]->status }],
 	    ['@overlay', '~Overlay Images', 'o', ord 'o' => sub {  $_[0]->repaint }],
+	    ['exiftool', 'ExifTool ~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p',  ord 'p' => 'slideshow'],
 	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
@@ -403,6 +405,38 @@ sub slideshow {
 	$self->CENTER->show;
 	$self->{timer}->stop;
     }
+}
+
+sub metadata {			# exiftool -G in a window
+    my($self) = @_;
+    $self->picture or return;
+    my $file = $self->picture->pathtofile or return;
+    my $out = `exiftool -G $file`;
+    $out or warn "exiftool $file returned no output" and return;
+    my $w = Prima::Window-> create(
+	packPropagate => 0,
+	text          => $file,
+	onDestroy     => sub { $self->owner->select },
+	size => [ $self->owner->size ],
+	# menuItems => [
+	popupItems => [
+	    ['~Escape back to Image' => 'Escape' => kb::Escape => sub { $_[0]->close } ],
+	]);
+    $w-> insert('Prima::Edit',
+		pack		=> { expand => 1, fill => 'both'},
+		textRef		=> \$out,
+		font		=> { name => 'Courier' },
+		readOnly	=> 1,
+		syntaxHilite	=> 1,
+		hiliteNumbers	=> cl::Fore, # disable most hilighting
+		hiliteQStrings	=> cl::Fore,
+		hiliteQQStrings	=> cl::Fore,
+		hiliteChars	=> [],
+		hiliteIDs	=> [],
+		hiliteREs	=> ['(\[\w+\])' => cl::LightRed,
+				    '( : )' => cl::LightGreen,
+		],
+	);
 }
 
 # !!! hack !!! this copy from SUPER tweaked only to support image

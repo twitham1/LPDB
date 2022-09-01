@@ -9,10 +9,10 @@ organize them in various ways and navigate them quickly.
 
 lpgallery is a keyboard (remote) controlled local picture browser
 similiar to mythgallery of mythtv for viewing local pictures on a big
-screen from the comfort of your couch.  On Linux I use it with the
-following:
+screen from the comfort of your couch.  On Linux I tune its look with
+the following:
 
-	xrdb -merge <file> # where file is:
+	> xrdb -merge ./.Xdefaults # where ./.Xdefaults is:
 	Prima.Color: white
 	Prima.Back: black
 	Prima.HiliteBackColor: gray33
@@ -24,29 +24,35 @@ This is "works-for-me" ware under development.  It should someday do
 everything that picasagallery did (see below) and more, only better
 and in a smaller memory footprint.
 
-# How to use
+# Dependencies
 
-This may or may not work to install the code
+You will need to already have or install at least:
+
+* Perl (see https://perl.org)
+* Prima from CPAN ("cpan install Prima" or https://cpan.org)
+* DBIx::Class from CPAN
+* Image::ExifTool from CPAN (https://exiftool.org)
+* SQLite and its sqlite3 command (https://sqlite.org)
+* optional: Dist::Zilla / "dzil" for building the package
+
+# INSTALL
+
+This should work to install the code
 
 ```
-  dzil install
-```
-
-or
-
-```
-  dzil build
+  dzil build	# or grab a pre-made build
   cd <build>
   perl Makefile.PL
   make
   sudo make install
 ```
 
+# USAGE
+
 Now cd to the root of a directory with some pictures, ideally managed
 by Picasa (but optional), and run lpgallery.  Answer yes to the prompt
-and it should begin caching picture metadata and present the browser.
-See lpgallery(1) manual page for more.
-
+and it should begin caching picture metadata and present the browser
+after a brief wait.  See lpgallery(1) manual page for more.
 
 # See also
 
