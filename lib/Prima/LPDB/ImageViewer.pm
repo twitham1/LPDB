@@ -40,7 +40,7 @@ sub profile_default
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['@info', '~Information', 'i', ord 'i' => sub { $_[0]->repaint }],
+	    ['@info', '~Information', 'i', ord 'i' => sub { $_[0]->status }],
 	    ['@overlay', '~Overlay Images', 'o', ord 'o' => sub {  $_[0]->repaint }],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p',  ord 'p' => 'slideshow'],
@@ -63,7 +63,8 @@ sub profile_default
 sub init {
     my $self = shift;
     my %profile = $self->SUPER::init(@_);
-    my @opt = qw/Prima::Label autoHeight 1/;
+    my($w, $h) = $self->size;
+    my @opt = qw/Prima::Label autoHeight 1/; # transparent 1/; causes more repaints!!!
 
     $self->{thumbviewer} = $profile{thumbviewer}; # object to return focus to
 
@@ -72,26 +73,30 @@ sub init {
 
     $self->insert('Prima::Fullscreen', window => $self->owner);
 
-    my $top = $self->insert(@opt, name => 'NORTH', text => ' ',
-			    transparent => 1, # hack, using label as container
-			    pack => { qw/side top fill x pad 35/ });
-    $top->insert(@opt, name => 'NW', pack => { side => 'left' });
-    $top->insert(@opt, name => 'NE', pack => { side => 'right' },
-		 alignment => ta::Right);
-    $top->insert(@opt, name => 'N', pack => { side => 'top' },
-		 alignment => ta::Center);
+    # my $pad = $self->{pad} = sv::XScrollbar; # too small
+    # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
+    my $pad = $self->{pad} = 20; # pixels between edge and text, > scrollbar
 
-    $self->insert(@opt, qw/name CENTER text/ => ' ', pack => { qw/side top/ });
+    $self->insert(@opt, name => 'NW', growMode => gm::GrowLoY,
+		  top => $h - $pad, left => $pad);
+    $self->insert(@opt, name => 'NE', growMode => gm::GrowLoY|gm::GrowLoX,
+		  top => $h - $pad, right => $w - $pad,
+    		 alignment => ta::Right);
+    $self->insert(@opt, name => 'N', growMode => gm::GrowLoY|gm::XCenter,
+		  top => $h - $pad,
+		  alignment => ta::Center);
 
-    my $bot = $self->insert(@opt, name => 'SOUTH', text => ' ',
-			    transparent => 1, # hack, using label as container
-			    pack => { qw/side bottom fill x pad 35/ });
-    $bot->insert(@opt, name => 'SW', pack => { qw/side left anchor s/ });
-    $bot->insert(@opt, name => 'SE', pack => { qw/side right anchor s/ },
-		 alignment => ta::Right);
-    $bot->insert(@opt, name => 'S', pack => { qw/side bottom anchor s/ },
-		 alignment => ta::Center);
+    $self->insert(@opt, qw/name CENTER text/ => ' ', growMode => gm::Center);
 
+    $self->insert(@opt, name => 'SW', left => $pad, bottom => $pad);
+    $self->insert(@opt, name => 'SE', growMode => gm::GrowLoX,
+		  bottom => $pad, right => $w - $pad,
+		  # transparent => 1,
+		  alignment => ta::Right);
+    $self->insert(@opt, name => 'S', growMode => gm::XCenter, bottom => $pad,
+		  alignment => ta::Center);
+
+    $self->buffered(1);
     return %profile;
 }
 
@@ -148,10 +153,10 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     # visual results for the scaled-down images, while ist::Sinc
     # and ist::Gaussian for the scaled-up. /dk = Dmitry Karasik
     $self->{scaling} = $self->zoom > 1 ? ist::Gaussian : ist::Quadratic;
-    #$self->{scaling} = ist::Box;
+    # $self->{scaling} = ist::Box; # fastest, but square pixels
 
+#    warn "painting $self: ", $self->picture->pathtofile;
     $self->SUPERon_paint(@_);	# hack!!! see below!!!
-    $self->CENTER->hide;	# play/stop indicator
     my $th = $self->{thumbviewer};
     my $x = $th->focusedItem + 1;
     my $y = $th->count;
@@ -163,55 +168,13 @@ sub on_paint { # update metadata label overlays, later in front of earlier
 	$self->lineEnd(le::Round);
 	$self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
 	$self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
-    }
-    unless ($self->popup->checked('info')) {
-	$self->NORTH->hide;
-	$self->SOUTH->hide;
-	return;
-    }
-    my $im = $self->image or return;
-    $im = $self->picture or return;
-    $self->NORTH->N->text($im->basename);
-    $self->NORTH->NW->text(sprintf("%.0f%% of %dx%d=%.2f",
-				   $self->zoom * 100,
-				   $im->width, $im->height,
-				   $im->width / $im->height));
-    $self->NORTH->NE->text(sprintf '%.1fMP %.0fKB, %.0f%% = %d / %d',
-			   $im->width * $im->height / 1000000,
-			   $im->bytes / 1024,
-			   $x / $y * 100, $x, $y);
-    my $info = $self->{exif}->ImageInfo($im->pathtofile);
-    # use Data::Dumper;
-    # warn "info $im: ", Dumper $info;
-    my @info;
-    my $make = $info->{Make} || '';
-    push @info, $make if $make;
-    (my $model = $info->{Model} || '') =~ s/$make//g; # redundant
-    push @info, $model if $model;
-    push @info, "$info->{ExposureTime}s"	if $info->{ExposureTime};
-    push @info, $info->{FocalLength}		if $info->{FocalLength};
-    push @info, "($info->{FocalLengthIn35mmFormat})"
-	if $info->{FocalLengthIn35mmFormat};
-    push @info, "f/$info->{FNumber}"		if $info->{FNumber};
-    push @info, "ISO: $info->{ISO}"		if $info->{ISO};
-    push @info, $info->{Flash}			if $info->{Flash};
-    push @info, $info->{Orientation} if
-	$info->{Orientation} and $info->{Orientation} =~ /Rotate/;
-    ($x, $y) = $th->xofy($th->focusedItem);
-    my $path = $im->dir->directory;
-    $path .= " : $x / $y";
-    $self->SOUTH->S->text($im->caption ? join "\n",
-			  $im->caption, $path : $path);
-    $self->SOUTH->SE->text(join "\n", @info);
-    $self->SOUTH->SW->text(scalar localtime $im->time);
-    $self->NORTH->show;
-    $self->SOUTH->show;
-    if ($self->autoZoom and $y > 1) {
-	my $each = $h / $y; # TODO: move to a new frame progress object
-	$self->color(cl::LightGreen);
-	$self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
-	$self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
-	$self->color(cl::Fore);
+	my($x, $y) = $th->xofy($th->focusedItem);
+	if ($y > 1) {
+	    $each = $h / $y;
+	    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
+	    $self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
+	}
+	    $self->color(cl::Fore);
     }
 }
 
@@ -341,7 +304,7 @@ sub on_mousewheel {
 
 sub status {
     my($self) = @_;
-    my $w = $self->owner;
+    my $win = $self->owner;
     my $img = $self->image;
     my $str;
     if ($img) {
@@ -353,8 +316,66 @@ sub status {
     } else {
 	$str = '.Untitled';
     }
-    $w->text($str);
-    $w->name($str);
+    $win->text($str);
+    $win->name($str);
+    $self->CENTER->hide;	# play/stop indicator
+    my $th = $self->{thumbviewer};
+    my $x = $th->focusedItem + 1;
+    my $y = $th->count;
+    my($w, $h) = $self->size;
+    if ($self->popup->checked('info')) {
+	$self->NW->show;
+	$self->NE->show;
+	$self->N->show;
+	$self->SW->show;
+	$self->SE->show;
+	$self->S->show;
+    } else {
+	$self->NW->hide;
+	$self->NE->hide;
+	$self->N->hide;
+	$self->SW->hide;
+	$self->SE->hide;
+	$self->S->hide;
+	return;
+    }
+    my $im = $self->image or return;
+    $im = $self->picture or return;
+    $self->N->text($im->basename);
+    $self->NW->text(sprintf("%.0f%% of %dx%d=%.2f",
+				   $self->zoom * 100,
+				   $im->width, $im->height,
+				   $im->width / $im->height));
+    $self->NE->text(sprintf '%.1fMP %.0fKB, %.0f%% = %d / %d',
+			   $im->width * $im->height / 1000000,
+			   $im->bytes / 1024,
+			   $x / $y * 100, $x, $y);
+    $self->NE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+    my $info = $self->{exif}->ImageInfo($im->pathtofile);
+    # use Data::Dumper;
+    # warn "info $im: ", Dumper $info;
+    my @info;
+    my $make = $info->{Make} || '';
+    push @info, $make if $make;
+    (my $model = $info->{Model} || '') =~ s/$make//g; # redundant
+    push @info, $model if $model;
+    push @info, "$info->{ExposureTime}s"	if $info->{ExposureTime};
+    push @info, $info->{FocalLength}		if $info->{FocalLength};
+    push @info, "($info->{FocalLengthIn35mmFormat})"
+	if $info->{FocalLengthIn35mmFormat};
+    push @info, "f/$info->{FNumber}"		if $info->{FNumber};
+    push @info, "ISO: $info->{ISO}"		if $info->{ISO};
+    push @info, $info->{Flash}			if $info->{Flash};
+    push @info, $info->{Orientation} if
+	$info->{Orientation} and $info->{Orientation} =~ /Rotate/;
+    ($x, $y) = $th->xofy($th->focusedItem);
+    my $path = $im->dir->directory;
+    $path .= " : $x / $y";
+    $self->S->text($im->caption ? join "\n",
+			  $im->caption, $path : $path);
+    $self->SE->text(join "\n", @info);
+    $self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+    $self->SW->text(scalar localtime $im->time);
 }
 
 sub delay {
@@ -465,7 +486,8 @@ sub SUPERon_paint
 	}
 
 PAINT:
-	$canvas-> clear( $atx, $aty, $atx + $imXz, $aty + $imYz) if $self-> {icon};
+	$canvas-> clear( $atx, $aty, $atx + $imXz, $aty + $imYz)
+	    if $self-> {icon} and ! $self->popup->checked('overlay');
 
 	if ( $self-> {scaling} != ist::Box && ( $imXz != $imX || $imYz != $imY ) ) {
 		my (
