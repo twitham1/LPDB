@@ -155,9 +155,9 @@ sub init {
     $bot->insert('Prima::Label', name => 'SW', pack => { side => 'left' },
 		 text => 'beginning date and time');
     $bot->insert('Prima::Label', name => 'SE', pack => { side => 'right' },
-		 text => 'gallery: physical path of images');
-    $bot->insert('Prima::Label', name => 'S', pack => { side => 'bottom' },
 		 text => 'statistics');
+    $bot->insert('Prima::Label', name => 'S', pack => { side => 'bottom' },
+		 text => 'gallery: physical path of images');
 
     $self->items($self->children('/'));
     $self->focusedItem(0);
@@ -287,7 +287,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	my @p = $this->stack;
 	my $span = $p[2] ? $p[2]->time - $p[0]->time : 1;
 	my $len =		# timespan of selection
-	    $span > 3*365*86400 ? sprintf('%.0f years',  $span / 365 / 86400)
+	    $span > 3*365*86400 ? sprintf('%.0f years',  $span /365.25/86400)
 	    : $span > 90 *86400 ? sprintf('%.0f months', $span/30.4375/86400)
 	    : $span > 48 * 3600 ? sprintf('%.0f days',   $span / 86400)
 	    : $span >      3600 ? sprintf('%.0f hours',  $span / 3600)
@@ -304,12 +304,12 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx->[0]);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->SE->text($this->dir->directory . " : $x / $y");
-	$owner->SOUTH->S->text(sprintf '%dx%d=%.2f  %.1fMP %.0fKB',
-			       $this->width , $this->height,
-			       $this->width / $this->height,
-			       $this->width * $this->height / 1000000,
-			       $this->bytes / 1024);
+	$owner->SOUTH->S->text($this->dir->directory . " : $x / $y");
+	$owner->SOUTH->SE->text(sprintf '%dx%d=%.2f  %.1fMP %.0fKB',
+				$this->width , $this->height,
+				$this->width / $this->height,
+				$this->width * $this->height / 1000000,
+				$this->bytes / 1024);
 	$owner->SOUTH->SW->text(scalar localtime $this->time);
 	$id = $this->file_id;
     }
