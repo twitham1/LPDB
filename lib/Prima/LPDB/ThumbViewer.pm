@@ -16,14 +16,14 @@ use strict;
 use warnings;
 use LPDB::Tree;
 use LPDB::Thumbnail;
-use Prima::TileViewer; # shipped with LPDB, but could be part of Prima
+use Prima::LPDB::TileViewer;	# could someday promote to Prima
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
 use POSIX qw/strftime/;
 use Prima::LPDB::ImageViewer;
-use Prima::Fullscreen; # shipped with LPDB, but could be part of Prima
-use Prima::PointerHider; # shipped with LPDB, but could be part of Prima
+use Prima::LPDB::Fullscreen;	# could someday promote to Prima
+use Prima::LPDB::PointerHider;	# could someday promote to Prima
 
 use vars qw(@ISA);
 @ISA = qw(Prima::TileViewer Prima::Fullscreen);

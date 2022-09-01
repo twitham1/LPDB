@@ -1,6 +1,6 @@
 =head1 NAME
 
-Prima::PointerHider - Hide the mouse pointer except when moved
+Prima::LPDB::PointerHider - Hide the mouse pointer except when moved
 
 =head1 DESCRIPTION
 

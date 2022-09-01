@@ -1,6 +1,6 @@
 =head1 NAME
 
-Prima::TileViewer - resizable cells for Prima::Listviewer
+Prima::LPDB::TileViewer - resizable cells for Prima::Listviewer
 
 =head1 DESCRIPTION
 

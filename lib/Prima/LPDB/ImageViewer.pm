@@ -172,18 +172,16 @@ sub on_paint { # update metadata label overlays, later in front of earlier
 	if ($y > 1) {
 	    $each = $h / $y;
 	    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
-	    $self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
+	    # $self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
 	}
 	    $self->color(cl::Fore);
     }
+    $self->status(1);	      # update zoom label in case zoom changed
 }
 
 sub on_close {
     my $owner = $_[0]->{thumbviewer};
     $owner or return;
-    # $owner->selected(1);
-    # $owner->focused(1);
-#    $owner->owner->restore;
     $owner->owner->select;
 }
 
@@ -228,9 +226,6 @@ sub on_keydown
 	$self->popup->checked('slideshow', 0);
 	$self->slideshow;	# stop any show
 	my $owner = $self->{thumbviewer};
-	# $owner->selected(1);
-	# $owner->focused(1);
-#	$owner->owner->restore;
 	$owner->owner->select;
 	return;
     }
@@ -303,7 +298,7 @@ sub on_mousewheel {
 }
 
 sub status {
-    my($self) = @_;
+    my($self, $quick) = @_;
     my $win = $self->owner;
     my $img = $self->image;
     my $str;
@@ -341,11 +336,12 @@ sub status {
     }
     my $im = $self->image or return;
     $im = $self->picture or return;
-    $self->N->text($im->basename);
     $self->NW->text(sprintf("%.0f%% of %dx%d=%.2f",
-				   $self->zoom * 100,
-				   $im->width, $im->height,
-				   $im->width / $im->height));
+			    $self->zoom * 100,
+			    $im->width, $im->height,
+			    $im->width / $im->height));
+    $quick and return;		# only zoom has changed, all else remains same:
+    $self->N->text($im->basename);
     $self->NE->text(sprintf '%.1fMP %.0fKB, %.0f%% = %d / %d',
 			   $im->width * $im->height / 1000000,
 			   $im->bytes / 1024,

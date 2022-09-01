@@ -1,6 +1,6 @@
 =head1 NAME
 
-Prima::Fullscreen - Try to toggle a window to full screen
+Prima::LPDB::Fullscreen - Try to toggle a window to full screen
 
 =head1 DESCRIPTION
 
