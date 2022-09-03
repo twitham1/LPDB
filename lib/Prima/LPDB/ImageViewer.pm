@@ -41,15 +41,15 @@ sub profile_default
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['(info0', 'No ~Information', 'status'],
-	    ['info1',  'Progress Markers', 'status'],
-	    ['*info2',  'Brief Information', 'i', 0, 'status'],
-	    [')info3',  'Verbose Information', 'status'],
+	    ['(info0',	'No ~Information Overlay',	'status'],
+	    ['info1',	'Progress ~Markers',		'status'],
+	    ['*info2',	'~Brief Information', 'i', 0,	'status'],
+	    [')info3',	'~Verbose Information',		'status'],
 	    [],
-	    ['@overlay', '~Overlay Images', 'o', ord 'o' => sub {  $_[0]->repaint }],
+	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {  $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
-	    ['@slideshow', '~Play/Pause Slide Show', 'p',  ord 'p' => 'slideshow'],
+	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],
 	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
 	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
 	    [],
@@ -471,9 +471,9 @@ sub metadata {			# exiftool -G in a window
 	       hiliteIDs	=> [[qw(Width Height Size Orientation Subject
 				     Keywords Date Time Original Created
 				     Name Directory Caption Abstract)],
-				    cl::LightBlue],
-	       hiliteREs	=> ['(\[\w+\])' => cl::LightRed,
-				    '( : )' => cl::LightGreen,
+				    cl::LightGreen],
+	       hiliteREs	=> ['(\[\w+\])' => cl::LightBlue,
+				    '( : )' => cl::LightRed,
 	       ],
 	);
 }
