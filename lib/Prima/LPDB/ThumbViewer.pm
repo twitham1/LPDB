@@ -277,7 +277,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
-    my $progress = "$p% = $x / $y";
+    my $progress = "$p% $x / $y";
     @{$self->{filter}} and $progress = "[ $progress ]";
     $owner->NORTH->NE->text($progress);
     if ($this->isa('LPDB::Schema::Result::Path')) {
@@ -304,7 +304,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx->[0]);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->S->text($this->dir->directory . " : $x / $y");
+	$owner->SOUTH->S->text($this->dir->directory . " $x / $y");
 	$owner->SOUTH->SE->text(sprintf '%dx%d=%.2f  %.1fMP %.0fKB',
 				$this->width , $this->height,
 				$this->width / $this->height,

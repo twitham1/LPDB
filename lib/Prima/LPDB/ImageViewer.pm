@@ -41,7 +41,11 @@ sub profile_default
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['@info', '~Information', 'i', ord 'i' => sub { $_[0]->status }],
+	    ['(info0', 'No ~Information', 'status'],
+	    ['info1',  'Progress Markers', 'status'],
+	    ['*info2',  'Brief Information', 'i', 0, 'status'],
+	    [')info3',  'Verbose Information', 'status'],
+	    [],
 	    ['@overlay', '~Overlay Images', 'o', ord 'o' => sub {  $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
@@ -163,13 +167,13 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     my $x = $th->focusedItem + 1;
     my $y = $th->count;
     my($w, $h) = $self->size;
-    if ($self->autoZoom and $y > 1) {
+    if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
 	my $each = $w / $y; # TODO: move to a new frame progress object
 	$self->color(cl::LightGreen);
 	$self->lineWidth(10);
 	$self->lineEnd(le::Round);
 	$self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
-	$self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
+	# $self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
 	my($x, $y) = $th->xofy($th->focusedItem);
 	if ($y > 1) {
 	    $each = $h / $y;
@@ -240,8 +244,10 @@ sub on_keydown
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-   if ($code == 9) {		# ctrl-i = info toggle, in menu
+    if ($code == 9) {		# ctrl-i = info cycle, in menu
 	$self->key_down(ord 'i');
+    } elsif ($code == ord 'i') {
+	$self->infocycle;
     }
     # if ($key == kb::F11) {
     #	warn "f11 hit";
@@ -299,16 +305,28 @@ sub on_mousewheel {
     return;
 }
 
-sub status {
+sub infocycle {		     # cycle info overlay level, used by i key
+    my($self) = @_;
+    my $m = $self->popup;
+    if ($m->checked('info0')) {		$m->checked('info1', 1);
+    } elsif ($m->checked('info1')) {	$m->checked('info2', 1);
+    } elsif ($m->checked('info2')) {	$m->checked('info3', 1);
+    } elsif ($m->checked('info3')) {	$m->checked('info0', 1);
+    }
+    $self->status;
+}
+
+sub status {	       # update window title, call info() text overlay
     my($self, $quick) = @_;
     my $win = $self->owner;
     my $img = $self->image;
     my $str;
+    my $m = $self->popup;
     if ($img) {
-	my $play = $self->popup->checked('slideshow') ? 'Play: ' : '';
+	my $play = $m->checked('slideshow') ? 'Play: ' : '';
 	$str = $self->{fileName};
 	$str =~ s/([^\\\/]*)$/$1/;
-	$str = sprintf("%s%s (%dx%dx%d bpp)", $play, $1,
+	$str = sprintf('%s%s (%dx%dx%d bpp)', $play, $1,
 		       $img->width, $img->height, $img->type & im::BPP);
     } else {
 	$str = '.Untitled';
@@ -316,64 +334,81 @@ sub status {
     $win->text($str);
     $win->name($str);
     $self->CENTER->hide;	# play/stop indicator
-    my $th = $self->{thumbviewer};
-    my $x = $th->focusedItem + 1;
-    my $y = $th->count;
-    my($w, $h) = $self->size;
-    if ($self->popup->checked('info')) {
-	$self->NW->show;
-	$self->NE->show;
-	$self->N->show;
-	$self->SW->show;
-	$self->SE->show;
-	$self->S->show;
-    } else {
-	$self->NW->hide;
-	$self->NE->hide;
-	$self->N->hide;
-	$self->SW->hide;
-	$self->SE->hide;
-	$self->S->hide;
+    my $i;			# info level
+    map { $i = $_ if $m->checked("info$_") } 0 .. 3;
+    unless ($i > 1) {
+	$self->NW->hide; $self->N->hide; $self->NE->hide;
+	$self->SW->hide; $self->S->hide; $self->SE->hide;
+	$self->repaint;
 	return;
     }
-    my $im = $self->image or return;
-    $im = $self->picture or return;
-    $self->NW->text(sprintf("%.0f%% of %dx%d=%.2f",
+    $self->info($quick || 0, $i);
+}
+
+sub info {			# update text overlay, per info level
+    my($self, $quick, $i) = @_;
+    my $th = $self->{thumbviewer};
+    my $x = $th->focusedItem + 1; # total progress, horizontal
+    my $X = $th->count;
+    my($w, $h) = $self->size;
+    my $im = $self->picture or return;
+    $self->NW->text($i == 3 ?
+		    sprintf('%.0f%% of %dx%d=%.2f',
 			    $self->zoom * 100,
 			    $im->width, $im->height,
-			    $im->width / $im->height));
-    $quick and return;		# only zoom has changed, all else remains same:
-    $self->N->text($im->basename);
-    $self->NE->text(sprintf '%.1fMP %.0fKB, %.0f%% = %d / %d',
-			   $im->width * $im->height / 1000000,
-			   $im->bytes / 1024,
-			   $x / $y * 100, $x, $y);
+			    $im->width / $im->height)
+		    : sprintf('%.0f%%', $self->zoom * 100));
+    $self->NW->show;
+    $quick and return; # only zoom has changed, all else remains same:
+    my $cap = $i == 3 ? $im->basename : '';
+    $cap = $im->caption . "\n$cap" if $im->caption;
+    $self->N->text($cap);
+    $self->N->top($h - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+    ($i > 1 and $cap) ? $self->N->show : $self->N->hide;
+    $self->NE->text($i > 2 ?
+		    sprintf '%.1fMP %.0fKB, %.0f%% %d / %d',
+		    $im->width * $im->height / 1000000,
+		    $im->bytes / 1024,
+		    $x / $X * 100, $x, $X
+		    : sprintf '%.0f%% %d / %d',
+		    $x / $X * 100, $x, $X);
     $self->NE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
-    my $info = $self->{exif}->ImageInfo($im->pathtofile);
-    # use Data::Dumper;
-    # warn "info $im: ", Dumper $info;
+    $self->NE->show;
+    my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     my @info;
-    my $make = $info->{Make} || '';
-    push @info, $make if $make;
-    (my $model = $info->{Model} || '') =~ s/$make//g; # redundant
-    push @info, $model if $model;
-    push @info, "$info->{ExposureTime}s"	if $info->{ExposureTime};
-    push @info, $info->{FocalLength}		if $info->{FocalLength};
-    push @info, "($info->{FocalLengthIn35mmFormat})"
-	if $info->{FocalLengthIn35mmFormat};
-    push @info, "f/$info->{FNumber}"		if $info->{FNumber};
-    push @info, "ISO: $info->{ISO}"		if $info->{ISO};
-    push @info, $info->{Flash}			if $info->{Flash};
-    push @info, $info->{Orientation} if
-	$info->{Orientation} and $info->{Orientation} =~ /Rotate/;
-    ($x, $y) = $th->xofy($th->focusedItem);
-    my $path = $im->dir->directory;
-    $path .= " : $x / $y";
-    $self->S->text($im->caption ? join "\n",
-			  $im->caption, $path : $path);
-    $self->SE->text(join "\n", @info);
-    $self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+    if ($i == 3) {
+	my $info = $self->{exif}->ImageInfo($im->pathtofile);
+	# use Data::Dumper;
+	# warn "info $im: ", Dumper $info;
+	my $make = $info->{Make} || '';
+	push @info, $make if $make;
+	(my $model = $info->{Model} || '') =~ s/$make//g; # redundant
+	push @info, $model if $model;
+	push @info, "$info->{ExposureTime}s"	if $info->{ExposureTime};
+	push @info, $info->{FocalLength}	if $info->{FocalLength};
+	push @info, "($info->{FocalLengthIn35mmFormat})"
+	    if $info->{FocalLengthIn35mmFormat};
+	push @info, "f/$info->{FNumber}"	if $info->{FNumber};
+	push @info, "ISO: $info->{ISO}"		if $info->{ISO};
+	push @info, $info->{Flash}		if $info->{Flash};
+	push @info, $info->{Orientation}	if $info->{Orientation} and
+	    $info->{Orientation} =~ /Rotate/;
+	$self->SE->text(join "\n", @info);
+	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+	$self->SE->show;
+    } elsif ($i == 2) {
+	$self->SE->text("$y / $Y");
+	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+	$self->SE->show;
+    } else {
+	$self->SE->hide;
+    }
+    $self->S->show;
+    $i == 3 ? $self->S->text(join ' ', $im->dir->directory, "$y / $Y ")
+	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);
+    $self->SW->show;
+    $self->repaint;
 }
 
 sub delay {
