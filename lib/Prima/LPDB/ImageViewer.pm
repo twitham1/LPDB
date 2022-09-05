@@ -36,7 +36,7 @@ sub profile_default
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
-	buffered => 1,		# undecided on which is better...
+	buffered => 0,		# 1 is not good for overlay mode
 	popupItems => [
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
@@ -102,7 +102,6 @@ sub init {
     $self->insert(@opt, name => 'S', growMode => gm::XCenter, bottom => $pad,
 		  alignment => ta::Center);
 
-    $self->buffered(1);
     return %profile;
 }
 
