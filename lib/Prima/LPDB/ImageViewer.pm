@@ -41,9 +41,9 @@ sub profile_default
 	    ['~Escape back to Thumb Gallery' =>
 	     sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['(info0',	'No ~Information Overlay',	'status'],
+	    ['(info0',	'~No Information Overlay',	'status'],
 	    ['info1',	'Progress ~Markers',		'status'],
-	    ['*info2',	'~Brief Information', 'i', 0,	'status'],
+	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {  $_[0]->repaint }],
@@ -342,7 +342,7 @@ sub status {	       # update window title, call info() text overlay
 	$self->repaint;
 	return;
     }
-    $self->info($quick || 0, $i);
+    $self->info($quick && $quick eq '1', $i);
 }
 
 sub info {			# update text overlay, per info level
@@ -395,10 +395,12 @@ sub info {			# update text overlay, per info level
 	    $info->{Orientation} =~ /Rotate/;
 	$self->SE->text(join "\n", @info);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
 	$self->SE->text("$y / $Y");
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
+	$self->SE->transparent(0);
 	$self->SE->show;
     } else {
 	$self->SE->hide;
@@ -408,7 +410,6 @@ sub info {			# update text overlay, per info level
 	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);
     $self->SW->show;
-    $self->repaint;
 }
 
 sub delay {
