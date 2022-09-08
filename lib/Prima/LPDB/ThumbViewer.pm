@@ -553,15 +553,15 @@ sub draw_picture {
     $im or return "warn: can't get thumb!\n";
     my $b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
 
-    $canvas->textOpaque(!$b);
-    $b += 5;			# now text border
-    # my $str = sprintf "%s\n%dx%d", $pic->basename,
-    #     $pic->width, $pic->height;
-    my $str = $pic->width > 1.8 * $pic->height ? '==' # wide / portrait flags
+    $b += 10;			# now text border
+    $canvas->textOpaque(1);
+    my $str = $pic->width > 1.8 * $pic->height ? '===' # wide / portrait flags
 	: $pic->width < $pic->height ? '||' : '';
     $str and
 	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 			   dt::Right|dt::Top|dt::Default);
+
+    $canvas->textOpaque($b == 10); # highlight caption of selection
     $pic->caption and
 	$canvas->draw_text($pic->caption, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 			   dt::Center|dt::Bottom|dt::Default); # dt::VCenter
