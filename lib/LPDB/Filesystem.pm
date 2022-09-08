@@ -6,8 +6,6 @@ LPDB::Filesystem - update sqlite from local picture metadata
 
 =cut
 
-# TODO: maybe split to Files / Pictures (exif)
-
 use strict;
 use warnings;
 use File::Find;
@@ -213,7 +211,7 @@ sub _wanted {
 	&_savepathfile("/[Timeline]/All Time/", $row->file_id);
 	&_savepathfile(strftime("/[Timeline]/Years/%Y/",
 				localtime $time), $row->file_id);
-	&_savepathfile(strftime("/[Timeline]/Months/%Y/%m-%b/",
+	&_savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
 				localtime $time), $row->file_id);
 
 	&_savepathfile("/[Captions]/", $row->file_id)
@@ -236,24 +234,14 @@ sub _wanted {
 	# 	$this->{uploads} = $db->uploads($dir, $file);
 	# 	$this->{faces}	= keys %{$this->{face}} ? 1 : 0; # boolean attributes
 	# 	$this->{albums}	= keys %{$this->{album}} ? 1 : 0;
-	# 	$this->{tags}	= keys %{$this->{tag}} ? 1 : 0;
 
 	# 	$this->{time} =~ /0000/ and
 	# 	    warn "bogus time in $_: $this->{time}\n";
-	# 	my $year = 0;
-	# 	$year = $1 if $this->{time} =~ /(\d{4})/; # year must be first
-
-	# 	my $vname = "$this->{time}-$file"; # sort files chronologically
-	# 	$conf->{sortbyfilename} and $vname = $file; # sort by filename
 
 	# 	# add virtual folders of stars, tags, albums, people
 	# 	$this->{stars} and
 	# 	    $db->_addpic2path("/[Stars]/$year/$vname", $key);
 
-	# 	for my $tag (keys %{$this->{tag}}) { # should year be here???
-	# 	    $db->_addpic2path("/[Tags]/$tag/$vname", $key);
-	# 	    $db->{tags}{$tag}++; # all tags with picture counts
-	# 	}
 	# 	for my $id (keys %{$this->{album}}) { # named user albums
 	# 	    next unless my $name = $db->{album}{$id}{name};
 	# 	    # putting year in this path would cause albums that span
@@ -267,14 +255,6 @@ sub _wanted {
 	# 	    $db->_addpic2path("/[People]/$name/$year/$vname", $key);
 	# 	}
 
-	# 	# add folders (putting year here would split folders into
-	# 	# multiple locations (y/f or f/y); maybe this would be ok?)
-	# #	$db->_addpic2path("/[Folders]/$key", $key);
-	# 	(my $timekey = $key) =~ s@[^/]+$@$vname@;
-	# 	$db->_addpic2path("/[Folders]/$timekey", $key);
-
-	# 	$odb->{sofar}++;	# count of pics read so far
-
     } elsif (-d $_) {
 	# $db->{dirs}{$dir}{"$file/"} or
 	#     $db->{dirs}{$dir}{"$file/"} = {};
@@ -287,8 +267,10 @@ sub _wanted {
     &{$conf->{update}};
 }
 
-sub cleanup {			# remove records of deleted files
-    my $self = shift;		# requires a stat of all files
+# remove records of deleted files, requires a stat of all files --
+# TODO: maybe stat files only in dirs that changed !!!
+sub cleanup {
+    my $self = shift;
     status "cleaning removed files from DB";
     my $tschema = $self->tschema;
     $schema->txn_begin; $tschema->txn_begin;
@@ -324,6 +306,10 @@ sub cleanup {			# remove records of deleted files
 	}
     }
     $schema->txn_commit; $tschema->txn_commit;
+}
+
+# TODO: find and index duplicates
+sub duplicates {
 }
 
 1;				# LPDB::Filesystem.pm
