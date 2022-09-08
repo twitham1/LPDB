@@ -23,7 +23,6 @@ sub new {
 
 sub pathpics {		     # return paths and pictures in given path
     my($self, $parent, $sort, $filter) = @_;
-    my(@dirs, @pics);
     my @filter;
     @filter = @$filter if $filter;
     $parent =~ s{/+}{/};	# cleanup
@@ -34,18 +33,36 @@ sub pathpics {		     # return paths and pictures in given path
 	$id =  $obj->path_id;
     }
     $self->{id} = $id;
-    if (my $paths = $self->{schema}->resultset('Path')->search(
+    my $paths;
+    if ($paths = $self->{schema}->resultset('Path')->search(
 	    {parent_id => $id})) {
-	push @dirs, $paths->all;
     }
+    my @pics;
     if (my $pics = $self->{schema}->resultset('Picture')->search(
-	    {path_id => $id, @filter},
-	    {order_by => $sort || [],
-	     prefetch => [ 'picture_paths', 'dir', 'picture_tags'],
+	    { path_id => $id, @filter },
+	    { order_by => $sort || [],
+	      prefetch => [ 'picture_paths', 'dir'],
+	      columns => [ qw/file_id/ ],
+	      # required to tell DBIC to collapse has_many relationships
+	      collapse => 1,
 	    })) {
-	push @pics, $pics->all;
+
+	# We can't afford returning full (big) picture objects, so
+	# return IDs only then look up each picture as needed later.
+	# get_column is fast but it loses the order.  Sorting all
+	# records is slow no matter what, so "Ungrouped/Fast" menu
+	# options exist to take the fast DB order immediately.
+
+	if (@$sort > 0) {	# slow full sort required
+	    while (my $one = $pics->next) {
+		push @pics, $one->file_id;
+	    }
+	} else {		# no sort, very fast DB order
+	    @pics = $pics->get_column('file_id')->all;
+	}
+#	warn "pics: @pics";
     }
-    return \@dirs, \@pics;
+    return [ $paths->all ], \@pics;
 }
 
 sub related {			# paths related to given path or picture
@@ -67,18 +84,13 @@ sub related {			# paths related to given path or picture
     return reverse sort keys %path;
 }
 
-# sub node {			# return Path or Picture of ID
-#     my($self, $id) = @_;
-#     my $obj;
-#     if ($id < 0) {
-# 	$obj = $self->{schema}->resultset('Path')->find(
-# 	    { path_id => -1 * $id});
-#     } else {
-# 	$obj = $self->{schema}->resultset('Picture')->find(
-# 	    { file_id => $id});
-#     }
-# #    warn "node $id = $obj\n";
-#     return $obj;
-# }
+sub picture {			# return picture object of given ID
+    my($self, $id) = @_;
+    $self->{allpicsresultset} ||=
+	$self->{schema}->resultset('Picture');
+    my $obj = $self->{allpicsresultset}->find($id);
+#    warn "tree picture: $id = $obj\n";
+    return $obj;
+}
 
 1;

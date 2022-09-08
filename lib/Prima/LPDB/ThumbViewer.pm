@@ -71,7 +71,8 @@ sub profile_default
 		      [')gdsc' => '~Descending' => 'sorter'],
 		  ]],
 		 ['~Images' => [
-		      ['(iname' => '~Name' => 'sorter'],
+		      ['(inone' => '~Fast (database order)' => 'sorter'],
+		      ['iname' => '~Name' => 'sorter'],
 		      ['*itime' => '~Time' => 'sorter'],
 		      ['isize' => '~Size' => 'sorter'],
 		      [')irnd' => '~Random' => 'sorter'],
@@ -145,7 +146,7 @@ sub init {
     $top->insert('Prima::Label', name => 'NE', pack => { side => 'right' },
 		 text => 'Enter = select / Escape = back');
     $top->insert('Prima::Label', name => 'N', pack => { side => 'top' },
-		 text => 'Use arrow keys to navigate');
+		 text => $self->{notice} = 'Use arrow keys to navigate');
 
     $self->pack(expand => 1, fill => 'both');
 
@@ -155,9 +156,9 @@ sub init {
     $bot->insert('Prima::Label', name => 'SW', pack => { side => 'left' },
 		 text => 'beginning date and time');
     $bot->insert('Prima::Label', name => 'SE', pack => { side => 'right' },
-		 text => 'statistics');
+		 text => 'end time or image statistics');
     $bot->insert('Prima::Label', name => 'S', pack => { side => 'bottom' },
-		 text => 'gallery: physical path of images');
+		 text => 'summary');
 
     $self->items($self->children('/'));
     $self->focusedItem(0);
@@ -175,6 +176,10 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
+    $self->owner->NORTH->N->text($self->{notice});
+    $self->{notice} = ' filtering and sorting, PLEASE WAIT... ';
+    $self->repaint;
+    $::application->yield;
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
     if ($m->checked('gname')) {
@@ -189,7 +194,9 @@ sub children {			# return children of given text path
 	{ ($m->checked('gdsc') ? '-desc' : '-asc') => 'dir.end' },
 	{ '-asc' => 'dir.directory' };
     }				# else gskip sorts by files only:
-    if ($m->checked('itime')) {
+    if ($m->checked('inone')) {	# DB order implies none of the above
+	@sort = ();
+    } elsif ($m->checked('itime')) {
 	push @sort,
 	{ ($m->checked('idsc') ? '-desc' : '-asc') => 'me.time' };
     } elsif ($m->checked('iname')) {
@@ -227,6 +234,16 @@ sub children {			# return children of given text path
     return [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
 }
 
+sub item {	    # return the path or picture object at given index
+    my($self, $index) = @_;
+    my $this = $self->{items}[$index];
+    $this or warn "index $index not found" and return;
+    if ($this->isa('LPDB::Schema::Result::Path')) {
+	return $this;
+    }				# else picture lookup:
+    $self->{tree}->picture($this);
+}
+
 sub goto {  # for robot navigation (slideshow) also used by escape key
     my($self, $path) = @_;
     # warn "goto: $path";
@@ -246,22 +263,22 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
     $self->cwd($1);
     $self->items($self->children($1));
     $self->focusedItem(-1);
-    $self->repaint;
+    # $self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	if ($self->{items}[$i]->pathtofile eq $2) {
+	if ($self->item($i)->pathtofile eq $2) {
 	    $self->focusedItem($i);
 	    last;
 	}
     }
-    $self->repaint;
+    # $self->repaint;
 }
 
 sub current {			# path to current selected item
     my($self) = @_;
     $self->focusedItem < 0 and return $self->cwd || '/';
-    my $this = $self->{items}[$self->focusedItem];
+    my $this = $self->item($self->focusedItem);
     $self->cwd . ($this->basename =~ m{/$} ? $this->basename
 		  : '/' . $this->pathtofile);
 }
@@ -273,7 +290,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     my $x = $idx->[0] + 1;
     my $y = $self->count;
     my $p = sprintf '%.0f', $x / $y * 100;
-    my $this = $self->{items}[$idx->[0]];
+    my $this = $self->item($idx->[0]);
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
@@ -322,20 +339,20 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
-    my $all = $self->{items};
     my $max = $self->count;
-    my $this = $all->[$me];
+    # my $this = $all->[$me];
+    my $this = $self->item($me);
     my $dir = $this->dir->directory;
     my $first = $me;
     while ($first > -1
-	   and $all->[$first]->isa('LPDB::Schema::Result::Picture')
-	   and $all->[$first]->dir->directory eq $dir) {
+	   and $self->item($first)->isa('LPDB::Schema::Result::Picture')
+	   and $self->item($first)->dir->directory eq $dir) {
 	$first--;
     }
     my $last = $me;
     while ($last < $max
-	   and $all->[$last]->isa('LPDB::Schema::Result::Picture')
-	   and $all->[$last]->dir->directory eq $dir) {
+	   and $self->item($last)->isa('LPDB::Schema::Result::Picture')
+	   and $self->item($last)->dir->directory eq $dir) {
 	$last++;
     }
     $last--;
@@ -370,10 +387,10 @@ sub on_mouseclick
 sub on_keydown			# code == -1 for remote navigation
 {
     my ($self, $code, $key, $mod) = @_;
-#    warn "keydown  @_";
+    #    warn "keydown  @_";
     my $idx = $self->focusedItem;
     if ($key == kb::Enter && $idx >= 0) {
-	my $this = $self->{items}[$idx];
+	my $this = $self->item($idx);
 	# warn $self->focusedItem, " is entered\n";
 	if ($this->isa('LPDB::Schema::Result::Path')) {
 	    $self->cwd($this->path);
@@ -407,7 +424,7 @@ sub on_keydown			# code == -1 for remote navigation
 sub on_drawitem
 {
     my $self = shift;
-    my $this = $self->{items}[$_[1]];
+    my $this = $self->item($_[1]);
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$self->draw_path(@_);
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
@@ -488,7 +505,7 @@ sub draw_path {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
 
     my ($thumb, $im);
-    my $path = $self->{items}[$idx];
+    my $path = $self->item($idx);
     my $b = 0;			# border size
     my @where = (1, 2, 3);
     my($first, $last);
@@ -531,7 +548,7 @@ sub draw_path {
 sub draw_picture {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
 
-    my $pic = $self->{items}[$idx];
+    my $pic = $self->item($idx);
     my $im = $self->{thumb}->get($pic->file_id);
     $im or return "warn: can't get thumb!\n";
     my $b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
