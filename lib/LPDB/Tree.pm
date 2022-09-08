@@ -41,7 +41,7 @@ sub pathpics {		     # return paths and pictures in given path
     if (my $pics = $self->{schema}->resultset('Picture')->search(
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
-	      prefetch => [ 'picture_paths', 'dir'],
+	      prefetch => [ 'picture_paths', 'dir', 'picture_tags'],
 	      columns => [ qw/file_id/ ],
 	      # required to tell DBIC to collapse has_many relationships
 	      collapse => 1,
@@ -50,14 +50,14 @@ sub pathpics {		     # return paths and pictures in given path
 	# We can't afford returning full (big) picture objects, so
 	# return IDs only then look up each picture as needed later.
 	# get_column is fast but it loses the order.  Sorting all
-	# records is slow no matter what, so "Ungrouped/Fast" menu
-	# options exist to take the fast DB order immediately.
+	# records is slow no matter what, so "Fast" menu option exists
+	# to take the fast DB order immediately (assumes Ungrouped).
 
 	if (@$sort > 0) {	# slow full sort required
 	    while (my $one = $pics->next) {
 		push @pics, $one->file_id;
 	    }
-	} else {		# no sort, very fast DB order
+	} else {		# no sort, instant DB order
 	    @pics = $pics->get_column('file_id')->all;
 	}
 #	warn "pics: @pics";
