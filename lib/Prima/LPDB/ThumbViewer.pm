@@ -39,50 +39,55 @@ sub profile_default
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
 	    ['~AND Filters' => [
-		 ['@tags' => '~Tags' => 'sorter'],
-		 ['@captions' => '~Captions' => 'sorter'],
+		 ['@tags'	=> '~Tags'	=> 'sorter'],
+		 ['@captions'	=> '~Captions'	=> 'sorter'],
 		 [],
-		 ['*(unlimited' => '~Unlimited' => 'sorter'],
-		 ['year10' => '10 Years' => 'sorter'],
-		 ['year3' => '3 Years' => 'sorter'],
-		 ['year' => '1 ~Year' => 'sorter'],
-		 ['quarter' => '3 Months' => 'sorter'],
-		 [')month' => '1 ~Month' => 'sorter'],
+		 ['*(both'	=> '~Both Shapes:' => 'sorter'],
+		 ['portrait'	=> '~Portrait'	=> 'sorter'],
+		 [')landscape'	=> '~Landscape'	=> 'sorter'],
+		 [],
+		 ['*(unlimited'	=> '~Unlimited or latest:' => 'sorter'],
+		 ['year10'	=> '1~0 Years'	=> 'sorter'],
+		 ['year5'	=> '~5 Years'	=> 'sorter'],
+		 ['year2'	=> '~2 Years'	=> 'sorter'],
+		 ['year1'	=> '1 ~Year'	=> 'sorter'],
+		 ['quarter'	=> '1 ~Quarter'	=> 'sorter'],
+		 [')month'	=> '1 ~Month'	=> 'sorter'],
 	     ]],
 	    ['~Sort' => [
 		 ['~Paths' => [
-		      ['*(pname' => '~Name' => 'sorter'],
-		      ['pfirst' => '~First Time' => 'sorter'],
-		      ['pmid' => '~Middle Time' => 'sorter'],
-		      ['plast' => '~Last Time' => 'sorter'],
-		      [')prnd' => '~Random' => 'sorter'],
+		      ['*(pname'=> '~Name (default)'	=> 'sorter'],
+		      ['pfirst'	=> '~Begin Time'	=> 'sorter'],
+		      ['pmid'	=> '~Middle Time'	=> 'sorter'],
+		      ['plast'	=> '~End Time'		=> 'sorter'],
+		      [')prnd'	=> '~Random'		=> 'sorter'],
 		      [],
-		      ['*(pasc' => '~Ascending' => 'sorter'],
-		      [')pdsc' => '~Descending' => 'sorter'],
+		      ['*(pasc'	=> '~Ascending (default)' => 'sorter'],
+		      [')pdsc'	=> '~Descending'	=> 'sorter'],
 		  ]],
 		 ['~Gallery Groups' => [
-		      ['(gname' => '~Name' => 'sorter'],
-		      ['*gfirst' => '~First Time' => 'sorter'],
-		      ['glast' => '~Last Time' => 'sorter'],
-#['grnd' => '~Random' => 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
-		      [')gskip' => '~Ungrouped' => 'sorter'],
+		      ['(gname'	=> '~Name'			=> 'sorter'],
+		      ['*gfirst' => '~Begin Time (default)'	=> 'sorter'],
+		      ['glast'	=> '~End Time'			=> 'sorter'],
+#['grnd'	=> '~Random'	=> 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
+		      [')gskip'	=> '~Ungrouped'			=> 'sorter'],
 		      [],
-		      ['*(gasc' => '~Ascending' => 'sorter'],
-		      [')gdsc' => '~Descending' => 'sorter'],
+		      ['*(gasc'	=> '~Ascending (default)'	=> 'sorter'],
+		      [')gdsc'	=> '~Descending'		=> 'sorter'],
 		  ]],
 		 ['~Images' => [
-		      ['(inone' => '~Fast (database order)' => 'sorter'],
-		      ['iname' => '~Name' => 'sorter'],
-		      ['*itime' => '~Time' => 'sorter'],
-		      ['isize' => '~Size' => 'sorter'],
-		      [')irnd' => '~Random' => 'sorter'],
+		      ['(inone'	=> '~Fast (database order)'	=> 'sorter'],
+		      ['iname'	=> '~Name'			=> 'sorter'],
+		      ['*itime'	=> '~Time (default)'		=> 'sorter'],
+		      ['isize'	=> '~Size'			=> 'sorter'],
+		      [')irnd'	=> '~Random'			=> 'sorter'],
 		      [],
-		      ['*(iasc' => '~Ascending' => 'sorter'],
-		      [')idsc' => '~Descending' => 'sorter'],
+		      ['*(iasc'	=> '~Ascending (default)'	=> 'sorter'],
+		      [')idsc'	=> '~Descending'		=> 'sorter'],
 		  ]],
 		 ['~Mixed Folders' => [
-		      ['*(galsfirst' => '~Galleries First' => 'sorter'],
-		      [')picsfirst' => '~Images First' => 'sorter'],
+		      ['*(galsfirst'	=> '~Galleries First (default)'	=> 'sorter'],
+		      [')picsfirst'	=> '~Images First'	=> 'sorter'],
 		  ]],
 
 	     ]],
@@ -123,13 +128,13 @@ sub init {
     # This appears to speed up thumbnail generation, but it might
     # deadlock more than 1 run at a time, a case I never have
     $self->{timer} = Prima::Timer->create(
-    	timeout => 5000,	# milliseconds
-    	onTick => sub {
-    	    # warn "tick!\n";
-    	    $self->{lpdb}->{tschema}->txn_commit;
-    	    $self->{lpdb}->{tschema}->txn_begin;
-    	}
-    	);
+	timeout => 5000,	# milliseconds
+	onTick => sub {
+	    # warn "tick!\n";
+	    $self->{lpdb}->{tschema}->txn_commit;
+	    $self->{lpdb}->{tschema}->txn_begin;
+	}
+	);
     $self->{lpdb}->{tschema}->txn_begin;
     $self->{timer}->start;
 
@@ -209,20 +214,24 @@ sub children {			# return children of given text path
 	push @sort, { '-asc' => 'RANDOM()' }
     }
     my $filter = $self->{filter} = []; # menu filter options to database where
+
     $m->checked('tags') and push @$filter,
 	tag_id => { '!=', undef };
     $m->checked('captions') and push @$filter,
 	caption => { '!=', undef };
-    $m->checked('year10') and push @$filter,
-	time => { '>', time - 10 * 365.25 * 86400 };
-    $m->checked('year3') and push @$filter,
-	time => { '>', time - 3 * 365.25 * 86400 };
-    $m->checked('year') and push @$filter,
-	time => { '>', time - 365.25 * 86400 };
+
+    $m->checked('portrait') and push @$filter,
+	width => { '<', \'height' }; # string ref for literal SQL
+    $m->checked('landscape') and push @$filter,
+	width => { '>', \'height' }; # string ref for literal SQL
+
+    map { $m->checked("year$_") and push @$filter, time =>
+	  { '>', time - $_ * 365.25 * 86400 } } qw/1 2 5 10/;
     $m->checked('quarter') and push @$filter,
 	time => { '>', time - 90 * 86400 };
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
+
     my($path, $file) = $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :

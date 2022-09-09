@@ -5,12 +5,17 @@
 
 package LPDB::Schema::Result::Picture;
 
-sub pathtofile {	   # return full filesystem path to image file
+sub pathtofile {		# full filesystem path to image file
     return $_[0]->dir->directory . $_[0]->basename;
 }
 
 sub pixels {			# return pixels of the picture
     return $_[0]->width * $_[0]->height;
+}
+
+sub ratio {			# width to height ratio
+    $_[0]->height || return 0;
+    return $_[0]->width / $_[0]->height;
 }
 
 # sub thumbnail {
