@@ -164,20 +164,24 @@ UNDER CONSTRUCTION - Picasa features don't yet exist!!!
 B<lpgallery> presents local pictures (optionally managed by Picasa) in
 a keyboard (or remote) controlled browser, similar to MythGallery of
 MythTV.  The main window navigates a "virtual filesytem" thumbnail
-tree of multiple paths to galleries of the images.  A second window
-presents any one image at a time, optionally as an automatic slide
-show.  Ideally this is run at full-screen on a big screen from the
-comfort of your couch.
+tree of multiple organized paths to galleries of the images.  A second
+window presents any one image at a time, optionally as an automatic
+slide show.
+
+Ideally this is run at full-screen on a big screen from the comfort of
+your couch.  Currently this is read-only, it will never modify any
+images.  The database is updated once from the filesystem in the
+background at start up.
 
 =head2 Thumbnail Grid
 
 The main window is a grid of thumnail images.  Picture collections are
-represented by a stack of three images: the oldest, center and
-youngest picture in the path below that point in the tree.  Arrow keys
-move around the grid while the B<Enter> key moves into a lower path or
-presents a single picture.  The B<Escape> key moves back up to the
-parent path.  Metadata about the selected path is displayed above and
-below the grid.
+represented by a stack of three images: the oldest, center (or random)
+and youngest picture in the path below that point in the tree.  Arrow
+keys move around the grid while the B<Enter> key moves into a lower
+path or presents a single picture.  The B<Escape> key moves back up to
+the parent path.  Metadata about the selected path is displayed above
+and below the grid.
 
 The top level virtual paths are:
 
@@ -206,15 +210,15 @@ tag strings found in EXIF picture metadata
 
 =item [Albums]
 
-pictures organized by Albums (Picasa only)
+pictures organized by Albums (Picasa only not implemented)
 
 =item [People]
 
-pictures of recognized named faces (Picasa only)
+pictures of recognized named faces (Picasa only not implemented)
 
 =item [Stars]
 
-pictures marked with stars as favorites (Picasa only)
+pictures marked with stars as favorites (Picasa only not implemented)
 
 =back
 
@@ -289,21 +293,29 @@ directory.  This simply chooses which to display first.
 The B<p> key on the Image Viewer can play/pause a slide show and the
 menu can adjust its playback speed.  The slideshow is the pictures
 from the Thumbnail grid in order.  Therefore you can order the
-slideshow by the filtering and sorting options of the grid.
-Navigation and info toggle is available while the slideshow plays.
-Escape back to the grid automatically pauses the show, then you can
-B<Enter> and B<p> to continue playback from any point on the grid.
+slideshow by the filtering and sorting options of the grid.  The
+defaults may work well while a random show would need I<Ungrouped>
+galleries and I<Random> images.
+
+Arrow key navigation and info cycling is available while the slideshow
+plays.  Menu or escape back to the grid automatically pauses the show,
+then you can B<Enter> and B<p> to continue playback from any point on
+the grid.
 
 =head1 TODO
 
 Nine touch (click) zones on the image like in picasagallery
 
 Support videos by adding duration field and full screen playback via
-external command
+external full screen player command that supports arrows and Escape
+
+Add [Duplicates]/{alone,hard links,soft links}/
+
+Add [Places]/place names/ via GPS lat/lon (see Geo::LatLon2Place)
 
 Add all Picasa features (stars, albums, faces, [uploads])
 
-Add [Duplicates]/{alone,hard links,soft links}/
+Add configuration options and documentation
 
 =head1 SEE ALSO
 

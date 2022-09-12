@@ -60,8 +60,9 @@ sub pathtofile {		# alias used by goto of ThumbViewer
 
 sub resultset {		 # all files below logical path, in time order
     my($self) = @_;
+    $self->{resultset} and return $self->{resultset};
     my $schema = $self->result_source->schema;
-    return $schema->resultset('PathView')->search(
+    $self->{resultset} = $schema->resultset('PathView')->search(
     	{path => { like => $self->path . '%'},
 	 time => { '!=' => undef },
 	 @{$self->{filter}} },
@@ -69,6 +70,7 @@ sub resultset {		 # all files below logical path, in time order
 	 group_by => 'file_id',
 	 columns => [ qw/time file_id dir_id/ ],
     	});
+    return $self->{resultset};
 }
 
 sub picturecount {
@@ -95,6 +97,13 @@ sub time {		 # return begin/middle/end time from the stack
     return $s[$n] ? $s[$n]->time :
 	$s[--$n] ? $s[$n]->time
 	: $s[0]->time;
+}
+
+sub random {			# return a random picture from the path
+    my($self) = @_;
+    my $rs = $self->resultset;
+    my $n = int(rand($rs->count));
+    return ($rs->slice($n, $n));
 }
 
 1;

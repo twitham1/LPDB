@@ -4,10 +4,11 @@ Prima::LPDB::ThumbViewer - Browse a tree of image thumbnails from LPDB
 
 =head1 DESCRIPTION
 
-The heart of C<lpgallery>, this class connects C<Prima::TileViewer> to
-an C<LPDB> database, presenting its paths and pictures in a keyboard-
-driven interactive thumbnail browser.  It also [re]creates a
-C<Prima::LPDB::ImageViewer> to display a selected picture.
+The heart of C<lpgallery>, this class connects
+C<Prima::LPDB::TileViewer> to an C<LPDB> database, presenting its
+paths and pictures in a keyboard- driven interactive thumbnail
+browser.  It also [re]creates a C<Prima::LPDB::ImageViewer> to display
+a selected picture.
 
 =cut
 
@@ -92,6 +93,22 @@ sub profile_default
 
 	     ]],
 	    [],
+	    ['~Random Stack Centers' => [
+		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
+		 [],
+		 ['(cnone'	=> '~No Others'			=> sub {}],
+		 ['*corder'	=> 'In ~Order (default)'	=> sub {}],
+		 [')crandom'	=> '~Random'			=> sub {}],
+		 [],
+		 ['(c250' => '~4 per second'   => sub { $_[0]->{cycler}->timeout(250)}],
+		 ['c333'  => '~3 per second'   => sub { $_[0]->{cycler}->timeout(333)}],
+		 ['*c500' => '~2 per second (default)' => sub { $_[0]->{cycler}->timeout(500)}],
+		 ['c1000' => '~1 per second'   => sub { $_[0]->{cycler}->timeout(1000)}],
+		 ['c2000' => '1 per 2 seconds' => sub { $_[0]->{cycler}->timeout(2000)}],
+		 ['c3000' => '1 per 3 seconds' => sub { $_[0]->{cycler}->timeout(3000)}],
+		 [')c4000'=> '1 per 4 seconds' => sub { $_[0]->{cycler}->timeout(4000)}],
+		 ]],
+	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
 	     sub { $_[0]->fullscreen($_[0]->popup->toggle($_[1]) )}],
 	    ['bigger', 'Zoom ~In', 'z', ord 'z' =>
@@ -124,6 +141,8 @@ sub init {
     $self->{tree} = new LPDB::Tree($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
     $self->{viewer} = undef;
+    $self->{firstlast} = '';	# cache of first/last viewed
+    $self->{cwd} = '/';
 
     # This appears to speed up thumbnail generation, but it might
     # deadlock more than 1 run at a time, a case I never have
@@ -137,6 +156,12 @@ sub init {
 	);
     $self->{lpdb}->{tschema}->txn_begin;
     $self->{timer}->start;
+
+    $self->{cycler} = Prima::Timer->create( # stack center cycler
+	timeout => 500,		# milliseconds
+	onTick => sub { $self->stackcenter },
+	);
+    $self->{cycler}->start;
 
     $self->insert('Prima::LPDB::PointerHider');
     $self->insert('Prima::LPDB::Fullscreen', window => $self->owner);
@@ -441,10 +466,61 @@ sub on_drawitem
     }
 }
 
+# replace the center picture of a path stack with random one
+sub stackcenter {		# called by {cycler} timer
+    my($self) = @_;
+    my $cwd = $self->{cwd};	   # using internals here not methods
+    my $first = $self->{topItem};  # could be method
+    my $last = $self->{lastItem};  # internal to Lists.pm, no method
+    my $key = "$cwd $first $last"; # view change detector
+    if ($self->{firstlast} ne $key) { # update the view cache
+	my @path;
+	for (my $i = $first; $i <= $last; $i++) {
+	    my $this = $self->{items}[$i];
+	    ref $this or next;	# only paths are refs, pics are ints
+	    $this->picturecount > 2 or next;
+	    push @path, $i;
+	}
+	# warn "paths in view: @path";
+	$self->{firstlast} = $key;  # view change detector
+	$self->{pathsnow} = \@path; # cache
+	$self->{corder} = 0;
+    }
+    my $n = @{$self->{pathsnow}};
+    $n or return;
+    my %idx;			# indexes to replace
+    if ($self->popup->checked('csel')) {
+	my $cur = $self->{focusedItem};
+	$idx{$cur} = 1 if $cur > -1
+	    and $self->{items}[$cur]->isa('LPDB::Schema::Result::Path');
+    }
+    if ($self->popup->checked('corder')) {
+	$idx{$self->{pathsnow}[$self->{corder}++]} = 1;
+	$self->{corder} = 0
+	    if $self->{corder} >= $n;
+    } elsif ($self->popup->checked('crandom')) {
+	$idx{$self->{pathsnow}[int rand $n]} = 1;
+    }				# else cnone
+    my @s = $self->size;
+    for my $idx (keys %idx) {	# 1 or 2
+	my $this = $self->{items}[$idx];
+	my($pic) = $this->random;
+	my $id = $pic->file_id;
+	my $im = $self->{thumb}->get($pic->file_id);
+	$im or return;
+	$self->begin_paint;
+	$self->_draw_thumb($im, 2, $self->{canvas},
+			   $idx, $self->item2rect($idx, @s),
+			   $idx == $self->{focusedItem});
+	$self->end_paint;
+    }
+}
+
 # source -> destination, preserving aspect ratio
 sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
     my ($self, $im, $pos, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
 
+    $self->{canvas} ||= $canvas; # for middle image rotator
     my $bk = $sel ? $self->hiliteBackColor : cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
     $canvas->backColor($bk);
@@ -490,7 +566,7 @@ sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
 	: $pos == 2 ? (($x1 + $x2)/2 - $dw/2, ($y1 + $y2)/2 - $dh/2) # center
 	: $pos == 3 ? ($x2 - $b - $dw, $y1 + $b) # South East
 	: ($x1, $y1));		# should never happen 
-   $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
+    $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
 				$self->rop)
 	or warn "put_image failed: $@";
     if (!$pos and !$b) {       # overlay rectangle on focused pictures
@@ -620,7 +696,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 =back
 
 =head1 SEE ALSO
-L<Prima::TileViewer>, L<Prima::ImageViewer>, L<LPDB>
+L<Prima::TileViewer>, L<Prima::ImageViewer>, L<LPDB>, L<lpgallery>
 
 =head1 AUTHOR
 
