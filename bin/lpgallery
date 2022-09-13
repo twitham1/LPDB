@@ -70,16 +70,8 @@ END {
     kill 'TERM', $child if $child;
 }
 
-# huge for couch viewing, why is this line needed?!!!?
-$::application->font->size(20);
-
-# without above, get_default_font is too small.  I use xrdb -load file
-# of this content for large text viewing from the couch:
-
-# Prima.Font: Helvetica-20
-# Prima.Color: white
-# Prima.Back: black
-# Prima.HiliteBackColor: gray33
+# huge for couch viewing, maybe not needed with designScale below?
+# $::application->font->size(20);
 
 my $lv;				# ListViewer
 my $iv;				# ImageViewer
@@ -109,7 +101,16 @@ $w = Prima::MainWindow->create(
     text => 'Local Picture Gallery',
     packPropagate => 0,
     size => [1600, 900],
+    designScale => [16, 32],	# should it be in ThumbViewer?
     );
+# designScale from faq.pod:
+# perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
+# I use xrdb -load file of this content for large text viewing from
+# the couch:
+# Prima.Font: Helvetica-20
+# Prima.Color: white
+# Prima.Back: black
+# Prima.HiliteBackColor: gray33
 
 sub myclose { $w->deselect; $::application->close } # segfaults!??!!!
 
@@ -119,6 +120,7 @@ sub myclose { $w->deselect; $::application->close } # segfaults!??!!!
 # my @rect = $::application->get_monitor_rects;
 # use Data::Dumper;
 # warn Dumper \@rect;
+# exit;
 
 $lv = $w->insert(
     'Prima::LPDB::ThumbViewer',
