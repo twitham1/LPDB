@@ -50,6 +50,7 @@ sub profile_default
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],
+	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
 	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
 	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
 	    [],
@@ -229,7 +230,7 @@ sub on_keydown
     }
     if ($key == kb::Escape) {	# return focus to caller
 	$self->popup->checked('slideshow', 0);
-	$self->slideshow;	# stop any show
+	$self->{timer}->stop;	# stop any show
 	my $owner = $self->{thumbviewer};
 	$owner->owner->select;
 	return;
@@ -424,8 +425,22 @@ sub slideshow {
 	timeout => 3000,	# milliseconds
 	onTick => sub {
 	    $self->autoZoom or return;
-	    $self->key_down(0, kb::Right );
-	    $self->CENTER->hide;
+	    my $th = $self->{thumbviewer};
+	    my $x = $th->focusedItem + 1;
+	    my $y = $th->count;
+	    if ($self->popup->checked('slideshow') and $x == $y) {
+		if ($self->popup->checked('loop')) {
+		    warn "looping show";
+		    $self->key_down(ord '0'); # move to first
+		} else {
+		    warn "stopping show";
+		    $self->popup->checked('slideshow', 0);
+		    $self->slideshow;
+		}
+	    } else {		# next picture
+		$self->key_down(0, kb::Right );
+		$self->CENTER->hide;
+	    }
 	}
 	);
     $self->{seconds} ||= 4;
