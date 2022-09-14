@@ -207,7 +207,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 sub children {			# return children of given text path
     my($self, $parent) = @_;
     $self->owner->NORTH->N->text($self->{notice});
-    $self->{notice} = ' filtering and sorting, PLEASE WAIT... ';
+    $self->{notice} = '   filtering and sorting, PLEASE WAIT...   ';
     $self->repaint;
     $::application->yield;
     my $m = $self->popup;
@@ -376,6 +376,7 @@ sub xofy {	      # find pic position in current gallery directory
     my $max = $self->count;
     # my $this = $all->[$me];
     my $this = $self->item($me);
+    $this or return (0, 0);
     my $dir = $this->dir->directory;
     my $first = $me;
     while ($first > -1
@@ -503,7 +504,8 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
-	my $this = $self->{items}[$idx];
+	my $this = $self->{items}[$idx] or next;
+	ref $this or next;
 	my($pic) = $this->random;
 	my $id = $pic->file_id;
 	my $im = $self->{thumb}->get($pic->file_id);
