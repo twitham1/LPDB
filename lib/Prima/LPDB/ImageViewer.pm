@@ -230,7 +230,8 @@ sub on_keydown
     }
     if ($key == kb::Escape) {	# return focus to caller
 	$self->popup->checked('slideshow', 0);
-	$self->{timer}->stop;	# stop any show
+	$self->{timer} and
+	    $self->{timer}->stop; # stop any show
 	my $owner = $self->{thumbviewer};
 	$owner->owner->select;
 	return;
