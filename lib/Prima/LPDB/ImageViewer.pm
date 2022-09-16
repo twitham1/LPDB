@@ -18,10 +18,10 @@ use strict;
 use warnings;
 use Prima::ImageViewer;
 use Prima::Edit;		# for ExifTool metadata window
-use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
+# use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 
 use vars qw(@ISA);
-@ISA = qw(Prima::ImageViewer Prima::LPDB::Fullscreen);
+@ISA = qw(Prima::ImageViewer);
 
 sub profile_default
 {
@@ -46,7 +46,8 @@ sub profile_default
 	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
-	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {  $_[0]->repaint }],
+	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {
+		$_[0]->{overlay} = $_[1]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],
@@ -55,7 +56,7 @@ sub profile_default
 	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->fullscreen($_[0]->popup->toggle($_[1]) )} ],
+	     sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger', '~Zoom In', 'z', ord 'z' =>
 	     sub { $_[0]->bigger }],
 	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
@@ -77,8 +78,6 @@ sub init {
 
     $self->{exif} = new Image::ExifTool; # for collecting picture metadata
     $self->{exif}->Options(FastScan => 1); # , DateFormat => $conf->{datefmt});
-
-    $self->insert('Prima::LPDB::Fullscreen', window => $self->owner);
 
     # my $pad = $self->{pad} = sv::XScrollbar; # too small
     # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
@@ -251,8 +250,8 @@ sub on_keydown
 	$self->infocycle;
     }
     # if ($key == kb::F11) {
-    #	warn "f11 hit";
-    #	$self->fullscreen(!$self->fullscreen);
+    # 	warn "f11 hit";
+    # 	$self->fullscreen(-1);
     # }
 
     return if $self->{stretch};
@@ -538,7 +537,7 @@ sub SUPERon_paint
 		} else {
 			$aty = 0;
 		}
-		unless ($self->popup->checked('overlay')) {
+		unless ($self->{overlay}) {
 		    $canvas-> clear( 0, 0, $winX-1, $aty-1) if $aty > 0;
 		    $canvas-> clear( 0, $aty + $imYz, $winX-1, $winY-1) if $aty + $imYz < $winY;
 		}
@@ -558,7 +557,7 @@ sub SUPERon_paint
 		} else {
 			$atx = 0;
 		}
-		unless ($self->popup->checked('overlay')) {
+		unless ($self->{overlay}) {
 		    $canvas-> clear( 0, $aty, $atx - 1, $aty + $imYz - 1) if $atx > 0;
 		    $canvas-> clear( $atx + $imXz, $aty, $winX - 1, $aty + $imYz - 1) if $atx + $imXz < $winX;
 		}
@@ -572,7 +571,7 @@ sub SUPERon_paint
 
 PAINT:
 	$canvas-> clear( $atx, $aty, $atx + $imXz, $aty + $imYz)
-	    if $self-> {icon} and ! $self->popup->checked('overlay');
+	    if $self-> {icon} and ! $self->{overlay};
 
 	if ( $self-> {scaling} != ist::Box && ( $imXz != $imX || $imYz != $imY ) ) {
 		my (
@@ -634,7 +633,8 @@ PAINT:
 =pod
 
 =head1 SEE ALSO
-L<Prima::ThumbViewer>, L<LPDB>
+
+L<lpgallery>, L<Prima::LPDB::ThumbViewer>, L<LPDB>
 
 =head1 AUTHOR
 

@@ -96,13 +96,17 @@ my $w;
     $::application->icon($i);
 }
 
-$w = Prima::MainWindow->create(
+$w = Prima::LPDB::Fullscreen->create(
+    mainWindow => 1, # promote myself to MainWindow per Prima::Window:
+    onDestroy  => sub { $::application-> close },
     name => 'LPG',
     text => 'Local Picture Gallery',
     packPropagate => 0,
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
+$w->{hackY1} = 1;		# since not yet a property!!!
+
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
 # I use xrdb -load file of this content for large text viewing from
@@ -115,12 +119,6 @@ $w = Prima::MainWindow->create(
 sub myclose { $w->deselect; $::application->close } # segfaults!??!!!
 
 # print sort map {"$_->{name}\n"} @{$::application-> fonts}; # see available fonts!!!
-
-# TODO: fullscreen mode should go to closest monitor
-# my @rect = $::application->get_monitor_rects;
-# use Data::Dumper;
-# warn Dumper \@rect;
-# exit;
 
 $lv = $w->insert(
     'Prima::LPDB::ThumbViewer',

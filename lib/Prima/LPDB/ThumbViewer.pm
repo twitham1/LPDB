@@ -27,7 +27,7 @@ use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 use Prima::LPDB::PointerHider;	# could someday promote to Prima?
 
 use vars qw(@ISA);
-@ISA = qw(Prima::LPDB::TileViewer Prima::LPDB::Fullscreen);
+@ISA = qw(Prima::LPDB::TileViewer);
 
 my $lv;
 sub profile_default
@@ -110,7 +110,7 @@ sub profile_default
 		 ]],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->fullscreen($_[0]->popup->toggle($_[1]) )}],
+	     sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger', 'Zoom ~In', 'z', ord 'z' =>
 	     sub { $_[0]->bigger }],
 	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
@@ -164,7 +164,6 @@ sub init {
     $self->{cycler}->start;
 
     $self->insert('Prima::LPDB::PointerHider');
-    $self->insert('Prima::LPDB::Fullscreen', window => $self->owner);
 
     $self->packForget; # to get packs around the perimeter of the SUPER widget
 
@@ -666,12 +665,11 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 	$self->{viewer}->restore
 	    if $self->{viewer}->windowState == ws::Minimized;
     } else {
-	my $w = $self->{viewer} = Prima::Window->create(
+	my $w = $self->{viewer} = Prima::LPDB::Fullscreen->create(
 	    text => 'Image Viewer',
-	    #	    size => [$::application->size],
-	    # packPropagate => 0,
 	    size => [1600, 900],
 	    );
+	$w->{hackY1} = 1;	# since not yet a property!!!
 	$w->insert(
 	    'Prima::LPDB::ImageViewer',
 	    name => 'IV',
@@ -695,10 +693,11 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 
 =pod
 
-=back
-
 =head1 SEE ALSO
-L<Prima::TileViewer>, L<Prima::ImageViewer>, L<LPDB>, L<lpgallery>
+
+L<lpgallery>, L<Prima::LPDB::TileViewer>, L<Prima::LPBD::ImageViewer>,
+L<LPDB>
+
 
 =head1 AUTHOR
 

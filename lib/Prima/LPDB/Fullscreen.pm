@@ -1,72 +1,194 @@
 =head1 NAME
 
-Prima::LPDB::Fullscreen - Try to toggle a window to full screen
+Prima::LPDB::Fullscreen - Toggle a window to full screen
 
 =head1 DESCRIPTION
 
-This approach to fullscreen keeps the window borders but displays them
-off-screen.  It may or may not work with random window managers.
-Tested only on xfce on Ubuntu 20.04 where panel hiding is required in
-panel preferences.
+This enhances L<Prima::Window> to know about all the screens of the
+display, mapping them into our coordinate system relative to the
+primary screen.  Then it provides fullscreen capability to the screen
+we are on or the closest screen.
 
 =cut
 
+# Maybe improve this and promote to Prima::Fullscreen, or even merge
+# into Prima::Window so that all windows can know about all screens.
+
 package Prima::LPDB::Fullscreen;
+
 use strict;
 use warnings;
+use Prima;
 use Prima::Classes;
 
-
 use vars qw(@ISA);
-@ISA = qw(Prima::Component);
+@ISA = qw(Prima::Window);
 
-sub fullscreen {
-    # my($win, $which) = @_;
-    my($self, $which) = @_;
-    my $win = $self->owner;
-    my @d = $::application->size;		      # desktop size
-    my @f = ($win->frameSize, $win->frameOrigin);     # frame size/pos
-    my @w = ($win->size, $win->origin);		      # window size/pos
-    my $full = $d[0] == $w[0] && $d[1] == $w[1];      # full screen now?
-    my $to = $which || '';			      # target
-    warn "$win is\t@w framed by\t@f,  full=$full, to=$to";
-    defined $which
-	or return $full;
-    if ($which) {		# going to fullscreen
-	$full and return 1;
-	$self->{where} = \@f;	# remember size/origin to return to
-	# my $x = $f[0] - $w[0];
-	# my $y = $f[1] - $w[1];
-	# this loses Alt-tab control on xfce:
-	# $win->borderStyle(bs::None);
-	# $win->borderIcons(0);
-	# # $win->frameSize($d[0] + $x, $d[1] + $y);
-	# $y = $f[3] - $w[3] + 1;
-	# $win->frameOrigin(-$x, $y);
-	# $y = -100;
-	# do {
-	#     $win->frameOrigin(-$x, $y);
-	#     my @t = $win->origin;
-	#     warn "frame at $x $y, yields origin @t";
-	#     $y++;
-	# } while (($win->origin)[1] && $y < 100);
-	# $win->onTop(0);
-	# without this, xfce taskbar overlays my fullscreen:
-	# (until I configured his preferences to "hide = intelligent")
-	# $win->onTop(1);
-	# on xfce/ubuntu, 0,0 is not right but 0,1 is close:
-	$win->origin(0, 1);
-	$win->size(@d);
-	# $win->onTop(1);
-	return 1;
-    } elsif ($self->{where}) {	# restore orignal frame
-	# $win->onTop(0);
-	# $win->borderIcons(bi::All);
-	# $win->borderStyle(bs::Sizeable);
-	$win->frameSize((@{$self->{where}})[0,1]);
-	$win->frameOrigin((@{$self->{where}})[2,3]);
-	return 0;
+=pod
+
+=over
+
+=item virtual_screens
+
+Returns set of [X,Y,WIDTH,HEIGHT,DIST,ON] identifying screen locations
+and the window's relation to them.  X and Y are reported relative to
+the lower left corner of the primary screen which is our coordinate
+system.  DIST is the distance from screen center to window center.  ON
+is a boolean 1 only when the center of the window is on that screen.
+
+WARNING: may not yet work for all screen layouts, see source code.
+
+See also: C<Prima::Application::get_monitor_rects>
+
+=cut
+
+# Try to shift arbitrary screen rectangles to my coordinate system,
+# which is always relative to the primary screen.  Ideally we should
+# know primary screen directly (see for example
+# https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.screen.primaryscreen?view=windowsdesktop-6.0)
+# but I can't find this property in Prima.  Primary must match my
+# application size so I first grep for matching size, then select the
+# one closest to 0,0 which may or may not be right for random screen
+# layouts.  In particular this breaks with vertical layout with
+# primary at the top under Windows 10 as lower is at 0,0 instead.
+# -twitham, 2022/09
+sub virtual_screens {
+    my($winx, $winy) = $_[0]->origin;
+    my($winw, $winh) = $_[0]->size;
+    my($wcx,  $wcy) = ($winx + $winw / 2, $winy + $winh / 2);
+    my($appw, $apph) = $::application->size;
+    my $rects = $::application->get_monitor_rects;
+    my $primary = (sort { abs $a->[0] + abs $a->[1] <=>
+			      abs $b->[0] + abs $b->[1] }
+		   grep { $_->[2] == $appw && $_->[3] == $apph }
+		   @$rects)[0];
+    my($x1, $y1) = @$primary[0,1];
+    my $virt;
+    for my $screen (@$rects) {
+	my($x, $y, $w, $h) = @$screen;
+	next unless $w and $h;	# I get a bogus 0x0 screen under X11!
+	$x -= $x1; $y -= $y1; # now relative to primary, like all windows
+	my($cx, $cy) = ($x + $w / 2, $y + $h / 2);
+	my($dx, $dy) = ($wcx - $cx , $wcy - $cy);
+	my $dist = int(sqrt($dx * $dx + $dy * $dy));
+	push @$virt, [$x, $y, $w, $h, $dist,
+		      $wcx >= $x && $wcx < $x + $w &&
+		      $wcy >= $y && $wcy < $y + $h];
     }
+    return $virt;
 }
 
-1;
+=pod
+
+=item closest_screen
+
+Returns the virtual rect of the screen the window is on, or the
+closest screen if not on any screen.  X and Y are relative to the
+primary first screen.
+
+See also: C<virtual_screens>, C<fullscreen>
+
+=cut
+
+sub closest_screen {
+    my($win) = @_;
+    my $all = $win->virtual_screens;
+    my $on = (grep { $_->[-1] } @$all)[0]; # on a screen
+    return [ (@$on)[0,1,2,3] ]
+	if $on;
+    my $close = (sort { $a->[-2] <=> $b->[-2] } @$all)[0];
+    return [ (@$close)[0,1,2,3] ] # near a screen
+	if $close;
+    return [0, 0, $::application->size]; # shouldn't get here
+}
+
+# NOTES on going fullscreen:
+
+# In X11 we can only guarantee fullscreen by creating a
+# non-WM-manageable widget.  This is portable, but we cannot bring
+# dialogs forward, so we must deal with it by turning the fullscreen
+# mode off -DK, from fotofix
+
+# But if non-WM-manageable, then user loses control.  I need to be
+# able to Alt-tab to any other app and Alt-tab back to the fullscreen.
+# So I prefer to keep it a normal window but match the screen size.
+# Some WM's make this difficult.  So far I have a optional hack that
+# works for XFCE, see bin/fullscreen.  -twitham, from LPDB/lpgallery
+
+# X11 method doesn't work nice for win32, because the cursed start
+# panel stays in front of a non-toplevel widget, but not in front of a
+# top-level window. Go figure. But on a positive side, we can stop
+# flipping back from fullscreen mode whenever we need a dialog. -DK
+
+=pod
+
+=item fullscreen BOOLEAN, -1 = toggle
+
+Returns 1 if the window is occupying a full screen, 0 otherwise.  1
+will make the window fullscreen while 0 will restore it to normal.  -1
+toggles full screen.  Full screen is on the screen of the center of
+the window or the closest screen.
+
+WARNING: may not work on all Window Managers, see workaround hacks in
+the source code.
+
+See also: C<virtual_screens>, C<closest_screen>
+
+=cut
+
+sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
+{
+    my($self, $fs) = @_;
+    $self->{fullscreen} ||= 0;
+    return $self->{fullscreen} unless defined $fs;
+    return if $self->{fullscreen} == $fs;
+    $fs = !$self->{fullscreen} if $fs < 0;
+    $self->{fullscreen} = $fs;
+
+    if ($fs) {
+	$self->{window_rect} = [ $self->rect ];
+	my($x, $y, $w, $h) = @{$self->closest_screen};
+	$y++			# XFCE moves Y of 0 but not 1
+	    if $self->{hackY1};
+	$self-> set(
+	    origin => [$x, $y],
+	    size   => [$w, $h],
+	    ($self->{hackNoIcons} ? (borderIcons => 0) : ()),
+	    ($self->{hackNoBorder} ? (borderStyle => bs::None) : ()),
+	    # ($self->{hackFlipOwner} ? (owner => undef) : ()),
+	    # FAILS: who can own me if not $::application? $::screen?
+	    );
+	$self-> bring_to_front;
+    } else {
+	$self-> set(
+	    rect        => $self->{window_rect},
+	    borderIcons => bi::All,
+	    borderStyle => bs::Sizeable,
+	    # ($self->{hackFlipOwner} ? (owner => $::application) : ()),
+	    );
+    }
+    return $self->{fullscreen};
+}
+
+=pod
+
+=back
+
+=head1 SEE ALSO
+
+L<Prima::Window>
+
+=head1 AUTHOR
+
+Timothy D Witham <twitham@sbcglobal.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2022 Timothy D Witham.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
+
+1;				# Fullscreen.pm ends here

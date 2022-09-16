@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+
+use Prima qw(Buttons Label Edit Application);
+
+# Maybe promote to Prima::Fullscreen or even merge into Window:
+use Prima::LPDB::Fullscreen;
+
+$::application->font->size(12);
+
+# a Window that can go ->fullscreen(1) or not(0) or toggle(-1)
+my $w = Prima::LPDB::Fullscreen-> create(
+    mainWindow => 1,  # promote myself to MainWindow per Prima::Window:
+    onDestroy  => sub { $::application-> close },
+
+    text => "Fullscreen Tests",
+    size => [ 400, 400],
+    centered => 1,
+    designScale => [6,16],
+    onSize => \&showlocation,
+    onMove => \&showlocation,
+    onWindowState => \&showlocation,
+    );
+my $t = $w->insert( Label =>
+		    pack => { qw/fill x anchor n/ });
+$t-> insert( Button =>
+	     text => "Mi~nimize",
+	     onClick => sub { $w->minimize },
+	     pack => { qw/side left/ }
+    );
+$t-> insert( Button =>
+	     text => "~Restore",
+	     hint => 'fullscreen(0)',
+	     onClick => sub {
+		 $w->fullscreen(0);
+		 $w->restore;
+	     },
+	     pack => { qw/side left/ }
+    );
+$t-> insert( Button =>
+	     text => "Ma~ximize",
+	     onClick => sub { $w->maximize },
+	     pack => { qw/side left/ }
+    );
+$t-> insert( Button =>
+	     text => "~Quit",
+	     onClick => sub { $::application->destroy },
+	     pack => { qw/side right/ }
+    );
+$t-> insert( Button =>
+	     text => "~Fullscreen",
+	     hint => 'fullscreen(1)',
+	     onClick => sub { $w->fullscreen(1) },
+	     pack => { qw/side right/ }
+    );
+$t-> insert( Button =>
+	     text => "~Toggle FS",
+	     hint => 'fullscreen(-1)',
+	     onClick => sub { $w->fullscreen(-1) },
+	     pack => { qw/side right/ }
+    );
+my $text = $w-> insert( Edit =>
+			font => { name => 'Courier' },
+			readOnly => 1,
+			pack => { qw/expand 1 fill both/ }
+    );
+
+# maybe Fullscreen's init should set known defaults like this?
+my $unix = $::application-> get_system_info->{apc} == apc::Unix ? 1 : 0;
+$w->{hackFlipOwner} = $unix;
+$w->{hackY1} = $unix;
+$w->{hackNoIcons} = ! $unix;
+$w->{hackNoBorder} = ! $unix;
+
+my $b = $w->insert( Label =>
+		    pack => { qw/fill x anchor s/ });
+$b->insert(qw/Button text Hacks: hint/ =>
+	   'my 0,0 origin is here, relative to primary screen',
+	   pack => { qw/side left/ },
+    );
+# $b->insert( CheckBox =>
+# 	    text => 'Flip Owners',
+# 	    hint => 'might be needed under X11',
+# 	    checked => $w->{hackFlipOwner},
+# 	    onCheck => sub { $w->{hackFlipOwner} = $_[1] },
+# 	    pack => { qw/side left/ },
+#     );
+$b->insert( CheckBox =>
+	    text => 'Y+1',
+	    hint => 'works for XFCE',
+	    checked => $w->{hackY1},
+	    onCheck => sub { $w->{hackY1} = $_[1] },
+	    pack => { qw/side left/ },
+    );
+$b->insert( CheckBox =>
+	    text => 'No Icons',
+	    hint => 'needed for Windows?',
+	    checked => $w->{hackyNoIcons},
+	    onCheck => sub { $w->{hackyNoIcons} = $_[1] },
+	    pack => { qw/side left/ },
+    );
+$b->insert( CheckBox =>
+	    text => 'No Border',
+	    hint => 'needed for Windows?',
+	    checked => $w->{hackyNoBorder},
+	    onCheck => sub { $w->{hackyNoBorder} = $_[1] },
+	    pack => { qw/side left/ },
+    );
+$b->insert(qw/Button text Lower-Right/)->pack(qw/side right/);
+
+sub showlocation {
+    $w or return;
+    my $txt = sprintf "
+MOVE ME to other screens, hit T !!!
+
+\t::application->size: %5d x %5d
+%5d, %5d (%5d x %5d) - window
+%5d, %5d (%5d x %5d) - frame
+
+\twindowstate: %d, fullscreen: %d
+%5d %5d %5d %5d - internal window_rect
+
+\t::application->get_monitor_rects X Y W H:
+",
+	$::application->size,
+	$w->origin, $w->size,
+	$w->frameOrigin, $w->frameSize,
+    	$w->windowState, $w->fullscreen,
+	$w->{window_rect} ? @{$w->{window_rect}} : (-1, -1, -1, -1);
+    for my $aref (@{$::application->get_monitor_rects}) {
+	$txt .= join(' ', map { sprintf '%5d', $_ } @$aref) . "\n"
+    }
+    $txt .= "\n\tvirtual_screens X Y W H DIST ON:\n";
+    for my $aref (@{$w->virtual_screens}) {
+	$txt .= join(' ', map { sprintf '%5d', $_ } @$aref) . "\n"
+    }
+    $text->text($txt);
+}
+&showlocation;
+print Dumper $::application->get_system_info;
+
+run Prima;
+
+exit 0;
