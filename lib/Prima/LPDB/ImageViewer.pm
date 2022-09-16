@@ -47,7 +47,7 @@ sub profile_default
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {
-		$_[0]->{overlay} = $_[1]; $_[0]->repaint }],
+		$_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],

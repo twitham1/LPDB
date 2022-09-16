@@ -8,6 +8,8 @@ use Prima;
 use Prima::Application name => "LPGallery";
 use Prima::LPDB::ThumbViewer;
 use LPDB;
+use FindBin q($Bin);
+use lib qw($Bin/../lib);
 
 my $usage = "usage: $0 [startup perl configuration files, see manual]";
 
@@ -36,9 +38,6 @@ for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
 # don't accidentally recurse: create database only with confirmation
 my $create = -f $conf->{dbfile} && -s _ ? 0 : 1;
 if ($create) {
-    #     -t STDIN or die "bailing out, $conf->{cache} not configured here!\n";
-    #     print "$conf->{cache} doesn't exist here!
-    # Shall I create it and recurse for pictures?  yes/no [no] : ";
     -t STDIN or die "bailing out, $conf->{dbfile} not found here!\n";
     print "$conf->{dbfile} doesn't exist here!
 	Shall I create it and recurse for pictures?  yes/no [no] : ";
