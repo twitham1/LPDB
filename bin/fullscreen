@@ -3,13 +3,13 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use FindBin q($Bin);
+use lib qw($Bin/../lib);
 
 use Prima qw(Buttons Label Edit Application);
 
 # Maybe promote to Prima::Fullscreen or even merge into Window:
 use Prima::LPDB::Fullscreen;
-
-$::application->font->size(12);
 
 # a Window that can go ->fullscreen(1) or not(0) or toggle(-1)
 my $w = Prima::LPDB::Fullscreen-> create(
@@ -17,9 +17,9 @@ my $w = Prima::LPDB::Fullscreen-> create(
     onDestroy  => sub { $::application-> close },
 
     text => "Fullscreen Tests",
-    size => [ 400, 400],
+    size => [ 1350, 850],
     centered => 1,
-    designScale => [6,16],
+    designScale => [16,32],
     onSize => \&showlocation,
     onMove => \&showlocation,
     onWindowState => \&showlocation,
