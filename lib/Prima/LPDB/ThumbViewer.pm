@@ -97,8 +97,8 @@ sub profile_default
 		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
 		 [],
 		 ['(cnone'	=> '~No Others'			=> sub {}],
-		 ['*corder'	=> 'In ~Order (default)'	=> sub {}],
-		 [')crandom'	=> '~Random'			=> sub {}],
+		 ['corder'	=> 'In ~Order'			=> sub {}],
+		 ['*)crandom'	=> '~Random (default)'		=> sub {}],
 		 [],
 		 ['(c250' => '~4 per second'   => sub { $_[0]->{cycler}->timeout(250)}],
 		 ['c333'  => '~3 per second'   => sub { $_[0]->{cycler}->timeout(333)}],
@@ -506,6 +506,7 @@ sub stackcenter {		# called by {cycler} timer
 	my $this = $self->{items}[$idx] or next;
 	ref $this or next;
 	my($pic) = $this->random;
+	$pic or next;
 	my $id = $pic->file_id;
 	my $im = $self->{thumb}->get($pic->file_id);
 	$im or return;
@@ -646,6 +647,11 @@ sub draw_picture {
     $str and
 	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 			   dt::Right|dt::Top|dt::Default);
+    # if ($sel and $self->popup->checked('cropimages')) { # help see selection
+    # 	my $str = $pic->width < $pic->height ? '|' : '=';
+    # 	$canvas->draw_text($str x 30, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+    # 			   dt::Center|dt::Bottom|dt::Default);
+    # }
 
     $canvas->textOpaque($b == 10); # highlight caption of selection
     $pic->caption and
