@@ -12,17 +12,26 @@ similiar to mythgallery of mythtv for viewing local pictures on a big
 screen from the comfort of your couch.  On Linux I tune its look with
 the following:
 
-	> xrdb -merge ./.Xdefaults # where ./.Xdefaults is:
+	> xrdb -merge ./lib/Xdefaults # where ./lib/Xdefaults is:
 	Prima.Color: white
 	Prima.Back: black
 	Prima.HiliteBackColor: gray33
 	Prima.Font: Helvetica-20
 
+While optimized for keyboard control, the mouse should also work as
+expected with the menu on right-click.
+
 # Status / TODO
 
 This is "works-for-me" ware under development.  It should someday do
 everything that picasagallery did (see below) and more, only better
-and in a smaller memory footprint.
+and in a smaller memory footprint.  My runs are staying under half a
+gigabyte of RAM no matter how many thousands of pictures I view.  Of
+course disk space is used instead, under 40KB/image for my photos.
+
+I intend to eventually add all Picasa features, support videos via
+external player command, automatically find duplicates and document an
+optional configuration file with examples.
 
 # Dependencies
 
@@ -37,10 +46,11 @@ You will need to already have or install at least:
 
 # INSTALL
 
-This should work to install the code
+Grab LPDB-*.tar.gz from the latest release on github for a (hopefuly)
+working version.  Altenatively use "dzil build" on this source tree to
+use the latest code, possibly with more bugs.
 
 ```
-  dzil build	# or grab a pre-made build
   cd <build>
   perl Makefile.PL
   make
@@ -52,7 +62,8 @@ This should work to install the code
 Now cd to the root of a directory with some pictures, ideally managed
 by Picasa (but optional), and run lpgallery.  Answer yes to the prompt
 and it should begin caching picture metadata and present the browser
-after a brief wait.  See lpgallery(1) manual page for more.
+after a brief wait.  See lpgallery(1) manual page for more, or just
+hit H in the grid.
 
 # See also
 
