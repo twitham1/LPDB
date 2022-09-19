@@ -167,27 +167,59 @@ sub init {
 
     $self->packForget; # to get packs around the perimeter of the SUPER widget
 
-    my $top = $self->owner->insert('Prima::Label', name => 'NORTH', text => '',
+    my $top = $self->owner->insert('Prima::Label',
+				   name => 'NORTH',
+				   text => '',
 				   transparent => 1, # hack, using label as container
-				   pack => { side => 'top', fill => 'x', pad => 5 });
-    $top->insert('Prima::Label', name => 'NW', pack => { side => 'left' },
-		 text => 'Hit ~M for Menu');
-    $top->insert('Prima::Label', name => 'NE', pack => { side => 'right' },
-		 text => 'Enter = select / Escape = back');
-    $top->insert('Prima::Label', name => 'N', pack => { side => 'top' },
-		 text => $self->{notice} = 'Use arrow keys to navigate');
-
-    $self->pack(expand => 1, fill => 'both');
+				   pack => { side => 'top', fill => 'x', pad => 5 }
+	);
+    $top->insert('Prima::Label',
+		 name => 'NW',
+		 pack => { side => 'left' },
+		 text => 'Hit ~M for Menu',
+		 hint => 'Escape to parent',
+		 onMouseClick => sub { $self->hitkey(kb::Escape) },
+	);
+    $top->insert('Prima::Label',
+		 name => 'NE',
+		 pack => { side => 'right' },
+		 text => 'Enter = select / Escape = back',
+		 hint => 'Q = Zoom Out',
+		 onMouseClick => sub { $self->hitkey(ord 'q') },
+	);
+    $top->insert('Prima::Label',
+		 name => 'N',
+		 pack => { side => 'top' },
+		 text => $self->{notice} = 'Use arrow keys to navigate',
+		 hint => 'Scroll Up',
+		 onMouseClick => sub { $self->hitkey(kb::Up) },
+	);
+    $self->pack(expand => 1, fill => 'both'); # pack SUPER in the center
 
     my $bot = $self->owner->insert('Prima::Label', name => 'SOUTH', text => '',
 				   transparent => 1, # hack, using label as container
 				   pack => { side => 'bottom', fill => 'x', pad => 5 });
-    $bot->insert('Prima::Label', name => 'SW', pack => { side => 'left' },
-		 text => 'beginning date and time');
-    $bot->insert('Prima::Label', name => 'SE', pack => { side => 'right' },
-		 text => 'end time or image statistics');
-    $bot->insert('Prima::Label', name => 'S', pack => { side => 'bottom' },
-		 text => 'summary');
+    $bot->insert('Prima::Label',
+		 name => 'SW',
+		 pack => { side => 'left' },
+		 text => 'beginning date and time',
+		 hint => 'M = Menu',
+		 onMouseClick => sub { $self->hitkey(ord 'm') },
+	);
+    $bot->insert('Prima::Label',
+		 name => 'SE',
+		 pack => { side => 'right' },
+		 text => 'end time or image statistics',
+		 hint => 'Z = Zoom In',
+		 onMouseClick => sub { $self->hitkey(ord 'z') },
+	);
+    $bot->insert('Prima::Label',
+		 name => 'S',
+		 pack => { side => 'bottom' },
+		 text => 'summary',
+		 hint => 'Scroll Down',
+		 onMouseClick => sub { $self->hitkey(kb::Down) },
+	);
 
     $self->items($self->children('/'));
     $self->focusedItem(0);
@@ -196,6 +228,11 @@ sub init {
     # $self->focused(1);
     $self->select;
     return %profile;
+}
+
+sub hitkey {
+    my($self, $key) = @_;
+    $self->key_down($key, $key);
 }
 
 sub sorter {	    # applies current sort/filter via children of goto
@@ -647,11 +684,14 @@ sub draw_picture {
     $str and
 	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 			   dt::Right|dt::Top|dt::Default);
-    # if ($sel and $self->popup->checked('cropimages')) { # help see selection
-    # 	my $str = $pic->width < $pic->height ? '|' : '=';
-    # 	$canvas->draw_text($str x 30, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-    # 			   dt::Center|dt::Bottom|dt::Default);
-    # }
+    if ($sel) {			# help see selection by showing text
+    	my $str = '  ' . $pic->basename . '  ';
+    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+    			   dt::Center|dt::Top|dt::Default);
+    	$str = strftime('  %b %d %Y  ', localtime $pic->time);
+    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+    			   dt::Center|dt::Bottom|dt::Default);
+    }
 
     $canvas->textOpaque($b == 10); # highlight caption of selection
     $pic->caption and

@@ -62,6 +62,7 @@ sub profile_default
 	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
 	     sub { $_[0]->smaller }],
 	    ['*@autozoom', '~Auto Zoom', 'Enter', kb::Enter, 'autozoom' ],
+	    ['help', '~Help', 'h', ord('h') => 'help'],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -286,8 +287,8 @@ sub on_keydown
 }
 sub right{my @d=$_[0]->deltas; $_[0]->deltas($d[0] + $_[0]->width/5, $d[1])}
 sub left {my @d=$_[0]->deltas; $_[0]->deltas($d[0] - $_[0]->width/5, $d[1])}
-sub up   {my @d=$_[0]->deltas; $_[0]->deltas($d[0], $d[1] - $_[0]->width/5)}
-sub down {my @d=$_[0]->deltas; $_[0]->deltas($d[0], $d[1] + $_[0]->width/5)}
+sub up   {my @d=$_[0]->deltas; $_[0]->deltas($d[0], $d[1] - $_[0]->height/5)}
+sub down {my @d=$_[0]->deltas; $_[0]->deltas($d[0], $d[1] + $_[0]->height/5)}
 
 sub on_mousewheel {
     my($self, $mod, $x, $y, $z) = @_;
@@ -303,6 +304,39 @@ sub on_mousewheel {
 	    : $z > 0 ? $self->up : $self->down;
     }
     return;
+}
+
+sub on_mouseclick {		# click/touch zones
+    my($self, $button, $mod, $x, $y) = @_;
+    my($w, $h) = $self->size;
+    my @key = reverse([kb::Escape,	kb::Up,		ord 'q'],
+		      [kb::Left,	kb::Enter,	kb::Right],
+		      [ord 'm',		kb::Down,	ord 'z']);
+    $button == mb::b1 or return;
+    my $key = $key[int($y / $h * 3)][int($x / $w * 3)];
+    $self->key_down($key, $key);
+}
+
+sub help {			# click/touch zone documentation
+    my($self) = @_;
+    my($w, $h) = $self->size;
+    $self->begin_paint;
+    $self->color(cl::Yellow);
+    $self->backColor(cl::Black);
+    $self->lineWidth(3);
+    my @desc = (
+	"Escape\nback to Grid", "Up\nPrevious Row", "Q\nZoom Out",
+	"Left\nPrevious Picture", "Enter\nToggle Zoom", "Right\nNext Picture",
+	"M\nMenu Options", "Down\nNext Row", "Z\nZoom In");
+    for my $y ($h * 2 / 3, $h / 3, 0) {
+	for my $x (0, $w / 3, $w * 2 / 3) {
+	    my $txt = shift @desc; $txt =~ s/(\w+)/<$1>/;
+	    $self->draw_text($txt, $x, $y, $x + $w / 3, $y + $h / 3,
+			     dt::Center | dt::VCenter | dt::NewLineBreak);
+	    $self->rectangle($x, $y, $x + $w / 3, $y + $h / 3);
+	}
+    }
+    $self->end_paint;
 }
 
 sub infocycle {		     # cycle info overlay level, used by i key
