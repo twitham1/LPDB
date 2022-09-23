@@ -303,8 +303,6 @@ the grid.
 
 =head1 TODO
 
-Nine touch (click) zones on the image like in picasagallery
-
 Support videos by adding duration field and full screen playback via
 external full screen player command that supports arrows and Escape
 
