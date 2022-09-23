@@ -89,6 +89,21 @@ __PACKAGE__->table("PathView");
   data_type: 'text'
   is_nullable: 1
 
+=head2 duration
+
+  data_type: 'integer'
+  is_nullable: 1
+
+=head2 stars
+
+  data_type: 'integer'
+  is_nullable: 1
+
+=head2 attrs
+
+  data_type: 'text'
+  is_nullable: 1
+
 =head2 pixels
 
   data_type: (empty string)
@@ -138,6 +153,12 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_nullable => 1 },
   "caption",
   { data_type => "text", is_nullable => 1 },
+  "duration",
+  { data_type => "integer", is_nullable => 1 },
+  "stars",
+  { data_type => "integer", is_nullable => 1 },
+  "attrs",
+  { data_type => "text", is_nullable => 1 },
   "pixels",
   { data_type => "", is_nullable => 1 },
   "filename",
@@ -149,8 +170,8 @@ __PACKAGE__->add_columns(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 00:56:51
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:g+qCc51LsaUxLyVG9CXwNQ
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:BB+a57txRNu0VeoszWE+LQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

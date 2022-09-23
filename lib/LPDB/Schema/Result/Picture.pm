@@ -94,6 +94,27 @@ Displayed vertical height of the image in pixels, after rotation correction
 
 EXIF caption or description
 
+=head2 duration
+
+  data_type: 'integer'
+  is_nullable: 1
+
+video duration in seconds or undefined for pictures
+
+=head2 stars
+
+  data_type: 'integer'
+  is_nullable: 1
+
+optional star rating
+
+=head2 attrs
+
+  data_type: 'text'
+  is_nullable: 1
+
+optional attribute string
+
 =cut
 
 __PACKAGE__->add_columns(
@@ -116,6 +137,12 @@ __PACKAGE__->add_columns(
   "height",
   { data_type => "integer", is_nullable => 1 },
   "caption",
+  { data_type => "text", is_nullable => 1 },
+  "duration",
+  { data_type => "integer", is_nullable => 1 },
+  "stars",
+  { data_type => "integer", is_nullable => 1 },
+  "attrs",
   { data_type => "text", is_nullable => 1 },
 );
 
@@ -198,21 +225,6 @@ __PACKAGE__->has_many(
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
-=head2 thumbs
-
-Type: has_many
-
-Related object: L<LPDB::Schema::Result::Thumb>
-
-=cut
-
-__PACKAGE__->has_many(
-  "thumbs",
-  "LPDB::Schema::Result::Thumb",
-  { "foreign.file_id" => "self.file_id" },
-  { cascade_copy => 0, cascade_delete => 0 },
-);
-
 =head2 albums
 
 Type: many_to_many
@@ -244,8 +256,8 @@ Composing rels: L</picture_tags> -> tag
 __PACKAGE__->many_to_many("tags", "picture_tags", "tag");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 22:44:09
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:edx0+EBIHFb4gJ+isHg6+g
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:9noJdyjzxwO3OZSAamMVsw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

@@ -123,9 +123,9 @@ $lv = $w->insert(
     'Prima::LPDB::ThumbViewer',
     lpdb => $lpdb,		# LPDB connection required in advance
     name => 'TV',
-    onClick => sub {
-	print $_[0]-> focusedItem, " is clicked\n";
-    },
+    # onClick => sub {
+    # 	print $_[0]-> focusedItem, " is clicked\n";
+    # },
     size => [320, 320],
     # growMode => gm::GrowAll,
     pack => { expand => 1, fill => 'both' },
