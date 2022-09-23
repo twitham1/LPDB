@@ -182,10 +182,18 @@ sub _wanted {
 	return if $row->modified || 0 >= $modified; # unchanged
 	my $info = $exiftool->ImageInfo($key);
 	return unless $info;
+	if (my $dur = $info->{Duration}) {
+	    # use Data::Dumper;
+	    # print Dumper $info;
+	    $row->duration($dur =~ /(\S+) s/ ? int($1 + 0.5)
+			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			   ? $1 * 3600 + $2 * 60 + $3
+			   : $dur);
+	}
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
 	my $or = $info->{Orientation} || '';
-	my $rot = $or =~ /Rotate (\d+)/i ? $1 : 0;
-	my $swap = $rot == 90 || $rot == 270 || 0; # 
+	my $rot = $or =~ /Rotate (\d+)/i ? $1 : $info->{Rotation} || 0;
+	my $swap = $rot == 90 || $rot == 270 || 0;
 	my $time = $info->{DateTimeOriginal} || $info->{DateCreated}
 	|| $info->{CreateDate} || $info->{ModifyDate}
 	|| $info->{FileModifyDate} || 0;

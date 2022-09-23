@@ -111,7 +111,10 @@ sub viewimage
 {
     my ($self, $picture) = @_;
     my $filename = $picture->pathtofile or return;
-    if (my $i = Prima::Image->load($filename)) {
+    if ($picture->duration and	# VIDEO, TODO: contact-1=full size capture
+	my $i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
+	$self->image($i);
+    } elsif (my $i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
 	}
@@ -193,6 +196,12 @@ sub on_close {
 
 sub autozoom {
     my($self, $which) = @_;
+    my $pic;
+    if ($pic = $self->picture and $pic->duration) {
+	my $file = $pic->pathtofile or return;
+	print `ffplay -fs $file`;
+	return;
+    }
     $which and
 	$self->autoZoom($self->popup->checked('autozoom'));
     if ($self->autoZoom) {

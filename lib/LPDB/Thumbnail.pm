@@ -68,7 +68,7 @@ sub put {
     my $schema = $self->{schema};
     my $picture = $schema->resultset('Picture')->find(
     	{file_id => $id},
-	{columns => [qw/basename dir_id width height rotation/]});
+	{columns => [qw/basename dir_id width height rotation duration/]});
     my $path = $picture->pathtofile;
     my $modified = -f $path ? (stat _)[9] : 0;
     my $tschema = $self->{tschema};
@@ -79,8 +79,19 @@ sub put {
 	return $row->image;	# unchanged
     my $i;
     my $codec;
-#    warn "doing $path\n";
-    if ($i = Prima::Image->load($path, loadExtras => 1)) {
+    my $tmp;			# tmp .jpg file for videos
+    #    warn "doing $path\n";
+    if (my $dur = $picture->duration) {
+	my $seek = int($dur / 2);
+	warn "$path: seeking to $seek in $dur seconds";
+	my $size = sprintf '%dx%d',
+	    _aspect($picture->width, $picture->height, 320, 320);
+	$tmp = "/tmp/.lpdb$$.jpg";
+	my $cmd = "ffmpeg -y -loglevel warning -noautorotate -ss $seek";
+	$cmd .= " -i $path -frames:v 1 -s $size $tmp";
+	print `$cmd`;
+    }
+    if ($i = Prima::Image->load($tmp || $path, loadExtras => 1)) {
 	# PS: I've read somewhere that ist::Quadratic produces best
 	# visual results for the scaled-down images, while ist::Sinc
 	# and ist::Gaussian for the scaled-up. /Dmitry Karasik

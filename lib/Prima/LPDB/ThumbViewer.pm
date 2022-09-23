@@ -678,18 +678,23 @@ sub draw_picture {
     my $b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
 
     $b += 10;			# now text border
+    my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
     $canvas->textOpaque(1);
     my $str = $pic->width > 1.8 * $pic->height ? '===' # wide / portrait flags
 	: $pic->width < $pic->height ? '||' : '';
     $str and
-	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+	$canvas->draw_text($str, @border,
 			   dt::Right|dt::Top|dt::Default);
+    if (my $dur = $pic->duration) {
+	$dur = $dur > 59 ? sprintf '%d:%02d:%02d',
+	    $dur / 3600, $dur % 3600 / 60, $dur % 60
+	    : "$dur s";
+	$canvas->draw_text(">> $dur >>",  @border,
+			   dt::Center|dt::VCenter|dt::Default);
+    }
     if ($sel) {			# help see selection by showing text
-    	my $str = '  ' . $pic->basename . '  ';
-    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-    			   dt::Center|dt::Top|dt::Default);
-    	$str = strftime('  %b %d %Y  ', localtime $pic->time);
-    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+    	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
+    	$canvas->draw_text($str, @border,
     			   dt::Center|dt::Bottom|dt::Default);
     }
 
