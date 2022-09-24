@@ -44,8 +44,12 @@ sub profile_default
 		 ['@captions'	=> '~Captions'	=> 'sorter'],
 		 [],
 		 ['*(both'	=> '~Both Shapes:' => 'sorter'],
-		 ['portrait'	=> '~Portrait'	=> 'sorter'],
-		 [')landscape'	=> '~Landscape'	=> 'sorter'],
+		 ['portrait'	=> '~Portrait'	   => 'sorter'],
+		 [')landscape'	=> '~Landscape'	   => 'sorter'],
+		 [],
+		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
+		 ['pictures'	=> '~Still Pictures' => 'sorter'],
+		 [')videos'	=> '~Motion Videos'  => 'sorter'],
 		 [],
 		 ['*(unlimited'	=> '~Unlimited or latest:' => 'sorter'],
 		 ['year10'	=> '1~0 Years'	=> 'sorter'],
@@ -285,6 +289,11 @@ sub children {			# return children of given text path
 	width => { '<', \'height' }; # string ref for literal SQL
     $m->checked('landscape') and push @$filter,
 	width => { '>', \'height' }; # string ref for literal SQL
+
+    $m->checked('pictures') and push @$filter,
+	duration => { '=', undef };
+    $m->checked('videos') and push @$filter,
+	duration => { '!=', undef };
 
     map { $m->checked("year$_") and push @$filter, time =>
 	  { '>', time - $_ * 365.25 * 86400 } } qw/1 2 5 10/;
@@ -685,10 +694,7 @@ sub draw_picture {
     $str and
 	$canvas->draw_text($str, @border,
 			   dt::Right|dt::Top|dt::Default);
-    if (my $dur = $pic->duration) {
-	$dur = $dur > 59 ? sprintf '%d:%02d:%02d',
-	    $dur / 3600, $dur % 3600 / 60, $dur % 60
-	    : "$dur s";
+    if (my $dur = $pic->hms) {
 	$canvas->draw_text(">> $dur >>",  @border,
 			   dt::Center|dt::VCenter|dt::Default);
     }

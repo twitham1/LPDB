@@ -200,12 +200,12 @@ sub _wanted {
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
 	
-	$row->bytes(-s $_);
+	$row->time($time || $modified);
 	$row->modified($modified);
+	$row->bytes(-s $_);
 	$row->rotation($rot);
 	$row->width($swap ? $info->{ImageHeight} : $info->{ImageWidth});
 	$row->height($swap ? $info->{ImageWidth} : $info->{ImageHeight});
-	$row->time($time);
 	$row->caption($info->{'Caption-Abstract'}
 		      || $info->{'Description'} || undef);
 	$row->is_changed

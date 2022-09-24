@@ -82,6 +82,7 @@ sub put {
     my $tmp;			# tmp .jpg file for videos
     #    warn "doing $path\n";
     if (my $dur = $picture->duration) {
+	# IDEA: save 3 contacts at 25%, 50%, 75%, stack them!
 	my $seek = int($dur / 2);
 	warn "$path: seeking to $seek in $dur seconds";
 	my $size = sprintf '%dx%d',

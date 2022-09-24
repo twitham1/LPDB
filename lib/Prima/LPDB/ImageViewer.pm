@@ -111,9 +111,10 @@ sub viewimage
 {
     my ($self, $picture) = @_;
     my $filename = $picture->pathtofile or return;
-    if ($picture->duration and	# VIDEO, TODO: contact-1=full size capture
+    if (my $dur = $picture->hms and
 	my $i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
-	$self->image($i);
+	$self->image($i);   # VIDEO, TODO: contact-1=full size capture
+	$self->message(">> Enter to play $dur >>");
     } elsif (my $i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
@@ -194,12 +195,12 @@ sub on_close {
     $owner->owner->select;
 }
 
-sub autozoom {
+sub autozoom {			# Enter == zoom picture or play video
     my($self, $which) = @_;
     my $pic;
     if ($pic = $self->picture and $pic->duration) {
 	my $file = $pic->pathtofile or return;
-	print `ffplay -fs $file`;
+	print `ffplay -fs -loglevel warning $file`;
 	return;
     }
     $which and
@@ -376,7 +377,8 @@ sub status {	       # update window title, call info() text overlay
     }
     $win->text($str);
     $win->name($str);
-    $self->CENTER->hide;	# play/stop indicator
+    $self->CENTER->hide		# temporary message expired?
+	if time > ($self->{expires} || 0);
     my $i;			# info level
     map { $i = $_ if $m->checked("info$_") } 0 .. 3;
     unless ($i > 1) {
@@ -455,6 +457,14 @@ sub info {			# update text overlay, per info level
     $self->SW->show;
 }
 
+# show temporary message in center of the screen
+sub message {
+    my($self, $message, $seconds) = @_;
+    $self->CENTER->text($message);
+    $self->CENTER->show;	# hidden by ->status above after:
+    $self->{expires} = time + ($seconds || 0);
+}
+
 sub delay {
     my($self, $name) = @_;
     $self->{seconds} ||= 4;
@@ -482,20 +492,17 @@ sub slideshow {
 		}
 	    } else {		# next picture
 		$self->key_down(0, kb::Right );
-		$self->CENTER->hide;
 	    }
 	}
 	);
     $self->{seconds} ||= 4;
     my $sec = $self->{seconds};
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
-	$self->CENTER->text(">> PLAY @ $sec seconds >>");
-	$self->CENTER->show;
+	$self->message(">> PLAY @ $sec seconds >>", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
     } else {
-	$self->CENTER->text("[[ STOP @ $sec seconds ]]");
-	$self->CENTER->show;
+	$self->message("[[ STOP @ $sec seconds ]]", 3);
 	$self->{timer}->stop;
     }
 }
