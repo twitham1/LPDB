@@ -114,9 +114,9 @@ sub viewimage
     my ($self, $picture) = @_;
     my $filename = $picture->pathtofile or return;
     my $i;			# image
-    if (my $dur = $picture->hms and
-	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
-	$self->image($i);   # VIDEO, TODO: contact-1=full size capture
+    if (my $dur = $picture->hms and # cid 2 is high resolution:
+	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id, 2)) {
+	$self->image($i);
 	$self->popup->checked('autoplay') or
 	    $self->message(">> Enter to play $dur >>");
     } elsif ($i = Prima::Image->load($filename)) {

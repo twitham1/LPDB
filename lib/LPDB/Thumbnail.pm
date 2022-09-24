@@ -2,7 +2,7 @@ package LPDB::Thumbnail;
 
 =head1 NAME
 
-LPDB::Thumbnail - thumbnail images of local pictures in sqlite
+LPDB::Thumbnail - thumbnail images of local pictures/videos in sqlite
 
 =cut
 
@@ -39,11 +39,12 @@ sub get {
     $try ||= 0;
      $try++ > 5
 	 and return undef;
-#    warn "getting $id from $self\n";
+    # warn "getting $id from $self\n";
     $cid ||= 0;
     my $tschema = $self->{tschema};
     if (my $this = $tschema->resultset('Thumb')->find(
-	    {file_id => $id},
+	    {file_id => $id,
+	     contact_id => $cid},
 	    {columns => [qw/image/]})) {
 	my $data = $this->image;
 	unless ($data) {	# try to fix broken save
@@ -61,13 +62,23 @@ sub get {
     }
     return;
 }
+
+my $tmpfile;			# tmp .jpg file for video thumbnails
+BEGIN {				# this probably fails on Windows!!!
+    $tmpfile = "/tmp/.lpdb.$$.jpg"
+}				# see $tmp below
+END {
+    unlink $tmpfile if -f $tmpfile;
+}
 sub put {
     my($self, $id, $cid) = @_;
     $cid ||= 0;
+    my $SIZE = 320;		# 1920/6=320
     # warn "putting $id/$cid in $self\n";
     my $schema = $self->{schema};
     my $picture = $schema->resultset('Picture')->find(
-    	{file_id => $id},
+    	{file_id => $id,
+	contact_id => $cid},
 	{columns => [qw/basename dir_id width height rotation duration/]});
     my $path = $picture->pathtofile;
     my $modified = -f $path ? (stat _)[9] : 0;
@@ -78,20 +89,22 @@ sub put {
     $modified and $row->modified || 0 >= $modified and
 	return $row->image;	# unchanged
     my $i;
-    my $codec;
-    my $tmp;			# tmp .jpg file for videos
-    #    warn "doing $path\n";
+    my $tmp;			# used only for video frame grabs
+    my @size = ($SIZE, $SIZE);
+    # 1, 0, 3 = video stack (0 = random path center), 2 = high-res for IV
     if (my $dur = $picture->duration) {
-	# IDEA: save 3 contacts at 25%, 50%, 75%, stack them!
-	my $seek = int($dur / 2);
-	warn "$path: seeking to $seek in $dur seconds";
+	my $seek = ($cid == 0 || $cid == 2) ? $dur / 2 # 50%
+	    : $dur * $cid / 4;			       # 25%, 50%, 75%
+	$cid == 2 and @size = (1920, 1080); # high res for ImageViewer
 	my $size = sprintf '%dx%d',
-	    _aspect($picture->width, $picture->height, 320, 320);
-	$tmp = "/tmp/.lpdb$$.jpg";
+	    _aspect($picture->width, $picture->height, @size);
+	warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
+	$tmp = $tmpfile;
 	my $cmd = "ffmpeg -y -loglevel warning -noautorotate -ss $seek";
 	$cmd .= " -i $path -frames:v 1 -s $size $tmp";
 	print `$cmd`;
     }
+    my $codec;
     if ($i = Prima::Image->load($tmp || $path, loadExtras => 1)) {
 	# PS: I've read somewhere that ist::Quadratic produces best
 	# visual results for the scaled-down images, while ist::Sinc
@@ -99,12 +112,12 @@ sub put {
 	$i->scaling(ist::Quadratic);
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
-	}			# 1920/6=320:
-	$i->size(_aspect($picture->width, $picture->height, 320, 320));
+	}
+	$i->size(_aspect($picture->width, $picture->height, @size));
     } else {		    # generate image containing the error text
 	my $e = "$@";
-#	warn "hello: ", $e;
-	my @s = (320, 320);
+	# warn "hello: ", $e;
+	my @s = ($SIZE, $SIZE);
 	my $b = 10;
 	$i = Prima::Image->new(
 	    width  => $s[0],
@@ -122,7 +135,7 @@ sub put {
 	$i->end_paint;
     }
     $codec = $i->{extras}{codecID} || 1;
-    #    warn "codec: $codec";
+    # warn "codec: $codec for $path";
     my $data;
     open my $fh, '>', \$data
 	or die $!;

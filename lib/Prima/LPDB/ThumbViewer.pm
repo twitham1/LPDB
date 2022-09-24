@@ -636,7 +636,6 @@ sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
 
 sub draw_path {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
     my ($thumb, $im);
     my $path = $self->item($idx);
     my $b = 0;			# border size
@@ -655,10 +654,6 @@ sub draw_path {
 	$last = $pic;
 	$b = $self->_draw_thumb($im, $where, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
     }
-
-    # # TODO: center/top picture is favorite from DB, if any, or cycling random!
-    # $self->_draw_thumb($im, 3, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
-
     $canvas->textOpaque(!$b);
     $b += 5;			# now text border
     my $n = $path->picturecount;
@@ -666,10 +661,6 @@ sub draw_path {
     $str =~ m{(.*/)(.+/?)};
     $canvas->draw_text("$2\n$n", $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 		       dt::Right|dt::Top|dt::Default);
-
-    # $canvas->draw_text($n, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-    # 		       dt::Center|dt::VCenter|dt::Default);
-    
     $str = $first ? strftime("%b %d %Y", localtime $first->time) : 'FILTERED OUT!';
     my $end = $last ? strftime("%b %d %Y", localtime $last->time) : '';
     $str eq $end or $str .= "\n$end";
@@ -680,11 +671,22 @@ sub draw_path {
 
 sub draw_picture {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
-    my $pic = $self->item($idx);
-    my $im = $self->{thumb}->get($pic->file_id);
-    $im or return "warn: can't get thumb!\n";
-    my $b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
+    my $pic = $self->item($idx) or return;
+    my $dur = $pic->hms;
+    my $b;
+    if ($dur) {			# video stack at 25%, 50%, 75% of time
+	for my $pos (1, 3, 0) {	# pos 2 is stored at cid 0, don't duplicate it
+	    my $im = $self->{thumb}->get($pic->file_id, $pos);
+	    $im or return;
+	    $b = $self->_draw_thumb($im, $pos || 2, $canvas, $idx,$x1, $y1,
+				    $x2, $y2, $sel, $foc, $pre, $col);
+	}
+    } else {			# one picture
+	my $im = $self->{thumb}->get($pic->file_id);
+	$im or return;
+	$b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2,
+				$sel, $foc, $pre, $col);
+    }
 
     $b += 10;			# now text border
     my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
@@ -694,7 +696,7 @@ sub draw_picture {
     $str and
 	$canvas->draw_text($str, @border,
 			   dt::Right|dt::Top|dt::Default);
-    if (my $dur = $pic->hms) {
+    if ($dur) {
 	$canvas->draw_text(">> $dur >>",  @border,
 			   dt::Center|dt::VCenter|dt::Default);
     }
