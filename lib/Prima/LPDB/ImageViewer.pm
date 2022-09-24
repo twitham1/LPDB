@@ -54,6 +54,8 @@ sub profile_default
 	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
 	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
 	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
+	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v' => sub {
+		$_[0]->message('Videos ' . ($_[2] ? 'On' : 'Off'), 3) } ],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
 	     sub { $_[0]->owner->fullscreen(-1) }],
@@ -111,11 +113,12 @@ sub viewimage
 {
     my ($self, $picture) = @_;
     my $filename = $picture->pathtofile or return;
+    my $i;			# image
     if (my $dur = $picture->hms and
-	my $i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
+	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
 	$self->image($i);   # VIDEO, TODO: contact-1=full size capture
 	$self->message(">> Enter to play $dur >>");
-    } elsif (my $i = Prima::Image->load($filename)) {
+    } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
 	}
@@ -154,6 +157,9 @@ sub viewimage
     $self->popup->checked('autozoom', 1);
     $self->apply_auto_zoom;
     $self->status;
+    if ($picture->hms and $self->popup->checked('autoplay')) {
+	$self->key_down(kb::Enter, kb::Enter);
+    }
 }
 
 sub on_paint { # update metadata label overlays, later in front of earlier
@@ -200,7 +206,10 @@ sub autozoom {			# Enter == zoom picture or play video
     my $pic;
     if ($pic = $self->picture and $pic->duration) {
 	my $file = $pic->pathtofile or return;
-	print `ffplay -fs -loglevel warning $file`;
+	my $cmd = 'ffplay -fs -loglevel warning';
+	$self->popup->checked('autoplay') and $cmd .= ' -autoexit';
+	print `$cmd $file`;
+	$self->select if $self->popup->checked('autoplay'); # needed?
 	return;
     }
     $which and
@@ -463,6 +472,7 @@ sub message {
     $self->CENTER->text($message);
     $self->CENTER->show;	# hidden by ->status above after:
     $self->{expires} = time + ($seconds || 0);
+    $self->repaint;
 }
 
 sub delay {
