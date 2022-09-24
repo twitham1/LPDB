@@ -117,7 +117,8 @@ sub viewimage
     if (my $dur = $picture->hms and
 	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id)) {
 	$self->image($i);   # VIDEO, TODO: contact-1=full size capture
-	$self->message(">> Enter to play $dur >>");
+	$self->popup->checked('autoplay') or
+	    $self->message(">> Enter to play $dur >>");
     } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
@@ -157,7 +158,7 @@ sub viewimage
     $self->popup->checked('autozoom', 1);
     $self->apply_auto_zoom;
     $self->status;
-    if ($picture->hms and $self->popup->checked('autoplay')) {
+    if ($picture->duration and $self->popup->checked('autoplay')) {
 	$self->key_down(kb::Enter, kb::Enter);
     }
 }

@@ -199,8 +199,9 @@ sub _wanted {
 	|| $info->{FileModifyDate} || 0;
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
+	$time ||= $modified;	# only if no exif of original time
 	
-	$row->time($time || $modified);
+	$row->time($time);
 	$row->modified($modified);
 	$row->bytes(-s $_);
 	$row->rotation($rot);
