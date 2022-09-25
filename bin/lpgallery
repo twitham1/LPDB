@@ -165,7 +165,7 @@ a keyboard (or remote) controlled browser, similar to MythGallery of
 MythTV.  The main window navigates a "virtual filesytem" thumbnail
 tree of multiple organized paths to galleries of the images.  A second
 window presents any one image at a time, optionally as an automatic
-slide show.
+slide show.  Videos can be manually or automatically played as well.
 
 Ideally this is run at full-screen on a big screen from the comfort of
 your couch.  Currently this is read-only, it will never modify any
@@ -228,6 +228,8 @@ This displays one picture at maximum size for the window.  Arrow keys
 will now navigate both windows.  The B<Enter> key will zoom to
 original size.  Scroll with the arrow keys for images larger than the
 window and hit B<Enter> again to toggle back to auto zoom best fit.
+For video files B<Enter> instead plays the video, hit B<Escape> to
+return when finished.
 
 The B<i> key cycles through metadata "info" overlay levels.  This adds
 common picture and camera metadata to the corners and (for Picasa
@@ -289,8 +291,8 @@ directory.  This simply chooses which to display first.
 
 =head2 SLIDE SHOW
 
-The B<p> key on the Image Viewer can play/pause a slide show and the
-menu can adjust its playback speed.  The slideshow is the pictures
+The B<p> key on the Image Viewer can Play or Pause a slide show and
+the menu can adjust its playback speed.  The slideshow is the pictures
 from the Thumbnail grid in order.  Therefore you can order the
 slideshow by the filtering and sorting options of the grid.  The
 defaults may work well while a random show would need I<Ungrouped>
@@ -301,10 +303,11 @@ plays.  Menu or escape back to the grid automatically pauses the show,
 then you can B<Enter> and B<p> to continue playback from any point on
 the grid.
 
-=head1 TODO
+Videos are previewed with a frame from the center of the file.
+B<Enter> will play the video (B<Escape> to return) or you can hit B<v>
+to toggle video autoplay.
 
-Support videos by adding duration field and full screen playback via
-external full screen player command that supports arrows and Escape
+=head1 TODO
 
 Add [Duplicates]/{alone,hard links,soft links}/
 
@@ -313,6 +316,8 @@ Add [Places]/place names/ via GPS lat/lon (see Geo::LatLon2Place)
 Add all Picasa features (stars, albums, faces, [uploads])
 
 Add configuration options and documentation
+
+Maybe add simple edit options to the menu
 
 =head1 SEE ALSO
 

@@ -26,6 +26,10 @@ use vars qw(@ISA);
 
 =pod
 
+=head1 USAGE
+
+=head2 Methods
+
 =over
 
 =item virtual_screens

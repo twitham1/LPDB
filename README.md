@@ -42,6 +42,7 @@ You will need to already have or install at least:
 * DBIx::Class from CPAN
 * Image::ExifTool from CPAN (https://exiftool.org)
 * SQLite and its sqlite3 command (https://sqlite.org)
+* optional: ffmpeg/ffplay for video file playback
 * optional: Dist::Zilla / "dzil" for building the package
 
 # INSTALL

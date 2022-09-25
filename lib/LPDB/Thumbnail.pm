@@ -4,6 +4,17 @@ package LPDB::Thumbnail;
 
 LPDB::Thumbnail - thumbnail images of local pictures/videos in sqlite
 
+=head1 DESCRIPTION
+
+This automatically caches thumnails for C<lpgallery> into a sqlite
+database.  Caching is done on-demand by C<Prima::LPDB::ThumbViewer>.
+
+The thumbnail database file is sparate from the primary C<LPDB>
+database file so that they don't block each other.  The files are
+joined by file_id so if the primary database is ever removed the
+thumbnails must be removed also to ensure regenerated file_ids will
+match.
+
 =cut
 
 use strict;
@@ -11,6 +22,21 @@ use warnings;
 use Prima;
 use LPDB::Schema;
 use LPDB::Schema::Object;
+
+=pod
+
+=head1 USAGE
+
+=head2 Methods
+
+=over
+
+=item new LPDB
+
+Return a new Thumnail connection to the database defined in the given
+LPDB object, required.
+
+=cut
 
 sub new {
     my($class, $lpdb) = @_;
@@ -33,7 +59,20 @@ sub _aspect {		    # modified from _draw_thumb of ThumbViewer
     return $dw, $dh;
 }
 
-# return thumbnail of given file ID
+=pod
+
+=item get ID [CID]
+
+Return the thumnail image of file ID, grabbing and caching it if
+needed.  The optional CID is the contact ID of a Picasa face to crop
+and return instead.  For videos, CID is instead 0 for the center or
+default frame, 1 for the frame at 5% of the time, 3 for the frame at
+95% of the time and finally 2 is a high resolution center frame, used
+by the C<Prima::LPDB::ImageViewer> video preview image.
+
+=cut
+
+# return thumbnail of given file ID [contact ID or video frame grab]
 sub get {
     my($self, $id, $cid, $try) = @_;
     $try ||= 0;
@@ -63,6 +102,16 @@ sub get {
     return;
 }
 
+
+=pod
+
+=item put ID [CID]
+
+Grab and cache the thumnail for file_id.  This is automatically called
+by C<get> when needed so calling it should not be necessary.
+
+=cut
+
 my $tmpfile;			# tmp .jpg file for video thumbnails
 BEGIN {				# this probably fails on Windows!!!
     $tmpfile = "/tmp/.lpdb.$$.jpg"
@@ -70,10 +119,11 @@ BEGIN {				# this probably fails on Windows!!!
 END {
     unlink $tmpfile if -f $tmpfile;
 }
+my @grab = qw/0.5 0.05 0.5 0.95/; # video frame grab positions
+my $SIZE = 320;			 # 1920/6=320
 sub put {
     my($self, $id, $cid) = @_;
     $cid ||= 0;
-    my $SIZE = 320;		# 1920/6=320
     # warn "putting $id/$cid in $self\n";
     my $schema = $self->{schema};
     my $picture = $schema->resultset('Picture')->find(
@@ -93,8 +143,7 @@ sub put {
     my @size = ($SIZE, $SIZE);
     # 1, 0, 3 = video stack (0 = random path center), 2 = high-res for IV
     if (my $dur = $picture->duration) {
-	my $seek = ($cid == 0 || $cid == 2) ? $dur / 2 # 50%
-	    : $dur * $cid / 4;			       # 25%, 50%, 75%
+	my $seek = $dur * $grab[$cid];
 	$cid == 2 and @size = (1920, 1080); # high res for ImageViewer
 	my $size = sprintf '%dx%d',
 	    _aspect($picture->width, $picture->height, @size);
@@ -149,3 +198,24 @@ sub put {
 }
 
 1;				# LPDB::Thumbnail.pm
+
+=pod
+
+=back
+
+=head1 SEE ALSO
+
+L<lpgallery>, L<Prima::LPDB::ThumbViewer>, L<LPDB>
+
+=head1 AUTHOR
+
+Timothy D Witham <twitham@sbcglobal.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2022 Timothy D Witham.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
