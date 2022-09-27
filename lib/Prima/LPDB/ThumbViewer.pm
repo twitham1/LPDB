@@ -124,6 +124,7 @@ sub profile_default
 	     km::Ctrl | km::Shift | ord('t') => sub { $_[0]->repaint }],
 	    ['@cropimages', '~Crop Images', 'Ctrl+E',
 	     km::Ctrl | ord('e') => sub { $_[0]->repaint }],
+	    ['*@videostack', '~Videos Stacks', 'v', ord 'v' => sub { $_[0]->repaint }],
 	    [],
 	    ['help', '~Help', 'h', ord('h') => sub {
 		$::application->open_help("file://$0") }],
@@ -676,8 +677,8 @@ sub draw_picture {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
     my $pic = $self->item($idx) or return;
     my $dur = $pic->hms;
-    my $b;
-    if ($dur) {			# video stack at 5%, 50%, 95% of time
+    my $b;			# video stack at 5%, 50%, 95% of time:
+    if ($dur and $self->popup->checked('videostack')) {
 	for my $pos (1, 3, 0) {	# pos 2 is stored at cid 0, don't duplicate it
 	    my $im = $self->{thumb}->get($pic->file_id, $pos);
 	    $im or return;
