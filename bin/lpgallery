@@ -4,12 +4,12 @@
 
 use strict;
 use warnings;
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
 use Prima;
 use Prima::Application name => "LPGallery";
 use Prima::LPDB::ThumbViewer;
 use LPDB;
-use FindBin q($Bin);
-use lib qw($Bin/../lib);
 
 my $usage = "usage: $0 [startup perl configuration files, see manual]";
 
