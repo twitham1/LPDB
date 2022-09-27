@@ -91,7 +91,7 @@ __PACKAGE__->table("PathView");
 
 =head2 duration
 
-  data_type: 'integer'
+  data_type: 'real'
   is_nullable: 1
 
 =head2 stars
@@ -154,7 +154,7 @@ __PACKAGE__->add_columns(
   "caption",
   { data_type => "text", is_nullable => 1 },
   "duration",
-  { data_type => "integer", is_nullable => 1 },
+  { data_type => "real", is_nullable => 1 },
   "stars",
   { data_type => "integer", is_nullable => 1 },
   "attrs",
@@ -170,8 +170,8 @@ __PACKAGE__->add_columns(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:BB+a57txRNu0VeoszWE+LQ
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-26 16:20:54
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:IcbSTZcY27egM3eHlFpTCw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

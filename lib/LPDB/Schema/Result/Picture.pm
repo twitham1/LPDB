@@ -96,7 +96,7 @@ EXIF caption or description
 
 =head2 duration
 
-  data_type: 'integer'
+  data_type: 'real'
   is_nullable: 1
 
 video duration in seconds or undefined for pictures
@@ -139,7 +139,7 @@ __PACKAGE__->add_columns(
   "caption",
   { data_type => "text", is_nullable => 1 },
   "duration",
-  { data_type => "integer", is_nullable => 1 },
+  { data_type => "real", is_nullable => 1 },
   "stars",
   { data_type => "integer", is_nullable => 1 },
   "attrs",
@@ -256,8 +256,8 @@ Composing rels: L</picture_tags> -> tag
 __PACKAGE__->many_to_many("tags", "picture_tags", "tag");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:9noJdyjzxwO3OZSAamMVsw
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-26 16:20:54
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:6N55GwXHpBC5wj1zboTIzQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

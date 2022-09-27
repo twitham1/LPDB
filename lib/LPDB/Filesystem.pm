@@ -183,12 +183,10 @@ sub _wanted {
 	my $info = $exiftool->ImageInfo($key);
 	return unless $info;
 	if (my $dur = $info->{Duration}) {
-	    # use Data::Dumper;
-	    # print Dumper $info;
-	    $row->duration($dur =~ /(\S+) s/ ? int($1 + 0.5)
+	    $row->duration($dur =~ /(\S+) s/ ? $1
 			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
 			   ? $1 * 3600 + $2 * 60 + $3
-			   : $dur);
+			   : $dur); # should never happen
 	}
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
 	my $or = $info->{Orientation} || '';

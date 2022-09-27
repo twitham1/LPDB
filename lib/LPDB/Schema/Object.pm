@@ -22,7 +22,7 @@ sub hms {			# formatted video duration
     my $dur = $_[0]->duration or return '';
     return $dur > 59 ? sprintf '%d:%02d:%02d',
 	$dur / 3600, $dur % 3600 / 60, $dur % 60
-	: $dur > 1 ? "$dur seconds" : '1 second';
+	: $dur > 1 ? "$dur seconds" : "$dur second";
 }
 
 # sub thumbnail {

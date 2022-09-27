@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS Pictures (
    width	INTEGER,
    height	INTEGER,
    caption	TEXT,
-   duration	INTEGER,
+   duration	REAL,
    stars	INTEGER,
    attrs	TEXT,
    FOREIGN KEY (dir_id)

@@ -419,9 +419,9 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
     my $max = $self->count;
-    # my $this = $all->[$me];
     my $this = $self->item($me);
     $this or return (0, 0);
+    $this->isa('LPDB::Schema::Result::Picture') or return (0, 0);
     my $dir = $this->dir->directory;
     my $first = $me;
     while ($first > -1
@@ -565,9 +565,11 @@ sub stackcenter {		# called by {cycler} timer
 }
 
 # source -> destination, preserving aspect ratio
-sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
+sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my ($self, $im, $pos, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
 
+    my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
+    $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
     my $bk = $sel ? $self->hiliteBackColor : cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
@@ -596,8 +598,8 @@ sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
 	$DX = ($DW - $DH * $src) / 2;
 	$DW = $DH * $src;
     }
-    if ($pos and $self->popup->checked('croppaths') or
-	!$pos and $self->popup->checked('cropimages')) {
+    if (!$image and $self->popup->checked('croppaths') or
+	$image and $self->popup->checked('cropimages')) {
 	if ($src > $dst) {    # image wider than cell: crop left/right
 	    $sx = ($sw - $sh * $dst) / 2;
 	    $sw = $sh * $dst;
@@ -652,7 +654,8 @@ sub draw_path {
 	$im or next;
 	$first or $first = $pic;
 	$last = $pic;
-	$b = $self->_draw_thumb($im, $where, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
+	$b = $self->_draw_thumb($im, $where, $canvas, $idx, $x1, $y1,
+				$x2, $y2, $sel, $foc, $pre, $col);
     }
     $canvas->textOpaque(!$b);
     $b += 5;			# now text border
@@ -674,12 +677,12 @@ sub draw_picture {
     my $pic = $self->item($idx) or return;
     my $dur = $pic->hms;
     my $b;
-    if ($dur) {			# video stack at 25%, 50%, 75% of time
+    if ($dur) {			# video stack at 5%, 50%, 95% of time
 	for my $pos (1, 3, 0) {	# pos 2 is stored at cid 0, don't duplicate it
 	    my $im = $self->{thumb}->get($pic->file_id, $pos);
 	    $im or return;
-	    $b = $self->_draw_thumb($im, $pos || 2, $canvas, $idx,$x1, $y1,
-				    $x2, $y2, $sel, $foc, $pre, $col);
+	    $b = $self->_draw_thumb($im, -1 * ($pos || 2), $canvas, $idx,$x1,
+				    $y1, $x2, $y2, $sel, $foc, $pre, $col);
 	}
     } else {			# one picture
 	my $im = $self->{thumb}->get($pic->file_id);
@@ -691,11 +694,13 @@ sub draw_picture {
     $b += 10;			# now text border
     my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
     $canvas->textOpaque(1);
-    my $str = $pic->width > 1.8 * $pic->height ? '===' # wide / portrait flags
-	: $pic->width < $pic->height ? '||' : '';
-    $str and
-	$canvas->draw_text($str, @border,
-			   dt::Right|dt::Top|dt::Default);
+    if ($self->popup->checked('cropimages')) { # wide / portrait flags
+	my $str = $pic->width > 1.8 * $pic->height ? '==='
+	    : $pic->width < $pic->height ? '||' : '';
+	$str and
+	    $canvas->draw_text($str, @border,
+			       dt::Right|dt::Top|dt::Default);
+    }
     if ($dur) {
 	$canvas->draw_text(">> $dur >>",  @border,
 			   dt::Center|dt::VCenter|dt::Default);

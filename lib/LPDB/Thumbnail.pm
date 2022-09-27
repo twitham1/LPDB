@@ -147,7 +147,7 @@ sub put {
 	$cid == 2 and @size = (1920, 1080); # high res for ImageViewer
 	my $size = sprintf '%dx%d',
 	    _aspect($picture->width, $picture->height, @size);
-	warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
+	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
 	my $cmd = "ffmpeg -y -loglevel warning -noautorotate -ss $seek";
 	$cmd .= " -i $path -frames:v 1 -s $size $tmp";
