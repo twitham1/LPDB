@@ -52,8 +52,7 @@ sub profile_default
 	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
 	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
 	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
-	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v' => sub {
-		$_[0]->message('Videos ' . ($_[2] ? 'On' : 'Off'), 3) } ],
+	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v' => 'slideshow'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
 	     sub { $_[0]->owner->fullscreen(-1) }],
@@ -474,6 +473,11 @@ sub message {
     $self->repaint;
 }
 
+sub _hms {			# sec -> h:mm:ss
+    my($sec) = @_;
+    return sprintf '%d:%02d:%02d',
+	$sec / 3600, $sec % 3600 / 60, $sec % 60
+}
 sub delay {
     my($self, $name) = @_;
     $self->{seconds} ||= 4;
@@ -506,12 +510,39 @@ sub slideshow {
 	);
     $self->{seconds} ||= 4;
     my $sec = $self->{seconds};
+
+    # # this works but it too slow, fix DB to know it, TODO!!!
+    # my $pic = my $vid = 0;	# calculate total show runtime
+    # my $n = $self->{thumbviewer}->count;
+    # for (my $i = 0; $i < $n; $i++) {
+    # 	my $this = $self->{thumbviewer}->item($i) or next;
+    # 	$this->isa('LPDB::Schema::Result::Picture') or next;
+    # 	$vid += $this->duration || 0;
+    # 	$pic += $sec;
+    # }
+    # if ($vid) {
+    # 	my $both = $pic + $vid;
+    # 	$t = sprintf "\n%s =%3.0f%% still pictures only\n",
+    # 	    _hms($pic), $pic / $both * 100;
+    # 	$t .= sprintf "%s =%3.0f%% Video autoplay %s",
+    # 	    _hms($vid), $vid / $both * 100,
+    # 	    $self->popup->checked('autoplay') ? 'ON' : 'OFF';
+    # 	$t .= sprintf "\n%s total time with videos", _hms($both);
+    # } else {
+    # 	$t = sprintf "\n%s total time\n", _hms($pic);
+    # }
+
+    my $n = $self->{thumbviewer}->count;
+    my $t = "\nVideo AutoPlay " .
+	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
+    $t .= sprintf "\n%s run time", _hms($n * $sec);
+
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
-	$self->message(">> PLAY @ $sec seconds >>", 3);
+	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
     } else {
-	$self->message("[[ STOP @ $sec seconds ]]", 3);
+	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
     }
 }
