@@ -36,32 +36,27 @@ sub profile_default
 	seconds => 4,
 	buffered => 0,		# 1 is not good for overlay mode
 	popupItems => [
-	    ['~Escape back to Thumb Gallery' =>
-	     sub { $_[0]->key_down(0, kb::Escape) } ],
+	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
 	    ['(info0',	'~No Information Overlay',	'status'],
 	    ['info1',	'Progress ~Markers',		'status'],
 	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
-	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {
-		$_[0]->{overlay} = $_[2]; $_[0]->repaint }],
-	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
+	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
-	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],
+	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
 	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
-	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
-	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
-	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v' => 'slideshow'],
+	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F'), 'delay'],
+	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B'), 'delay'],
+	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v', 'slideshow'],
 	    [],
-	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger', '~Zoom In', 'z', ord 'z' =>
-	     sub { $_[0]->bigger }],
-	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
-	     sub { $_[0]->smaller }],
+	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
+	    ['bigger',     '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['smaller',    'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
 	    ['*@autozoom', '~Auto Zoom', 'Enter', kb::Enter, 'autozoom' ],
-	    ['help', '~Help', 'h', ord('h') => 'help'],
+	    ['help', '~Help', 'h', ord('h'), 'help'],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -445,12 +440,13 @@ sub info {			# update text overlay, per info level
 	push @info, $info->{Flash}		if $info->{Flash};
 	push @info, $info->{Orientation}	if $info->{Orientation} and
 	    $info->{Orientation} =~ /Rotate/;
+	push @info, $im->hms if $im->hms;
 	$self->SE->text(join "\n", @info);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	$self->SE->text("$y / $Y");
+	$self->SE->text(($im->hms || '') . " $y / $Y ");
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;

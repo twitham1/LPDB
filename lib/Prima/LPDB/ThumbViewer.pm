@@ -104,32 +104,25 @@ sub profile_default
 		 ['corder'	=> 'In ~Order'			=> sub {}],
 		 ['*)crandom'	=> '~Random (default)'		=> sub {}],
 		 [],
-		 ['(c250' => '~4 per second'   => sub { $_[0]->{cycler}->timeout(250)}],
-		 ['c333'  => '~3 per second'   => sub { $_[0]->{cycler}->timeout(333)}],
-		 ['*c500' => '~2 per second (default)' => sub { $_[0]->{cycler}->timeout(500)}],
-		 ['c1000' => '~1 per second'   => sub { $_[0]->{cycler}->timeout(1000)}],
-		 ['c2000' => '1 per 2 seconds' => sub { $_[0]->{cycler}->timeout(2000)}],
-		 ['c3000' => '1 per 3 seconds' => sub { $_[0]->{cycler}->timeout(3000)}],
-		 [')c4000'=> '1 per 4 seconds' => sub { $_[0]->{cycler}->timeout(4000)}],
+		 ['(c250', '~4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
+		 ['c333' , '~3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
+		 ['*c500', '~2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
+		 ['c1000', '~1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
+		 ['c2000', '1 per 2 seconds', sub { $_[0]->{cycler}->timeout(2000)}],
+		 ['c3000', '1 per 3 seconds', sub { $_[0]->{cycler}->timeout(3000)}],
+		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
 	    [],
-	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger', 'Zoom ~In', 'z', ord 'z' =>
-	     sub { $_[0]->bigger }],
-	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
-	     sub { $_[0]->smaller }],
+	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
+	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
 	    [],
-	    ['*@croppaths', 'Crop ~Paths', 'Ctrl+Shift+T',
-	     km::Ctrl | km::Shift | ord('t') => sub { $_[0]->repaint }],
-	    ['@cropimages', '~Crop Images', 'Ctrl+E',
-	     km::Ctrl | ord('e') => sub { $_[0]->repaint }],
-	    ['*@videostack', '~Videos Stacks', 'v', ord 'v' => sub { $_[0]->repaint }],
+	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
+	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
+	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    [],
-	    ['help', '~Help', 'h', ord('h') => sub {
-		$::application->open_help("file://$0") }],
-	    ['quit', '~Quit', 'Ctrl+Q', '^q' => sub { $::application->close }],
-	    # ['quit', '~Quit', 'Ctrl+Q', '^q' => \&myclose ],
+	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
+	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
 	]);
     @$def{keys %prf} = values %prf;
     return $def;
@@ -496,11 +489,15 @@ sub on_keydown			# code == -1 for remote navigation
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == 5) {		# ctrl-e = crops, in menu
-	$self->key_down(ord 'c');
+    if ($code == 5) {		# ctrl-e is red remote button
+	$self->key_down(ord 'i'); # image crops
 	return;
     }
-    $self->SUPER::on_keydown( $code, $key, $mod);
+    if ($code == 20) {		# ctrl-t is yellow remote button
+	$self->key_down(ord 'p'); # path crops
+	return;
+    }
+    $self->SUPER::on_keydown($code, $key, $mod);
 }
 sub on_drawitem
 {

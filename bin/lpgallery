@@ -23,6 +23,11 @@ our $conf = {
     imageviewer => sub {},     # called at startup, gets viewer object
 };
 
+my @ext;			# all image formats we could support:
+map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
+print "could support: @ext";
+# exit;
+
 # configuration files: last option setting wins
 for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
     if (-f $_) {
