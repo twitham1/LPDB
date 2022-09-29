@@ -324,7 +324,9 @@ sub on_mouseclick {		# click/touch zones
     my @key = reverse([kb::Escape,	kb::Up,		ord 'q'],
 		      [kb::Left,	kb::Enter,	kb::Right],
 		      [ord 'm',		kb::Down,	ord 'z']);
-    $button == mb::b1 or return;
+    $button == mb::Middle
+	and $self->key_down(0, kb::Escape);
+    $button == mb::Left or return;
     my $key = $key[int($y / $h * 3)][int($x / $w * 3)];
     $self->key_down($key, $key);
 }
