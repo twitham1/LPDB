@@ -2,11 +2,10 @@
 
 use strict;
 use warnings;
-use Data::Dumper;
 use FindBin q($Bin);
-use lib qw($Bin/../lib);
-
+use lib "$Bin/../lib";
 use Prima qw(Buttons Label Edit Application);
+use Data::Dumper;
 
 # Maybe promote to Prima::Fullscreen or even merge into Window:
 use Prima::LPDB::Fullscreen;
@@ -19,12 +18,13 @@ my $w = Prima::LPDB::Fullscreen-> create(
     text => "Fullscreen Tests",
     size => [ 1350, 850],
     centered => 1,
-    designScale => [16,32],
+    designScale => [16, 32],
     onSize => \&showlocation,
     onMove => \&showlocation,
     onWindowState => \&showlocation,
     );
 my $t = $w->insert( Label =>
+		    text => '',
 		    pack => { qw/fill x anchor n/ });
 $t-> insert( Button =>
 	     text => "Mi~nimize",
@@ -72,10 +72,9 @@ my $text = $w-> insert( Edit =>
 my $unix = $::application-> get_system_info->{apc} == apc::Unix ? 1 : 0;
 $w->{hackFlipOwner} = $unix;
 $w->{hackY1} = $unix;
-$w->{hackNoIcons} = ! $unix;
-$w->{hackNoBorder} = ! $unix;
 
 my $b = $w->insert( Label =>
+		    text => '',
 		    pack => { qw/fill x anchor s/ });
 $b->insert(qw/Button text Hacks: hint/ =>
 	   'my 0,0 origin is here, relative to primary screen',
@@ -90,21 +89,19 @@ $b->insert(qw/Button text Hacks: hint/ =>
 #     );
 $b->insert( CheckBox =>
 	    text => 'Y+1',
-	    hint => 'works for XFCE',
+	    hint => 'needed for XFCE?',
 	    checked => $w->{hackY1},
 	    onCheck => sub { $w->{hackY1} = $_[1] },
 	    pack => { qw/side left/ },
     );
 $b->insert( CheckBox =>
 	    text => 'No Icons',
-	    hint => 'needed for Windows?',
 	    checked => $w->{hackyNoIcons},
 	    onCheck => sub { $w->{hackyNoIcons} = $_[1] },
 	    pack => { qw/side left/ },
     );
 $b->insert( CheckBox =>
 	    text => 'No Border',
-	    hint => 'needed for Windows?',
 	    checked => $w->{hackyNoBorder},
 	    onCheck => sub { $w->{hackyNoBorder} = $_[1] },
 	    pack => { qw/side left/ },

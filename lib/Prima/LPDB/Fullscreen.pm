@@ -36,32 +36,33 @@ the lower left corner of the primary screen which is our coordinate
 system.  DIST is the distance from screen center to window center.  ON
 is a boolean 1 only when the center of the window is on that screen.
 
-WARNING: may not yet work for all screen layouts, see source code.
+WARNING: may not be perfect for Prima < 1.66, see source code.
 
 See also: C<Prima::Application::get_monitor_rects>
 
 =cut
 
 # Try to shift arbitrary screen rectangles to my coordinate system,
-# which is always relative to the primary screen.  Ideally we should
-# know primary screen directly (see for example
-# https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.screen.primaryscreen?view=windowsdesktop-6.0)
-# but I can't find this property in Prima.  Primary must match my
-# application size so I first grep for matching size, then select the
-# one closest to 0,0 which may or may not be right for random screen
-# layouts.  In particular this breaks with vertical layout with
-# primary at the top under Windows 10 as lower is at 0,0 instead.
-# -twitham, 2022/09
+# which is always relative to the primary screen.  Prima 1.66 always
+# returns primary screen first. Prior to that I try to search for it:
+#
+# Primary must match my application size so I first grep for matching
+# size, then select the one closest to 0,0.  This may or may not be
+# right for random screen layouts.  In particular this breaks with
+# vertical layout with primary at the top under Windows 10 as lower is
+# at 0,0 instead.  -twitham, 2022/09
 sub virtual_screens {
     my($winx, $winy) = $_[0]->origin;
     my($winw, $winh) = $_[0]->size;
     my($wcx,  $wcy) = ($winx + $winw / 2, $winy + $winh / 2);
     my($appw, $apph) = $::application->size;
     my $rects = $::application->get_monitor_rects;
-    my $primary = (sort { abs $a->[0] + abs $a->[1] <=>
-			      abs $b->[0] + abs $b->[1] }
-		   grep { $_->[2] == $appw && $_->[3] == $apph }
-		   @$rects)[0];
+    my $primary = $Prima::VERSION >= 1.66
+	? $rects->[0]		# primary always first since 1.66
+	: (sort { abs $a->[0] + abs $a->[1] <=>
+		      abs $b->[0] + abs $b->[1] }
+	   grep { $_->[2] == $appw && $_->[3] == $apph }
+	   @$rects)[0];
     my($x1, $y1) = @$primary[0,1];
     my $virt;
     for my $screen (@$rects) {
@@ -84,7 +85,7 @@ sub virtual_screens {
 
 Returns the virtual rect of the screen the window is on, or the
 closest screen if not on any screen.  X and Y are relative to the
-primary first screen.
+primary screen.
 
 See also: C<virtual_screens>, C<fullscreen>
 
@@ -114,11 +115,6 @@ sub closest_screen {
 # So I prefer to keep it a normal window but match the screen size.
 # Some WM's make this difficult.  So far I have a optional hack that
 # works for XFCE, see bin/fullscreen.  -twitham, from LPDB/lpgallery
-
-# X11 method doesn't work nice for win32, because the cursed start
-# panel stays in front of a non-toplevel widget, but not in front of a
-# top-level window. Go figure. But on a positive side, we can stop
-# flipping back from fullscreen mode whenever we need a dialog. -DK
 
 =pod
 
