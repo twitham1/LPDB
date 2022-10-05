@@ -109,7 +109,7 @@ $w = Prima::LPDB::Fullscreen->create(
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
-$w->{hackY1} = 1;		# since not yet a property!!!
+$w->{addY1} = 1;		# since not yet a property!!!
 
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
@@ -331,7 +331,7 @@ Add all Picasa features (stars, albums, faces, [uploads])
 
 Add configuration options and documentation
 
-Maybe add simple edit options to the menu
+Maybe add simple image edit options to the menu
 
 =head1 SEE ALSO
 

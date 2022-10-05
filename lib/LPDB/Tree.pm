@@ -38,11 +38,12 @@ sub pathpics {		     # return paths and pictures in given path
 	    {parent_id => $id})) {
     }
     my @pics;
+    my $dur = 0;		# total video duration
     if (my $pics = $self->{schema}->resultset('Picture')->search(
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
 	      prefetch => [ 'picture_paths', 'dir', 'picture_tags'],
-	      columns => [ qw/file_id/ ],
+	      columns => [ qw/file_id duration/ ],
 	      # required to tell DBIC to collapse has_many relationships
 	      collapse => 1,
 	    })) {
@@ -56,13 +57,15 @@ sub pathpics {		     # return paths and pictures in given path
 	if (@$sort > 0) {	# slow full sort required
 	    while (my $one = $pics->next) {
 		push @pics, $one->file_id;
+		$dur += $one->duration || 0;
 	    }
 	} else {		# no sort, instant DB order
 	    @pics = $pics->get_column('file_id')->all;
+	    map { $dur += $_ || 0 } @pics;
 	}
 #	warn "pics: @pics";
     }
-    return [ $paths->all ], \@pics;
+    return [ $paths->all ], \@pics, $dur;
 }
 
 sub related {			# paths related to given path or picture

@@ -113,13 +113,13 @@ sub profile_default
 		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
 	    [],
-	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
-	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
-	    [],
 	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
+	    [],
+	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
+	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
 	    [],
 	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
 	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
@@ -296,7 +296,9 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    my($path, $file) = $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+    my($path, $file, $dur)
+	= $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+    $self->{duration} = $dur;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
@@ -305,6 +307,10 @@ sub children {			# return children of given text path
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
     return [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
+}
+
+sub duration {			# total video duration
+    return $_[0]->{duration} || 0;
 }
 
 sub item {	    # return the path or picture object at given index

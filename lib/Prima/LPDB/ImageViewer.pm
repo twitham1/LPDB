@@ -47,15 +47,15 @@ sub profile_default
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
-	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
-	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F'), 'delay'],
-	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B'), 'delay'],
-	    ['@autoplay', 'A~uto Play Videos', 'v', ord 'v', 'slideshow'],
+	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
+	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
+	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
+	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger',     '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
 	    ['smaller',    'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
-	    ['*@autozoom', '~Auto Zoom', 'Enter', kb::Enter, 'autozoom' ],
+	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
 	    ['help', '~Help', 'h', ord('h'), 'help'],
 	],
 	);
@@ -259,9 +259,17 @@ sub on_keydown
     }
     if ($code == 9) {		# ctrl-i = info cycle, in menu
 	$self->key_down(ord 'i');
+	return;
     } elsif ($code == ord 'i') {
 	$self->infocycle;
-    }
+	return;
+    } elsif ($code == 6) {	# ctrl-shift-f = faster remote button
+	$self->key_down(ord 'a');
+	return;
+    } elsif ($code == 2) {	# ctrl-shift-b = slower remote button
+	$self->key_down(ord 's');
+	return;
+    }	
     # if ($key == kb::F11) {
     # 	warn "f11 hit";
     # 	$self->fullscreen(-1);
@@ -471,16 +479,19 @@ sub message {
     $self->repaint;
 }
 
-sub _hms {			# sec -> h:mm:ss
+sub _hms {			# sec -> hh:mm:ss
     my($sec) = @_;
-    return sprintf '%d:%02d:%02d',
+    return sprintf '%02d:%02d:%02d',
 	$sec / 3600, $sec % 3600 / 60, $sec % 60
 }
+my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {
     my($self, $name) = @_;
-    $self->{seconds} ||= 4;
-    $name =~ /faster/ and $self->{seconds} /= 2;
-    $name =~ /slower/ and $self->{seconds} *= 2;
+    my $idx = $self->{delayidx} || 7; # default = 4 seconds
+    $name =~ /faster/ and $idx--; $idx = 1 if $idx < 1;
+    $name =~ /slower/ and $idx++; $idx = $#delay if $idx > $#delay;
+    $self->{seconds} = $delay[$idx];
+    $self->{delayidx} = $idx;
     $self->slideshow;
 }
 sub slideshow {
@@ -506,34 +517,16 @@ sub slideshow {
 	    }
 	}
 	);
-    $self->{seconds} ||= 4;
-    my $sec = $self->{seconds};
-
-    # # this works but it too slow, fix DB to know it, TODO!!!
-    # my $pic = my $vid = 0;	# calculate total show runtime
-    # my $n = $self->{thumbviewer}->count;
-    # for (my $i = 0; $i < $n; $i++) {
-    # 	my $this = $self->{thumbviewer}->item($i) or next;
-    # 	$this->isa('LPDB::Schema::Result::Picture') or next;
-    # 	$vid += $this->duration || 0;
-    # 	$pic += $sec;
-    # }
-    # if ($vid) {
-    # 	my $both = $pic + $vid;
-    # 	$t = sprintf "\n%s =%3.0f%% still pictures only\n",
-    # 	    _hms($pic), $pic / $both * 100;
-    # 	$t .= sprintf "%s =%3.0f%% Video autoplay %s",
-    # 	    _hms($vid), $vid / $both * 100,
-    # 	    $self->popup->checked('autoplay') ? 'ON' : 'OFF';
-    # 	$t .= sprintf "\n%s total time with videos", _hms($both);
-    # } else {
-    # 	$t = sprintf "\n%s total time\n", _hms($pic);
-    # }
-
+    my $sec = $self->{seconds} || 4; # set by delay above
     my $n = $self->{thumbviewer}->count;
+    my $d = $self->{thumbviewer}->duration;
     my $t = "\nVideo AutoPlay " .
 	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
-    $t .= sprintf "\n%s run time", _hms($n * $sec);
+    $t .= sprintf "\n%s picture time", _hms($n * $sec);
+    $t .= sprintf "\n%s  video  time", _hms($d) if $d;
+    $t .= sprintf "\n%s  total  time", _hms($n * $sec + $d) if $d;
+    $t .= "\nLoop show " .
+	($self->popup->checked('loop') ? 'ON' : 'OFF');
 
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
 	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
