@@ -739,7 +739,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 	    text => 'Image Viewer',
 	    size => [1600, 900],
 	    );
-	$w->{hackY1} = 1;	# since not yet a property!!!
+	$w->{addY1} = 1;	# since not yet a property!!!
 	$w->insert(
 	    'Prima::LPDB::ImageViewer',
 	    name => 'IV',
