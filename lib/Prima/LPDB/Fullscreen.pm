@@ -149,14 +149,14 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
 	$self->{window_rect} = [ $self->rect ];
 	my($x, $y, $w, $h) = @{$self->closest_screen};
 	$y++			# XFCE moves Y of 0 but not 1
-	    if $self->{hackY1};
+	    if $self->{addY1};
+	$h -= $::application->get_system_value(sv::YMenu)
+	    if $self->menuItems; # show menu bar (if any) over window
 	$self-> set(
 	    origin => [$x, $y],
 	    size   => [$w, $h],
-	    ($self->{hackNoIcons} ? (borderIcons => 0) : ()),
-	    ($self->{hackNoBorder} ? (borderStyle => bs::None) : ()),
-	    # ($self->{hackFlipOwner} ? (owner => undef) : ()),
-	    # FAILS: who can own me if not $::application? $::screen?
+	    ($self->{NoIcons} ? (borderIcons => 0) : ()),
+	    ($self->{NoBorder} ? (borderStyle => bs::None) : ()),
 	    );
 	$self-> bring_to_front;
     } else {
@@ -164,7 +164,6 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
 	    rect        => $self->{window_rect},
 	    borderIcons => bi::All,
 	    borderStyle => bs::Sizeable,
-	    # ($self->{hackFlipOwner} ? (owner => $::application) : ()),
 	    );
     }
     return $self->{fullscreen};
