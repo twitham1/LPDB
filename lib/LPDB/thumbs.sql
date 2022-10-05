@@ -15,17 +15,16 @@ CREATE TABLE IF NOT EXISTS column_comments (
    comment_text TEXT); -- WITHOUT ROWID;
 
 ---------------------------------------- THUMBNAILS
-INSERT INTO table_comments (table_name, comment_text) VALUES
+INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
    ('Thumbs',	  'Thumbnail images of [faces in] pictures');
 
-INSERT INTO column_comments (table_name, column_name, comment_text) VALUES
+INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
    ('Thumbs', 'image',		'Binary thumbnail image content'),
    ('Thumbs', 'file_id',	'ID of the image from Pictures table'),
    ('Thumbs', 'contact_id',	'ID of the cropped face, or 0 for no crop'),
    ('Thumbs', 'modified',	'Time of thumbnail image generation');
 
-DROP TABLE IF EXISTS Thumbs;
-CREATE TABLE Thumbs (
+CREATE TABLE IF NOT EXISTS Thumbs (
    file_id	INTEGER NOT NULL,
    contact_id	INTEGER DEFAULT 0,
    image	BLOB,

@@ -23,16 +23,10 @@ __PACKAGE__->table("table_comments");
 
 =head1 ACCESSORS
 
-=head2 id
-
-  data_type: 'integer'
-  is_auto_increment: 1
-  is_nullable: 0
-
 =head2 table_name
 
   data_type: 'text'
-  is_nullable: 1
+  is_nullable: 0
 
 =head2 comment_text
 
@@ -42,10 +36,8 @@ __PACKAGE__->table("table_comments");
 =cut
 
 __PACKAGE__->add_columns(
-  "id",
-  { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
   "table_name",
-  { data_type => "text", is_nullable => 1 },
+  { data_type => "text", is_nullable => 0 },
   "comment_text",
   { data_type => "text", is_nullable => 1 },
 );
@@ -54,17 +46,17 @@ __PACKAGE__->add_columns(
 
 =over 4
 
-=item * L</id>
+=item * L</table_name>
 
 =back
 
 =cut
 
-__PACKAGE__->set_primary_key("id");
+__PACKAGE__->set_primary_key("table_name");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 00:56:51
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:FIZhSVvCOLogXUM/u9XiEw
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:09:14
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:sJCwzbksQZMtpABJOSDwzQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

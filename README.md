@@ -18,6 +18,8 @@ the following:
 	Prima.HiliteBackColor: gray33
 	Prima.Font: Helvetica-20
 
+If compiled with GTK, you will need --no-gtk to use above Xdefaults.
+
 While optimized for keyboard control, the mouse should also work as
 expected with the menu on right-click.
 
@@ -29,9 +31,8 @@ and in a smaller memory footprint.  My runs are staying under half a
 gigabyte of RAM no matter how many thousands of pictures I view.  Of
 course disk space is used instead, under 40KB/image for my photos.
 
-I intend to eventually add all Picasa features, support videos via
-external player command, automatically find duplicates and document an
-optional configuration file with examples.
+I intend to eventually add all Picasa features, automatically find
+duplicates and document an optional configuration file with examples.
 
 # Dependencies
 
@@ -42,6 +43,7 @@ You will need to already have or install at least:
 * DBIx::Class from CPAN
 * Image::ExifTool from CPAN (https://exiftool.org)
 * SQLite and its sqlite3 command (https://sqlite.org)
+* ffmpeg/ffplay for video file playback
 * optional: Dist::Zilla / "dzil" for building the package
 
 # INSTALL

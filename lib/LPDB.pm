@@ -29,7 +29,7 @@ use Data::Dumper;
 
 my $conf = {		       # override any keys in first arg to new
     reject	=> 'PATTERN OF FILES TO REJECT',
-    keep	=> '(?i)\.jpe?g$',	# pattern of files to keep
+    keep	=> '(?i)\.(jpe?g|png|mp4|mov)$',
     # datefmt	=> '%Y-%m-%d.%H:%M:%S', # must be sortable order
 #    datefmt	=> undef,		# undef == EXIF format
     update	=> sub {},  # callback after each directory is scanned

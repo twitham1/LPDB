@@ -34,14 +34,21 @@ __PACKAGE__->table("Contacts");
   data_type: 'text'
   is_nullable: 0
 
-Name of the person
+Name of the person, required
 
 =head2 email
 
   data_type: 'text'
   is_nullable: 1
 
-Email address of the person
+Optional email address
+
+=head2 birth
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Optional time of birth
 
 =cut
 
@@ -52,6 +59,8 @@ __PACKAGE__->add_columns(
   { data_type => "text", is_nullable => 0 },
   "email",
   { data_type => "text", is_nullable => 1 },
+  "birth",
+  { data_type => "integer", is_nullable => 1 },
 );
 
 =head1 PRIMARY KEY
@@ -80,6 +89,17 @@ __PACKAGE__->set_primary_key("contact_id");
 
 __PACKAGE__->add_unique_constraint("name_unique", ["name"]);
 
+
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:kk1FI/XJSBgPhk8YWsn8Mw
+
+
+# You can replace this text with custom code or comments, and it will
+# be preserved on regeneration
+
+# This relationship was generated when 2 database files were one.
+# Assume I will still need this link between the 2 separate files.
+
 =head1 RELATIONS
 
 =head2 thumbs
@@ -97,10 +117,4 @@ __PACKAGE__->has_many(
   { cascade_copy => 0, cascade_delete => 0 },
 );
 
-
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 22:44:09
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:Yhd3dEMDotFztiHp+j/m7w
-
-
-# You can replace this text with custom code or comments, and it will be preserved on regeneration
 1;

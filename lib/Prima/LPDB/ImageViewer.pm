@@ -10,8 +10,6 @@ overlay with metadata.
 
 =cut
 
-# TODO: add 9 touch/mouse click zones like from picasagallery
-
 package Prima::LPDB::ImageViewer;
 
 use strict;
@@ -38,31 +36,27 @@ sub profile_default
 	seconds => 4,
 	buffered => 0,		# 1 is not good for overlay mode
 	popupItems => [
-	    ['~Escape back to Thumb Gallery' =>
-	     sub { $_[0]->key_down(0, kb::Escape) } ],
+	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
 	    ['(info0',	'~No Information Overlay',	'status'],
 	    ['info1',	'Progress ~Markers',		'status'],
 	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
-	    ['@overlay', '~Overlay Images',  'o', ord 'o' => sub {
-		$_[0]->{overlay} = $_[2]; $_[0]->repaint }],
-	    ['exiftool', 'Meta~Data Window', 'd', ord 'd' => 'metadata'],
+	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
+	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
+	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
+	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
+	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
-	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p' => 'slideshow'],
-	    ['*@loop',	'~Loop Slide Show', 'slideshow'],
-	    ['faster', 'Fas~ter Show', "Ctrl+Shift+F", km::Ctrl | km::Shift | ord('F') => 'delay'],
-	    ['slower', '~Slower Show', "Ctrl+Shift+B", km::Ctrl | km::Shift | ord('B') => 'delay'],
+	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
-	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger', '~Zoom In', 'z', ord 'z' =>
-	     sub { $_[0]->bigger }],
-	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
-	     sub { $_[0]->smaller }],
-	    ['*@autozoom', '~Auto Zoom', 'Enter', kb::Enter, 'autozoom' ],
-	    ['help', '~Help', 'h', ord('h') => 'help'],
+	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
+	    ['bigger',     '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['smaller',    'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
+	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
+	    ['help', '~Help', 'h', ord('h'), 'help'],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -111,7 +105,13 @@ sub viewimage
 {
     my ($self, $picture) = @_;
     my $filename = $picture->pathtofile or return;
-    if (my $i = Prima::Image->load($filename)) {
+    my $i;			# image
+    if (my $dur = $picture->hms and # cid 2 is high resolution:
+	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id, 2)) {
+	$self->image($i);
+	$self->popup->checked('autoplay') or
+	    $self->message(">> Enter to play $dur >>");
+    } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
 	}
@@ -150,6 +150,9 @@ sub viewimage
     $self->popup->checked('autozoom', 1);
     $self->apply_auto_zoom;
     $self->status;
+    if ($picture->duration and $self->popup->checked('autoplay')) {
+	$self->key_down(kb::Enter, kb::Enter);
+    }
 }
 
 sub on_paint { # update metadata label overlays, later in front of earlier
@@ -191,8 +194,17 @@ sub on_close {
     $owner->owner->select;
 }
 
-sub autozoom {
+sub autozoom {			# Enter == zoom picture or play video
     my($self, $which) = @_;
+    my $pic;
+    if ($pic = $self->picture and $pic->duration) {
+	my $file = $pic->pathtofile or return;
+	my $cmd = 'ffplay -fs -loglevel warning';
+	$self->popup->checked('autoplay') and $cmd .= ' -autoexit';
+	print `$cmd $file`;
+	$self->select if $self->popup->checked('autoplay'); # needed?
+	return;
+    }
     $which and
 	$self->autoZoom($self->popup->checked('autozoom'));
     if ($self->autoZoom) {
@@ -247,9 +259,17 @@ sub on_keydown
     }
     if ($code == 9) {		# ctrl-i = info cycle, in menu
 	$self->key_down(ord 'i');
+	return;
     } elsif ($code == ord 'i') {
 	$self->infocycle;
-    }
+	return;
+    } elsif ($code == 6) {	# ctrl-shift-f = faster remote button
+	$self->key_down(ord 'a');
+	return;
+    } elsif ($code == 2) {	# ctrl-shift-b = slower remote button
+	$self->key_down(ord 's');
+	return;
+    }	
     # if ($key == kb::F11) {
     # 	warn "f11 hit";
     # 	$self->fullscreen(-1);
@@ -312,7 +332,9 @@ sub on_mouseclick {		# click/touch zones
     my @key = reverse([kb::Escape,	kb::Up,		ord 'q'],
 		      [kb::Left,	kb::Enter,	kb::Right],
 		      [ord 'm',		kb::Down,	ord 'z']);
-    $button == mb::b1 or return;
+    $button == mb::Middle
+	and $self->key_down(0, kb::Escape);
+    $button == mb::Left or return;
     my $key = $key[int($y / $h * 3)][int($x / $w * 3)];
     $self->key_down($key, $key);
 }
@@ -367,7 +389,8 @@ sub status {	       # update window title, call info() text overlay
     }
     $win->text($str);
     $win->name($str);
-    $self->CENTER->hide;	# play/stop indicator
+    $self->CENTER->hide		# temporary message expired?
+	if time > ($self->{expires} || 0);
     my $i;			# info level
     map { $i = $_ if $m->checked("info$_") } 0 .. 3;
     unless ($i > 1) {
@@ -427,12 +450,13 @@ sub info {			# update text overlay, per info level
 	push @info, $info->{Flash}		if $info->{Flash};
 	push @info, $info->{Orientation}	if $info->{Orientation} and
 	    $info->{Orientation} =~ /Rotate/;
+	push @info, $im->hms if $im->hms;
 	$self->SE->text(join "\n", @info);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	$self->SE->text("$y / $Y");
+	$self->SE->text(($im->hms || '') . " $y / $Y ");
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;
@@ -446,11 +470,28 @@ sub info {			# update text overlay, per info level
     $self->SW->show;
 }
 
+# show temporary message in center of the screen
+sub message {
+    my($self, $message, $seconds) = @_;
+    $self->CENTER->text($message);
+    $self->CENTER->show;	# hidden by ->status above after:
+    $self->{expires} = time + ($seconds || 0);
+    $self->repaint;
+}
+
+sub _hms {			# sec -> hh:mm:ss
+    my($sec) = @_;
+    return sprintf '%02d:%02d:%02d',
+	$sec / 3600, $sec % 3600 / 60, $sec % 60
+}
+my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {
     my($self, $name) = @_;
-    $self->{seconds} ||= 4;
-    $name =~ /faster/ and $self->{seconds} /= 2;
-    $name =~ /slower/ and $self->{seconds} *= 2;
+    my $idx = $self->{delayidx} || 7; # default = 4 seconds
+    $name =~ /faster/ and $idx--; $idx = 1 if $idx < 1;
+    $name =~ /slower/ and $idx++; $idx = $#delay if $idx > $#delay;
+    $self->{seconds} = $delay[$idx];
+    $self->{delayidx} = $idx;
     $self->slideshow;
 }
 sub slideshow {
@@ -473,20 +514,26 @@ sub slideshow {
 		}
 	    } else {		# next picture
 		$self->key_down(0, kb::Right );
-		$self->CENTER->hide;
 	    }
 	}
 	);
-    $self->{seconds} ||= 4;
-    my $sec = $self->{seconds};
+    my $sec = $self->{seconds} || 4; # set by delay above
+    my $n = $self->{thumbviewer}->count;
+    my $d = $self->{thumbviewer}->duration;
+    my $t = "\nVideo AutoPlay " .
+	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
+    $t .= sprintf "\n%s picture time", _hms($n * $sec);
+    $t .= sprintf "\n%s  video  time", _hms($d) if $d;
+    $t .= sprintf "\n%s  total  time", _hms($n * $sec + $d) if $d;
+    $t .= "\nLoop show " .
+	($self->popup->checked('loop') ? 'ON' : 'OFF');
+
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
-	$self->CENTER->text(">> PLAY @ $sec seconds >>");
-	$self->CENTER->show;
+	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
     } else {
-	$self->CENTER->text("[[ STOP @ $sec seconds ]]");
-	$self->CENTER->show;
+	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
     }
 }

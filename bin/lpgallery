@@ -23,6 +23,11 @@ our $conf = {
     imageviewer => sub {},     # called at startup, gets viewer object
 };
 
+my @ext;			# all image formats we could support:
+map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
+print "could support: @ext";
+# exit;
+
 # configuration files: last option setting wins
 for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
     if (-f $_) {
@@ -104,7 +109,7 @@ $w = Prima::LPDB::Fullscreen->create(
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
-$w->{hackY1} = 1;		# since not yet a property!!!
+$w->{addY1} = 1;		# since not yet a property!!!
 
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
@@ -123,9 +128,9 @@ $lv = $w->insert(
     'Prima::LPDB::ThumbViewer',
     lpdb => $lpdb,		# LPDB connection required in advance
     name => 'TV',
-    onClick => sub {
-	print $_[0]-> focusedItem, " is clicked\n";
-    },
+    # onClick => sub {
+    # 	print $_[0]-> focusedItem, " is clicked\n";
+    # },
     size => [320, 320],
     # growMode => gm::GrowAll,
     pack => { expand => 1, fill => 'both' },
@@ -165,7 +170,7 @@ a keyboard (or remote) controlled browser, similar to MythGallery of
 MythTV.  The main window navigates a "virtual filesytem" thumbnail
 tree of multiple organized paths to galleries of the images.  A second
 window presents any one image at a time, optionally as an automatic
-slide show.
+slide show.  Videos can be manually or automatically played as well.
 
 Ideally this is run at full-screen on a big screen from the comfort of
 your couch.  Currently this is read-only, it will never modify any
@@ -182,7 +187,16 @@ path or presents a single picture.  The B<Escape> key moves back up to
 the parent path.  Metadata about the selected path is displayed above
 and below the grid.
 
-The top level virtual paths are:
+Any videos are shown as a frame grab from the center of the video or
+as a stack of 3 grabs at 5%, 50% and 95% of the time.  This can be
+toggled with B<v>.  Either way the play time of the video is displayed
+in the center of the video image.
+
+All images can optionally be cropped to to consume their whole square
+in which case lines are overlayed that indicate displayed and missing
+areas of the full image.
+
+The top level virtual paths of the grid are:
 
 =over
 
@@ -228,6 +242,8 @@ This displays one picture at maximum size for the window.  Arrow keys
 will now navigate both windows.  The B<Enter> key will zoom to
 original size.  Scroll with the arrow keys for images larger than the
 window and hit B<Enter> again to toggle back to auto zoom best fit.
+For video files B<Enter> instead plays the video, hit B<Escape> to
+return when finished.
 
 The B<i> key cycles through metadata "info" overlay levels.  This adds
 common picture and camera metadata to the corners and (for Picasa
@@ -289,8 +305,8 @@ directory.  This simply chooses which to display first.
 
 =head2 SLIDE SHOW
 
-The B<p> key on the Image Viewer can play/pause a slide show and the
-menu can adjust its playback speed.  The slideshow is the pictures
+The B<p> key on the Image Viewer can Play or Pause a slide show and
+the menu can adjust its playback speed.  The slideshow is the pictures
 from the Thumbnail grid in order.  Therefore you can order the
 slideshow by the filtering and sorting options of the grid.  The
 defaults may work well while a random show would need I<Ungrouped>
@@ -301,10 +317,11 @@ plays.  Menu or escape back to the grid automatically pauses the show,
 then you can B<Enter> and B<p> to continue playback from any point on
 the grid.
 
-=head1 TODO
+Videos are previewed with a frame from the center of the time.
+B<Enter> will play the video (B<Escape> to return) or you can hit B<v>
+to toggle video autoplay.
 
-Support videos by adding duration field and full screen playback via
-external full screen player command that supports arrows and Escape
+=head1 TODO
 
 Add [Duplicates]/{alone,hard links,soft links}/
 
@@ -313,6 +330,8 @@ Add [Places]/place names/ via GPS lat/lon (see Geo::LatLon2Place)
 Add all Picasa features (stars, albums, faces, [uploads])
 
 Add configuration options and documentation
+
+Maybe add simple image edit options to the menu
 
 =head1 SEE ALSO
 

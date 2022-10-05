@@ -182,22 +182,29 @@ sub _wanted {
 	return if $row->modified || 0 >= $modified; # unchanged
 	my $info = $exiftool->ImageInfo($key);
 	return unless $info;
+	if (my $dur = $info->{Duration}) {
+	    $row->duration($dur =~ /(\S+) s/ ? $1
+			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			   ? $1 * 3600 + $2 * 60 + $3
+			   : $dur); # should never happen
+	}
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
 	my $or = $info->{Orientation} || '';
-	my $rot = $or =~ /Rotate (\d+)/i ? $1 : 0;
-	my $swap = $rot == 90 || $rot == 270 || 0; # 
+	my $rot = $or =~ /Rotate (\d+)/i ? $1 : $info->{Rotation} || 0;
+	my $swap = $rot == 90 || $rot == 270 || 0;
 	my $time = $info->{DateTimeOriginal} || $info->{DateCreated}
 	|| $info->{CreateDate} || $info->{ModifyDate}
 	|| $info->{FileModifyDate} || 0;
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
+	$time ||= $modified;	# only if no exif of original time
 	
-	$row->bytes(-s $_);
+	$row->time($time);
 	$row->modified($modified);
+	$row->bytes(-s $_);
 	$row->rotation($rot);
 	$row->width($swap ? $info->{ImageHeight} : $info->{ImageWidth});
 	$row->height($swap ? $info->{ImageWidth} : $info->{ImageHeight});
-	$row->time($time);
 	$row->caption($info->{'Caption-Abstract'}
 		      || $info->{'Description'} || undef);
 	$row->is_changed

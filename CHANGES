@@ -1,0 +1,80 @@
+FUTURE (v1.0.0)
+
+	Full Picasa support, not yet implemented
+
+2022-10-05 (v0.4.0)
+
+	Video file support via ffmpeg/ffplay, now a new requirement.
+	You will need to remove and rebuild your .lpdb*db database
+	files due to a new schema.
+
+2022-09-22 (v0.3.2)
+
+	Added mouse touch zones to ImageViewer.  Fully operational.
+
+2022-09-16 (v0.3.1-alpha)
+
+	First release on github includes .tar.gz for easy install.
+
+	Fullscreen support for multiple screens, new bin/fullscreen
+
+	Option to loop slideshow 
+
+	Center of stack now cycles through random images
+
+	Portrait / Landscape filters
+
+	Fast sort option of database order
+
+	Four levels of information overlay
+
+	Exiftool metadata window
+
+2022-08-10
+
+	Fork LPDB out of picasagallery repo and remove picasagallery.
+
+	Much development happens!
+
+2021-09-21
+
+	Database and Prima development finally begins.
+
+2020-01-29
+
+	POC proves that sqlite and Prima will be great, but
+	development stalls due to life...
+
+2020-01-09
+
+	first bin/lpgallery using Prima
+
+2019-09-19
+
+	first LPDB.pm using sqlite
+
+2018
+
+	Picasagallery is mature but uses a lot of memory, so:
+
+	First thoughts about rewriting to use a database and Prima to
+	use less memory
+
+	First dzil build via dist.ini.
+
+
+2013-12-31
+
+	Picasagallery picture browser presents a virtual tree of
+	folders, albums, stars, people.  Paths are a stack of 3 images
+	(oldest, center, youngest).
+
+2013-07-04
+
+	First lib/Picasa.pm code is written to start parsing
+	.picasa.ini files.
+
+2013
+
+	Tim Witham wonders: could I write a mythgallery like browser
+	that can organize/filter/sort pictures by Picasa metadata?

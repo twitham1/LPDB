@@ -18,6 +18,13 @@ sub ratio {			# width to height ratio
     return $_[0]->width / $_[0]->height;
 }
 
+sub hms {			# formatted video duration
+    my $dur = $_[0]->duration or return '';
+    return $dur > 59 ? sprintf '%d:%02d:%02d',
+	$dur / 3600, $dur % 3600 / 60, $dur % 60
+	: $dur > 1 ? "$dur seconds" : "$dur second";
+}
+
 # sub thumbnail {
 #     my($self) = @_;
 #     return 

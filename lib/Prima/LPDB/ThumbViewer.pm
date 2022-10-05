@@ -40,12 +40,16 @@ sub profile_default
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
 	    ['~AND Filters' => [
+		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
+		 ['pictures'	=> '~Still Pictures' => 'sorter'],
+		 [')videos'	=> 'Motion ~Videos'  => 'sorter'],
+		 [],
+		 ['*(bothshapes'=> '~Both Shapes:' => 'sorter'],
+		 ['portrait'	=> '~Portrait'	   => 'sorter'],
+		 [')landscape'	=> '~Landscape'	   => 'sorter'],
+		 [],
 		 ['@tags'	=> '~Tags'	=> 'sorter'],
 		 ['@captions'	=> '~Captions'	=> 'sorter'],
-		 [],
-		 ['*(both'	=> '~Both Shapes:' => 'sorter'],
-		 ['portrait'	=> '~Portrait'	=> 'sorter'],
-		 [')landscape'	=> '~Landscape'	=> 'sorter'],
 		 [],
 		 ['*(unlimited'	=> '~Unlimited or latest:' => 'sorter'],
 		 ['year10'	=> '1~0 Years'	=> 'sorter'],
@@ -100,31 +104,25 @@ sub profile_default
 		 ['corder'	=> 'In ~Order'			=> sub {}],
 		 ['*)crandom'	=> '~Random (default)'		=> sub {}],
 		 [],
-		 ['(c250' => '~4 per second'   => sub { $_[0]->{cycler}->timeout(250)}],
-		 ['c333'  => '~3 per second'   => sub { $_[0]->{cycler}->timeout(333)}],
-		 ['*c500' => '~2 per second (default)' => sub { $_[0]->{cycler}->timeout(500)}],
-		 ['c1000' => '~1 per second'   => sub { $_[0]->{cycler}->timeout(1000)}],
-		 ['c2000' => '1 per 2 seconds' => sub { $_[0]->{cycler}->timeout(2000)}],
-		 ['c3000' => '1 per 3 seconds' => sub { $_[0]->{cycler}->timeout(3000)}],
-		 [')c4000'=> '1 per 4 seconds' => sub { $_[0]->{cycler}->timeout(4000)}],
+		 ['(c250', '~4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
+		 ['c333' , '~3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
+		 ['*c500', '~2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
+		 ['c1000', '~1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
+		 ['c2000', '1 per 2 seconds', sub { $_[0]->{cycler}->timeout(2000)}],
+		 ['c3000', '1 per 3 seconds', sub { $_[0]->{cycler}->timeout(3000)}],
+		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
 	    [],
-	    ['fullscreen', '~Full Screen', 'f', ord 'f' =>
-	     sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger', 'Zoom ~In', 'z', ord 'z' =>
-	     sub { $_[0]->bigger }],
-	    ['smaller', 'Zoom ~Out', 'q', ord 'q' =>
-	     sub { $_[0]->smaller }],
+	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
+	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
+	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    [],
-	    ['*@croppaths', 'Crop ~Paths', 'Ctrl+Shift+T',
-	     km::Ctrl | km::Shift | ord('t') => sub { $_[0]->repaint }],
-	    ['@cropimages', '~Crop Images', 'Ctrl+E',
-	     km::Ctrl | ord('e') => sub { $_[0]->repaint }],
+	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
+	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
 	    [],
-	    ['help', '~Help', 'h', ord('h') => sub {
-		$::application->open_help("file://$0") }],
-	    ['quit', '~Quit', 'Ctrl+Q', '^q' => sub { $::application->close }],
-	    # ['quit', '~Quit', 'Ctrl+Q', '^q' => \&myclose ],
+	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
+	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
 	]);
     @$def{keys %prf} = values %prf;
     return $def;
@@ -286,6 +284,11 @@ sub children {			# return children of given text path
     $m->checked('landscape') and push @$filter,
 	width => { '>', \'height' }; # string ref for literal SQL
 
+    $m->checked('pictures') and push @$filter,
+	duration => { '=', undef };
+    $m->checked('videos') and push @$filter,
+	duration => { '!=', undef };
+
     map { $m->checked("year$_") and push @$filter, time =>
 	  { '>', time - $_ * 365.25 * 86400 } } qw/1 2 5 10/;
     $m->checked('quarter') and push @$filter,
@@ -293,7 +296,9 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    my($path, $file) = $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+    my($path, $file, $dur)
+	= $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+    $self->{duration} = $dur;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
@@ -302,6 +307,10 @@ sub children {			# return children of given text path
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
     return [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
+}
+
+sub duration {			# total video duration
+    return $_[0]->{duration} || 0;
 }
 
 sub item {	    # return the path or picture object at given index
@@ -410,9 +419,9 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
     my $max = $self->count;
-    # my $this = $all->[$me];
     my $this = $self->item($me);
     $this or return (0, 0);
+    $this->isa('LPDB::Schema::Result::Picture') or return (0, 0);
     my $dir = $this->dir->directory;
     my $first = $me;
     while ($first > -1
@@ -446,6 +455,8 @@ sub cwd {
 sub on_mouseclick
 {
     my($self, $btn, $mod, $x, $y, $dbl) = @_;
+    $btn == mb::Middle
+	and $self->key_down(0, kb::Escape);
     return if $btn != mb::Left || !$dbl;
     my $item = $self->point2item($x, $y);
     if ($item == $self->focusedItem) {
@@ -486,11 +497,15 @@ sub on_keydown			# code == -1 for remote navigation
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == 5) {		# ctrl-e = crops, in menu
-	$self->key_down(ord 'c');
+    if ($code == 5) {		# ctrl-e is red remote button
+	$self->key_down(ord 'i'); # image crops
 	return;
     }
-    $self->SUPER::on_keydown( $code, $key, $mod);
+    if ($code == 20) {		# ctrl-t is yellow remote button
+	$self->key_down(ord 'p'); # path crops
+	return;
+    }
+    $self->SUPER::on_keydown($code, $key, $mod);
 }
 sub on_drawitem
 {
@@ -556,9 +571,11 @@ sub stackcenter {		# called by {cycler} timer
 }
 
 # source -> destination, preserving aspect ratio
-sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
+sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my ($self, $im, $pos, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
 
+    my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
+    $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
     my $bk = $sel ? $self->hiliteBackColor : cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
@@ -587,8 +604,8 @@ sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
 	$DX = ($DW - $DH * $src) / 2;
 	$DW = $DH * $src;
     }
-    if ($pos and $self->popup->checked('croppaths') or
-	!$pos and $self->popup->checked('cropimages')) {
+    if (!$image and $self->popup->checked('croppaths') or
+	$image and $self->popup->checked('cropimages')) {
 	if ($src > $dst) {    # image wider than cell: crop left/right
 	    $sx = ($sw - $sh * $dst) / 2;
 	    $sw = $sh * $dst;
@@ -627,7 +644,6 @@ sub _draw_thumb {		# pos 0 = full size, pos 1,2,3 = picture stack
 
 sub draw_path {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
     my ($thumb, $im);
     my $path = $self->item($idx);
     my $b = 0;			# border size
@@ -644,12 +660,9 @@ sub draw_path {
 	$im or next;
 	$first or $first = $pic;
 	$last = $pic;
-	$b = $self->_draw_thumb($im, $where, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
+	$b = $self->_draw_thumb($im, $where, $canvas, $idx, $x1, $y1,
+				$x2, $y2, $sel, $foc, $pre, $col);
     }
-
-    # # TODO: center/top picture is favorite from DB, if any, or cycling random!
-    # $self->_draw_thumb($im, 3, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
-
     $canvas->textOpaque(!$b);
     $b += 5;			# now text border
     my $n = $path->picturecount;
@@ -657,10 +670,6 @@ sub draw_path {
     $str =~ m{(.*/)(.+/?)};
     $canvas->draw_text("$2\n$n", $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
 		       dt::Right|dt::Top|dt::Default);
-
-    # $canvas->draw_text($n, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-    # 		       dt::Center|dt::VCenter|dt::Default);
-    
     $str = $first ? strftime("%b %d %Y", localtime $first->time) : 'FILTERED OUT!';
     my $end = $last ? strftime("%b %d %Y", localtime $last->time) : '';
     $str eq $end or $str .= "\n$end";
@@ -671,25 +680,40 @@ sub draw_path {
 
 sub draw_picture {
     my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
-    my $pic = $self->item($idx);
-    my $im = $self->{thumb}->get($pic->file_id);
-    $im or return "warn: can't get thumb!\n";
-    my $b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col);
+    my $pic = $self->item($idx) or return;
+    my $dur = $pic->hms;
+    my $b;			# video stack at 5%, 50%, 95% of time:
+    if ($dur and $self->popup->checked('videostack')) {
+	for my $pos (1, 3, 0) {	# pos 2 is stored at cid 0, don't duplicate it
+	    my $im = $self->{thumb}->get($pic->file_id, $pos);
+	    $im or return;
+	    $b = $self->_draw_thumb($im, -1 * ($pos || 2), $canvas, $idx,$x1,
+				    $y1, $x2, $y2, $sel, $foc, $pre, $col);
+	}
+    } else {			# one picture
+	my $im = $self->{thumb}->get($pic->file_id);
+	$im or return;
+	$b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2,
+				$sel, $foc, $pre, $col);
+    }
 
     $b += 10;			# now text border
+    my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
     $canvas->textOpaque(1);
-    my $str = $pic->width > 1.8 * $pic->height ? '===' # wide / portrait flags
-	: $pic->width < $pic->height ? '||' : '';
-    $str and
-	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-			   dt::Right|dt::Top|dt::Default);
+    if ($self->popup->checked('cropimages')) { # wide / portrait flags
+	my $str = $pic->width > 1.8 * $pic->height ? '==='
+	    : $pic->width < $pic->height ? '||' : '';
+	$str and
+	    $canvas->draw_text($str, @border,
+			       dt::Right|dt::Top|dt::Default);
+    }
+    if ($dur) {
+	$canvas->draw_text(">> $dur >>",  @border,
+			   dt::Center|dt::VCenter|dt::Default);
+    }
     if ($sel) {			# help see selection by showing text
-    	my $str = '  ' . $pic->basename . '  ';
-    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
-    			   dt::Center|dt::Top|dt::Default);
-    	$str = strftime('  %b %d %Y  ', localtime $pic->time);
-    	$canvas->draw_text($str, $x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b,
+    	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
+    	$canvas->draw_text($str, @border,
     			   dt::Center|dt::Bottom|dt::Default);
     }
 
@@ -715,7 +739,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 	    text => 'Image Viewer',
 	    size => [1600, 900],
 	    );
-	$w->{hackY1} = 1;	# since not yet a property!!!
+	$w->{addY1} = 1;	# since not yet a property!!!
 	$w->insert(
 	    'Prima::LPDB::ImageViewer',
 	    name => 'IV',
