@@ -10,11 +10,18 @@ use Data::Dumper;
 # Maybe promote to Prima::Fullscreen or even merge into Window:
 use Prima::LPDB::Fullscreen;
 
+my $menu = [[ "~Left Menu" => [
+		  [ "~Exit" => sub { $::application -> destroy } ]
+	      ]],
+	    [],
+	    ["~Right Menu" => [
+		 [ "~Exit" => sub { $::application -> destroy } ]
+	     ]]];
+
 # a Window that can go ->fullscreen(1) or not(0) or toggle(-1)
 my $w = Prima::LPDB::Fullscreen-> create(
     mainWindow => 1,  # promote myself to MainWindow per Prima::Window:
     onDestroy  => sub { $::application-> close },
-
     text => "Fullscreen Tests",
     size => [ 1350, 850],
     centered => 1,
@@ -70,8 +77,7 @@ my $text = $w-> insert( Edit =>
 
 # maybe Fullscreen's init should set known defaults like this?
 my $unix = $::application-> get_system_info->{apc} == apc::Unix ? 1 : 0;
-$w->{hackFlipOwner} = $unix;
-$w->{hackY1} = $unix;
+$w->{addY1} = $unix;
 
 my $b = $w->insert( Label =>
 		    text => '',
@@ -80,38 +86,43 @@ $b->insert(qw/Button text Hacks: hint/ =>
 	   'my 0,0 origin is here, relative to primary screen',
 	   pack => { qw/side left/ },
     );
-# $b->insert( CheckBox =>
-# 	    text => 'Flip Owners',
-# 	    hint => 'might be needed under X11',
-# 	    checked => $w->{hackFlipOwner},
-# 	    onCheck => sub { $w->{hackFlipOwner} = $_[1] },
-# 	    pack => { qw/side left/ },
-#     );
 $b->insert( CheckBox =>
 	    text => 'Y+1',
 	    hint => 'needed for XFCE?',
-	    checked => $w->{hackY1},
-	    onCheck => sub { $w->{hackY1} = $_[1] },
+	    checked => $w->{addY1},
+	    onCheck => sub { $w->{addY1} = $_[1] },
 	    pack => { qw/side left/ },
     );
 $b->insert( CheckBox =>
 	    text => 'No Icons',
-	    checked => $w->{hackyNoIcons},
-	    onCheck => sub { $w->{hackyNoIcons} = $_[1] },
+	    checked => $w->{NoIcons},
+	    onCheck => sub { $w->{NoIcons} = $_[1] },
 	    pack => { qw/side left/ },
     );
 $b->insert( CheckBox =>
 	    text => 'No Border',
-	    checked => $w->{hackyNoBorder},
-	    onCheck => sub { $w->{hackyNoBorder} = $_[1] },
+	    checked => $w->{NoBorder},
+	    onCheck => sub { $w->{NoBorder} = $_[1] },
 	    pack => { qw/side left/ },
     );
 $b->insert(qw/Button text Lower-Right/)->pack(qw/side right/);
+$b->insert( CheckBox =>
+	    text => 'Menu ~Bar',
+	    onCheck => sub {
+		$_[1] ? $w->menuItems($menu) :  $w->menu->selected(0);
+		if ($w->fullscreen) {
+		    $w->fullscreen(0);
+		    $w->fullscreen(1);
+		}
+		&showlocation;
+	    },
+	    pack => { qw/side right/ },
+    );
 
 sub showlocation {
     $w or return;
     my $txt = sprintf "
-MOVE ME to other screens, hit T !!!
+\tMOVE ME to other screens, hit T !!!
 
 \t::application->size: %5d x %5d
 %5d, %5d (%5d x %5d) - window
@@ -120,7 +131,7 @@ MOVE ME to other screens, hit T !!!
 \twindowstate: %d, fullscreen: %d
 %5d %5d %5d %5d - internal window_rect
 
-\t::application->get_monitor_rects X Y W H:
+    X     Y     W     H   get_monitor_rects
 ",
 	$::application->size,
 	$w->origin, $w->size,
@@ -130,7 +141,8 @@ MOVE ME to other screens, hit T !!!
     for my $aref (@{$::application->get_monitor_rects}) {
 	$txt .= join(' ', map { sprintf '%5d', $_ } @$aref) . "\n"
     }
-    $txt .= "\n\tvirtual_screens X Y W H DIST ON:\n";
+    $txt .= "
+    X     Y     W     H  DIST    ON virtual_screens\n";
     for my $aref (@{$w->virtual_screens}) {
 	$txt .= join(' ', map { sprintf '%5d', $_ } @$aref) . "\n"
     }
