@@ -351,7 +351,7 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
 	    last;
 	}
     }
-    # $self->repaint;
+    $self->repaint;
 }
 
 sub current {			# path to current selected item
