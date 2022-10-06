@@ -197,12 +197,12 @@ sub on_close {
 sub autozoom {			# Enter == zoom picture or play video
     my($self, $which) = @_;
     my $pic;
-    if ($pic = $self->picture and $pic->duration) {
+    if ($pic = $self->picture and $pic->duration) { # video
 	my $file = $pic->pathtofile or return;
-	my $cmd = 'ffplay -fs -loglevel warning';
-	$self->popup->checked('autoplay') and $cmd .= ' -autoexit';
-	print `$cmd $file`;
-	$self->select if $self->popup->checked('autoplay'); # needed?
+	my @cmd = qw(ffplay -fs -loglevel warning);
+	$self->popup->checked('autoplay') and push @cmd, '-autoexit';
+	system(@cmd, $file) == 0 or warn "@cmd $file failed";
+	$self->owner->select;	# try not to lose focus
 	return;
     }
     $which and

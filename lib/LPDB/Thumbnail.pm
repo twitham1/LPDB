@@ -149,9 +149,9 @@ sub put {
 	    _aspect($picture->width, $picture->height, @size);
 	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
-	my $cmd = "ffmpeg -y -loglevel warning -noautorotate -ss $seek";
-	$cmd .= " -i $path -frames:v 1 -s $size $tmp";
-	print `$cmd`;
+	my @cmd = (qw(ffmpeg -y -loglevel warning -noautorotate -ss), $seek,
+		   '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
+	system(@cmd) == 0 or warn "@cmd failed";
     }
     my $codec;
     if ($i = Prima::Image->load($tmp || $path, loadExtras => 1)) {
