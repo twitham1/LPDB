@@ -35,7 +35,7 @@ sub profile_default
     my $def = $_[ 0]-> SUPER::profile_default;
     my %prf = (
 	popupItems => [
-	    ['navto' => '~Navigate To' => [
+	    ['navto' => '~Navigate to this image in...' => [
 		 # replaced by on_selectitem
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
@@ -240,10 +240,11 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
+#    warn "children of $parent";
     $self->owner->NORTH->N->text($self->{notice});
     $self->{notice} = '   filtering and sorting, PLEASE WAIT...   ';
-    $self->repaint;
-    $::application->yield;
+    $self->repaint;		# to see above message, I need:
+    $::application->yield;	# but why does this wedge Windows?
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
     if ($m->checked('gname')) {
@@ -319,7 +320,7 @@ sub item {	    # return the path or picture object at given index
     $this or warn "index $index not found" and return;
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	return $this;
-    }				# else picture lookup:
+    }				# else picture lookup, slower:
     $self->{tree}->picture($this);
 }
 
@@ -345,8 +346,14 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
     # $self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
+    my $id = $self->{tree}->id_of_path($2); # image or undef
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	if ($self->item($i)->pathtofile eq $2) {
+	if ($id) {
+	    if ($self->{items}[$i] == $id) { # quickly find image index
+		$self->focusedItem($i);
+		last;
+	    }
+	} elsif ($self->item($i)->pathtofile eq $2) { # or matching path
 	    $self->focusedItem($i);
 	    last;
 	}
@@ -559,7 +566,6 @@ sub stackcenter {		# called by {cycler} timer
 	ref $this or next;
 	my($pic) = $this->random;
 	$pic or next;
-	my $id = $pic->file_id;
 	my $im = $self->{thumb}->get($pic->file_id);
 	$im or return;
 	$self->begin_paint;
@@ -573,7 +579,7 @@ sub stackcenter {		# called by {cycler} timer
 # source -> destination, preserving aspect ratio
 sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my ($self, $im, $pos, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
+    $im or return;
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator

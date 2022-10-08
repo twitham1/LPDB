@@ -89,11 +89,34 @@ sub related {			# paths related to given path or picture
 
 sub picture {			# return picture object of given ID
     my($self, $id) = @_;
-    $self->{allpicsresultset} ||=
+    $self->{rsallpics} ||=
 	$self->{schema}->resultset('Picture');
-    my $obj = $self->{allpicsresultset}->find($id);
+    my $obj = $self->{rsallpics}->find($id);
 #    warn "tree picture: $id = $obj\n";
     return $obj;
+}
+
+sub id_of_path {		# return ID of given pathtofile
+    my($self, $path) = @_;
+    # warn "id of $path";
+    $path =~ m{(.*/)(.+)} or return undef;
+    $2 or return undef;
+    # warn "($1 / $2)";
+    $self->{rspicdir} ||=
+	$self->{schema}->resultset('Picture');
+    my $obj = $self->{rspicdir}->find(
+	{ 'dir.directory' => $1,
+	      'basename' => $2,
+	},
+	{ join => 'dir',
+	  columns => [ qw/file_id/ ],
+	});
+    $obj or return undef;
+    # warn "obj=$obj";
+    my $id = $obj->file_id
+	or return undef;
+    # warn "tree id of $path = $id";
+    return $id;
 }
 
 1;
