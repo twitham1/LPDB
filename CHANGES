@@ -2,6 +2,12 @@ FUTURE (v1.0.0)
 
 	Full Picasa support, not yet implemented
 
+2022-??-?? (v0.4.1)
+
+	Faster navigation into long list
+
+	Bug fixes
+
 2022-10-05 (v0.4.0)
 
 	Video file support via ffmpeg/ffplay, now a new requirement.
