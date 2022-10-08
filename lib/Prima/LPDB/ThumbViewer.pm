@@ -528,6 +528,7 @@ sub on_drawitem
 # replace the center picture of a path stack with random one
 sub stackcenter {		# called by {cycler} timer
     my($self) = @_;
+    my $canvas = $self->{canvas} or return;
     my $cwd = $self->{cwd};	   # using internals here not methods
     my $first = $self->{topItem};  # could be method
     my $last = $self->{lastItem};  # internal to Lists.pm, no method
@@ -567,9 +568,9 @@ sub stackcenter {		# called by {cycler} timer
 	my($pic) = $this->random;
 	$pic or next;
 	my $im = $self->{thumb}->get($pic->file_id);
-	$im or return;
+	$im or next;
 	$self->begin_paint;
-	$self->_draw_thumb($im, 2, $self->{canvas},
+	$self->_draw_thumb($im, 2, $canvas,
 			   $idx, $self->item2rect($idx, @s),
 			   $idx == $self->{focusedItem});
 	$self->end_paint;
@@ -717,7 +718,7 @@ sub draw_picture {
 	$canvas->draw_text(">> $dur >>",  @border,
 			   dt::Center|dt::VCenter|dt::Default);
     }
-    if ($sel) {			# help see selection by showing text
+    if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
     	$canvas->draw_text($str, @border,
     			   dt::Center|dt::Bottom|dt::Default);
