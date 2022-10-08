@@ -62,6 +62,10 @@ if ($child = fork) {		# GUI starts after child is updating DB
     $lpdb = new LPDB($conf);
 } else {			# child updates DB, creating if needed
     $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
+    if ($conf->{noupdate}) {
+	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
+	exit 0;
+    }
     unlink $conf->{dbfile} if $create;
     $lpdb = new LPDB($conf);
     $lpdb->create if $create;
