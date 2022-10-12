@@ -241,9 +241,10 @@ sub on_keydown
 	return;			# now in sub autozoom
     }
     if ($key == kb::Escape) {	# return focus to caller
-	$self->popup->checked('slideshow', 0);
-	$self->{timer} and
-	    $self->{timer}->stop; # stop any show
+	if ($self->popup->checked('slideshow')) {
+	    $self->popup->checked('slideshow', 0);
+	    $self->slideshow;	# stop the show
+	}
 	my $owner = $self->{thumbviewer};
 	$owner->owner->select;
 	return;
@@ -532,9 +533,13 @@ sub slideshow {
 	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
+	system(qw/xset s off/);	# hack!!! disable screensaver
+	# system(qw/xset -dpms/);	# need to store current value to return to
     } else {
 	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
+	system(qw/xset s default/); # hack!!! reenable screensaver
+	# system(qw/xset +dpms/);
     }
 }
 
