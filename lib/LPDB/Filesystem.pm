@@ -61,6 +61,12 @@ sub update {
     @dirs or @dirs = ('.');
     $schema = $self->schema;
     $conf = $self->conf;
+    if ($conf->{ext}) {
+	my @ext = join '|', @{$conf->{ext}};
+	my $regex = "\\.(@ext)\$";
+	warn $regex;
+	$conf->{all} = $regex;
+    }
     # warn "self=$self, conf=$conf, reject=$conf->{reject}";
     # warn "reject: ", $self->conf('reject');
     unless ($exiftool) {
@@ -170,7 +176,8 @@ sub _wanted {
 	$schema->txn_begin;
     }
     if (-f $_) {
-	return unless $file =~ /$conf->{keep}/;
+	return unless $file =~ /$conf->{all}/;
+#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
 	return unless -f $key and -s $key > 100;
@@ -178,10 +185,9 @@ sub _wanted {
 	my $row = $schema->resultset('Picture')->find_or_create(
 	    { dir_id => $dir_id,
 	      basename => $file },
-	    { columns => [qw/modified/]});
-	return if $row->modified || 0 >= $modified; # unchanged
-	my $info = $exiftool->ImageInfo($key);
-	return unless $info;
+	    );
+	return if ($row->modified || 0) >= $modified; # unchanged
+	my $info = $exiftool->ImageInfo($key) or return;
 	if (my $dur = $info->{Duration}) {
 	    $row->duration($dur =~ /(\S+) s/ ? $1
 			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
@@ -285,11 +291,14 @@ sub cleanup {
     my $ts = $tschema->resultset('Thumb');
     while (my $pic = $rs->next) {
 	my $file = $pic->pathtofile or next;
-	-f $file and next;
-	if (my $thumbs = $ts->search({ file_id => $pic->file_id })) {
-#	    warn "removing thumbs of ", $pic->file_id;
+	my $modified = (stat $file)[9]; # remove changed thumbnails
+	if (my $thumbs = $ts->search({ file_id => $pic->file_id, $modified
+					   ? (modified => {'<' => $modified})
+					   : () })) {
+	    # warn "removing $thumbs of ", $pic->file_id;
 	    $thumbs->delete_all;
 	}
+	-f $file and next;
 #	warn "removing $file";
 	$pic->delete;
 	unless (++$done % 100) { # fix this!!! make configurable??...

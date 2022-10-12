@@ -63,8 +63,7 @@ FUTURE (v1.0.0)
 
 	Picasagallery is mature but uses a lot of memory, so:
 
-	First thoughts about rewriting to use a database and Prima to
-	use less memory
+	First thoughts about rewriting to use a database and Prima.
 
 	First dzil build via dist.ini.
 

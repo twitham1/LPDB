@@ -25,7 +25,9 @@ our $conf = {
 
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
-print "could support: @ext";
+$conf->{ext} = \@ext;
+push @ext, qw/mp4 mov avi mpg/;
+warn "could support: @ext";
 # exit;
 
 # configuration files: last option setting wins
