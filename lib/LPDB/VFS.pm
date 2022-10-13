@@ -1,8 +1,12 @@
-package LPDB::Tree;
+package LPDB::VFS;
 
 =head1 NAME
 
-LPDB::Tree - navigate a logical tree of pictures in sqlite
+LPDB::VFS - interact with the virtual file system of LPDB
+
+=head1 DESCRIPTION
+
+Not yet documented, see the source.
 
 =cut
 
@@ -92,7 +96,7 @@ sub picture {			# return picture object of given ID
     $self->{rsallpics} ||=
 	$self->{schema}->resultset('Picture');
     my $obj = $self->{rsallpics}->find($id);
-#    warn "tree picture: $id = $obj\n";
+#    warn "vfs picture: $id = $obj\n";
     return $obj;
 }
 
@@ -115,7 +119,7 @@ sub id_of_path {		# return ID of given pathtofile
     # warn "obj=$obj";
     my $id = $obj->file_id
 	or return undef;
-    # warn "tree id of $path = $id";
+    # warn "vfs id of $path = $id";
     return $id;
 }
 

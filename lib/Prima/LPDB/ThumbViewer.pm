@@ -15,7 +15,7 @@ a selected picture.
 package Prima::LPDB::ThumbViewer;
 use strict;
 use warnings;
-use LPDB::Tree;
+use LPDB::VFS;
 use LPDB::Thumbnail;
 use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::FrameSet;
@@ -128,7 +128,7 @@ sub profile_default
     return $def;
 }
 sub lpdb { $_[0]->{lpdb} }
-sub tree { $_[0]->{tree} }
+sub vfs { $_[0]->{vfs} }
 sub thumb { $_[0]->{thumb} }
 sub init {
     my $self = shift;
@@ -136,7 +136,7 @@ sub init {
     my %profile = $self->SUPER::init(@_);
 
     $self->{lpdb} = $hash{lpdb} or die "lpdb object required";
-    $self->{tree} = new LPDB::Tree($self->{lpdb});
+    $self->{vfs} = new LPDB::VFS($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
     $self->{viewer} = undef;
     $self->{firstlast} = '';	# cache of first/last viewed
@@ -298,7 +298,7 @@ sub children {			# return children of given text path
 	time => { '>', time - 31 * 86400 };
 
     my($path, $file, $dur)
-	= $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+	= $self->vfs->pathpics($parent || '/', \@sort, \@$filter);
     $self->{duration} = $dur;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
@@ -321,7 +321,7 @@ sub item {	    # return the path or picture object at given index
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	return $this;
     }				# else picture lookup, slower:
-    $self->{tree}->picture($this);
+    $self->vfs->picture($this);
 }
 
 sub goto {  # for robot navigation (slideshow) also used by escape key
@@ -346,7 +346,7 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
     # $self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
-    my $id = $self->{tree}->id_of_path($2); # image or undef
+    my $id = $self->vfs->id_of_path($2); # image or undef
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
 	if ($id) {
 	    if ($self->{items}[$i] == $id) { # quickly find image index
@@ -420,7 +420,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     $self->popup->submenu('navto',
 			  [ map { [ $me eq $_ ? "*$_" : $_,
 				    _trimfile($_), 'goto' ] }
-			    $self->{tree}->related($me, $id) ]);
+			    $self->vfs->related($me, $id) ]);
 }
 
 sub xofy {	      # find pic position in current gallery directory

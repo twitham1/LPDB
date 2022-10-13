@@ -119,7 +119,7 @@ by C<get> when needed so calling it should not be necessary.
 
 my $tmpfile;			# tmp .jpg file for video thumbnails
 BEGIN {				# this probably fails on Windows!!!
-    $tmpfile = "/tmp/.lpdb.$$.jpg"
+    $tmpfile = "/tmp/.lpdb.$$.png"
 }				# see $tmp below
 END {
     unlink $tmpfile if -f $tmpfile;

@@ -26,8 +26,8 @@ our $conf = {
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
 $conf->{ext} = \@ext;
-push @ext, qw/mp4 mov avi mpg/;
-warn "could support: @ext";
+push @ext, qw/mp4 mov avi mpg asf wmv/;	# how to define video set???
+warn "autosupport: @ext";
 # exit;
 
 # configuration files: last option setting wins
@@ -71,6 +71,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     unlink $conf->{dbfile} if $create;
     $lpdb = new LPDB($conf);
     $lpdb->create if $create;
+#    $lpdb->create;
     $lpdb->update('.');
     $lpdb->cleanup;
     warn "$0: $$ done updating $conf->{dbfile}\n";
