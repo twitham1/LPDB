@@ -121,6 +121,10 @@ sub tschema {
     return $self->{tschema};
 }
 
+# Everything below here might be used by picasagallery but is likely
+# never used by lpgallery.  Not well tested.  Should probably be
+# offloaded to a different file.
+
 # stats of given result set moves values from DB to perl object
 sub plstats {
     my $self = shift;

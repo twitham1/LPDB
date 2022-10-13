@@ -13,12 +13,14 @@ use Date::Parse;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
+use LPDB::VFS;
 #use LPDB::Picasa;		# !!!TODO
 use base 'Exporter::Tiny';
 our @EXPORT = qw(update create cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
+my $vfs;	  # LPDB::VFS database methods
 our $conf;
 my $done = 0;			# records processed
 my $tty = -t STDERR;
@@ -61,7 +63,7 @@ sub update {
     @dirs or @dirs = ('.');
     $schema = $self->schema;
     $conf = $self->conf;
-    if ($conf->{ext}) {
+    if ($conf->{ext}) {		# supported filename extensions
 	my @ext = join '|', @{$conf->{ext}};
 	my $regex = "\\.(@ext)\$";
 	warn $regex;
@@ -69,6 +71,9 @@ sub update {
     }
     # warn "self=$self, conf=$conf, reject=$conf->{reject}";
     # warn "reject: ", $self->conf('reject');
+    unless ($vfs) {
+	$vfs = new LPDB::VFS($self);
+    }
     unless ($exiftool) {
 	$exiftool = new Image::ExifTool;
 	$exiftool->Options(FastScan => 1);
@@ -83,7 +88,8 @@ sub update {
     $schema->txn_commit;
 }
 
-# add a directory and its parents to the Directories table
+# add a directory and its parents to the Directories table (see also
+# similar savepath of VFS.pm)
 {
     my %id;			# cache: {path} = id
     sub _savedirs {		# recursive up to root /
@@ -120,35 +126,6 @@ sub _dirtimes {
 	: $row->discard_changes;
 }
 
-# add a path and its parents to the virtual Paths table
-{
-    my %id;			# cache: {path} = id
-    sub _savepath {		# recursive up to root /
-	my($this) = @_;
-	$this =~ m@/$@ or return;
-	unless ($id{$this}) {
-	    status "saving path $this";
-	    my $obj = $schema->resultset('Path')->find_or_new(
-		{ path => $this });
-	    unless ($obj->in_storage) { # pre-existing?
-		my($dir, $file) = LPDB::dirfile $this;
-		$obj->parent_id(&_savepath($dir));
-		$obj->insert;
-	    }
-	    $id{$this} = $obj->path_id;
-	}
-	return $id{$this};
-    }
-}
-# connect a picture id to one logical path, creating it as needed
-sub _savepathfile {
-    my($path, $id) = @_;
-    my $path_id = &_savepath($path);
-    $schema->resultset('PicturePath')->find_or_create(
-	{ path_id => $path_id,
-	  file_id => $id });
-}
-
 # add a file or directory to the database, adapted from Picasa.pm
 sub _wanted {
     my($dir, $file) = LPDB::dirfile $_;
@@ -169,7 +146,7 @@ sub _wanted {
 	$File::Find::prune = 1;
 	return;
     }
-#    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
+    #    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
     unless (++$done % 100) {	# fix this!!! make configurable??...
 	$schema->txn_commit;
 	status "committed $done";
@@ -177,7 +154,7 @@ sub _wanted {
     }
     if (-f $_) {
 	return unless $file =~ /$conf->{all}/;
-#	return unless $file =~ /$conf->{keep}/;
+	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
 	return unless -f $key and -s $key > 100;
@@ -204,7 +181,7 @@ sub _wanted {
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
 	$time ||= $modified;	# only if no exif of original time
-	
+
 	$row->time($time);
 	$row->modified($modified);
 	$row->bytes(-s $_);
@@ -219,15 +196,15 @@ sub _wanted {
 
 	&_dirtimes($dir_id, $time);
 
-	&_savepathfile("/[Folders]/$dir", $row->file_id);
+	$vfs->savepathfile("/[Folders]/$dir", $row->file_id);
 
-	&_savepathfile("/[Timeline]/All Time/", $row->file_id);
-	&_savepathfile(strftime("/[Timeline]/Years/%Y/",
-				localtime $time), $row->file_id);
-	&_savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
-				localtime $time), $row->file_id);
+	$vfs->savepathfile("/[Timeline]/All Time/", $row->file_id);
+	$vfs->savepathfile(strftime("/[Timeline]/Years/%Y/",
+				    localtime $time), $row->file_id);
+	$vfs->savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
+				    localtime $time), $row->file_id);
 
-	&_savepathfile("/[Captions]/", $row->file_id)
+	$vfs->savepathfile("/[Captions]/", $row->file_id)
 	    if $row->caption;
 
 	my %tags; map { $tags{$_}++ } split /,\s*/,
@@ -238,7 +215,7 @@ sub _wanted {
 	    $schema->resultset('PictureTag')->find_or_create(
 		{ tag_id => $rstag->tag_id,
 		  file_id => $row->file_id });
-	    &_savepathfile("/[Tags]/$tag/", $row->file_id);
+	    $vfs->savepathfile("/[Tags]/$tag/", $row->file_id);
 	}
 
 	# 	$this->{face}	= $db->faces($dir, $file, $this->{rot}); # picasa data for this pic
@@ -272,7 +249,7 @@ sub _wanted {
 	# $db->{dirs}{$dir}{"$file/"} or
 	#     $db->{dirs}{$dir}{"$file/"} = {};
     }
-#    $guard->commit;	       # DBIx::Class::Storage::TxnScopeGuard
+    #    $guard->commit;	       # DBIx::Class::Storage::TxnScopeGuard
     # unless ($db->{dir} and $db->{file}) {
     # 	my $tmp = $db->filter(qw(/));
     # 	$tmp and $tmp->{children} and $db->{dir} = $db->{file} = $tmp;

@@ -25,6 +25,49 @@ sub new {
     return $self;
 }
 
+# verbatim from Picasa.pm
+sub dirfile { # similar to fileparse, but leave trailing / on directories
+    my($self, $path) = @_;
+    my $end = $path =~ s@/+$@@ ? '/' : '';
+    my($dir, $file) = ('/', '');
+    ($dir, $file) = ($1, $2) if $path =~ m!(.*/)([^/]+)$!;
+    return "$dir", "$file$end";
+}
+
+# WRITING METHODS ------------------------------------------------------------
+
+# add a path and its parents to the virtual Paths table (see also
+# similar _savedirs of Filesystem.pm)
+{
+    my %id;			# cache: {path} = id
+    sub savepath {		# recursive up to root /
+	my($self, $this) = @_;
+	$this =~ m@/$@ or return;
+	unless ($id{$this}) {
+	    # warn "saving path $this";
+	    my $obj = $self->{schema}->resultset('Path')->find_or_new(
+		{ path => $this });
+	    unless ($obj->in_storage) { # pre-existing?
+		my($dir, $file) = $self->dirfile($this);
+		$obj->parent_id($self->savepath($dir));
+		$obj->insert;
+	    }
+	    $id{$this} = $obj->path_id;
+	}
+	return $id{$this};
+    }
+}
+# connect a picture id to one logical path, creating it as needed
+sub savepathfile {
+    my($self, $path, $id) = @_;
+    my $path_id = $self->savepath($path);
+    $self->{schema}->resultset('PicturePath')->find_or_create(
+	{ path_id => $path_id,
+	  file_id => $id });
+}
+
+# READING METHODS ------------------------------------------------------------
+
 sub pathpics {		     # return paths and pictures in given path
     my($self, $parent, $sort, $filter) = @_;
     my @filter;
