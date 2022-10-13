@@ -534,12 +534,16 @@ sub slideshow {
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
 	system(qw/xset s off/);	# hack!!! disable screensaver
-	# system(qw/xset -dpms/);	# need to store current value to return to
+	if (my $tmp = `xset q`) {
+	    $self->{dpms} = $tmp =~ /DPMS is Enabled/i ? 1 : 0;
+	    # warn "DPMS is $self->{dpms}";
+	}
+	$self->{dpms} and system(qw/xset -dpms/);
     } else {
 	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
 	system(qw/xset s default/); # hack!!! reenable screensaver
-	# system(qw/xset +dpms/);
+	$self->{dpms} and system(qw/xset +dpms/);
     }
 }
 
