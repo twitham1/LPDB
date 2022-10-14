@@ -521,11 +521,15 @@ sub slideshow {
     my $sec = $self->{seconds} || 4; # set by delay above
     my $n = $self->{thumbviewer}->count;
     my $d = $self->{thumbviewer}->duration;
-    my $t = "\nVideo AutoPlay " .
+    my $tot = $n * $sec + $d;
+    my $t = '';			# show timing information
+    $d and $t = "\nVideo AutoPlay " .
 	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
-    $t .= sprintf "\n%s picture time", _hms($n * $sec);
-    $t .= sprintf "\n%s  video  time", _hms($d) if $d;
-    $t .= sprintf "\n%s  total  time", _hms($n * $sec + $d) if $d;
+    $t .= sprintf "\n%s picture time%s", _hms($n * $sec),
+	$d ? sprintf(' %2.0f%%', $n * $sec / $tot * 100) : '';
+    $d and $t .= sprintf "\n%s  video  time %2.0f%%", _hms($d),
+	$d / $tot * 100;
+    $d and $t .= sprintf "\n%s  total  time", _hms($tot);
     $t .= "\nLoop show " .
 	($self->popup->checked('loop') ? 'ON' : 'OFF');
 
