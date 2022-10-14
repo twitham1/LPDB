@@ -54,6 +54,8 @@ sub new {
 
 sub _aspect {		    # modified from _draw_thumb of ThumbViewer
     my($sw, $sh, $dw, $dh) = @_;
+    return $sw, $sh		# return original if smaller than thumb!
+	if $sw < $dw and $sh < $dh;
     my $src = $sw / $sh;	# aspect ratios
     my $dst = $dw / $dh;
     if ($src > $dst) {		# image wider than cell: pad top/bot
