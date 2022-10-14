@@ -151,13 +151,14 @@ sub put {
     # 1, 0, 3 = video stack (0 = random path center), 2 = high-res for IV
     if (my $dur = $picture->duration) {
 	my $seek = $dur * $grab[$cid];
-	$cid == 2 and @size = (1920, 1080); # high res for ImageViewer
+	$cid == 2 and @size = (1280, 720); # higher res for ImageViewer
 	my $size = sprintf '%dx%d',
 	    _aspect($picture->width, $picture->height, @size);
 	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
 	my @cmd = (qw(ffmpeg -y -loglevel warning -noautorotate -ss), $seek,
 		   '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
+	# warn "@cmd\n";
 	system(@cmd) == 0 or warn "@cmd failed";
     }
     my $codec;
