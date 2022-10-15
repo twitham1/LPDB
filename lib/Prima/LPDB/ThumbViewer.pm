@@ -40,6 +40,14 @@ sub profile_default
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
 	    ['~AND Filters' => [
+		 ['clear'	=> 'Clear ~All Filters' => sub {
+		     map { $_[0]->popup->checked($_, 1) }
+		     qw/bothfiles bothshapes unlimited/;
+		     map { $_[0]->popup->checked($_, 0) }
+		     qw/tags captions/;
+		     $_[0]->goto($_[0]->current);
+		  }],
+		 [],
 		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
 		 ['pictures'	=> '~Still Pictures' => 'sorter'],
 		 [')videos'	=> 'Motion ~Videos'  => 'sorter'],
@@ -96,7 +104,6 @@ sub profile_default
 		  ]],
 
 	     ]],
-	    [],
 	    ['~Random Stack Centers' => [
 		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
 		 [],
@@ -116,6 +123,7 @@ sub profile_default
 	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
+	    ['@buffered', 'Hide Screen ~Updates','u', ord 'u', sub { $_[0]->buffered($_[2]) }],
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
@@ -188,7 +196,7 @@ sub init {
     $top->insert('Prima::Label',
 		 name => 'N',
 		 pack => { side => 'top' },
-		 text => $self->{notice} = 'Use arrow keys to navigate',
+		 text => 'Use arrow keys to navigate',
 		 hint => 'Scroll Up',
 		 onMouseClick => sub { $self->hitkey(kb::Up) },
 	);
@@ -240,11 +248,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
-#    warn "children of $parent";
-    $self->owner->NORTH->N->text($self->{notice});
-    $self->{notice} = '   filtering and sorting, PLEASE WAIT...   ';
-    $self->repaint;		# to see above message, I need:
-    $::application->yield;	# but why does this wedge Windows?
+    # warn "children of $parent";
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
     if ($m->checked('gname')) {
@@ -324,7 +328,7 @@ sub item {	    # return the path or picture object at given index
     $self->vfs->picture($this);
 }
 
-sub goto {  # for robot navigation (slideshow) also used by escape key
+sub goto {			# goto path//file or path/path
     my($self, $path) = @_;
     # warn "goto: $path";
     $path =~ m{(.*/)/(.+/?)} or	   # path // pathtofile
@@ -346,6 +350,12 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
     # $self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
+    unless ($n) {
+	$self->owner->NORTH->N
+	    ->text('No Results, check ~Menu -> AND Filters or hit Escape!');
+	$self->owner->NORTH->NW->text('');
+	$self->owner->NORTH->NE->text('');
+    }
     my $id = $self->vfs->id_of_path($2); # image or undef
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
 	if ($id) {
@@ -358,7 +368,6 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
 	    last;
 	}
     }
-    $self->repaint;
 }
 
 sub current {			# path to current selected item
@@ -452,9 +461,12 @@ sub xofy {	      # find pic position in current gallery directory
 sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
-    if ($cwd) {			# hack: assume no images
-	$self->owner->NORTH->N->text('0 images, check filters!');
-	$self->owner->NORTH->NE->text('0 / 0');
+    if ($cwd) {
+	$self->owner->NORTH->NW->text('Filtering, sorting, drawing...');
+	$self->owner->NORTH->N->text('');
+	$self->owner->NORTH->NE->text('...PLEASE BE PATIENT!');
+	$self->owner->NORTH->repaint;
+	$::application->yield;
     }
     return $self->{cwd} || '/';
 }
@@ -482,21 +494,14 @@ sub on_keydown			# code == -1 for remote navigation
 	my $this = $self->item($idx);
 	# warn $self->focusedItem, " is entered\n";
 	if ($this->isa('LPDB::Schema::Result::Path')) {
-	    $self->cwd($this->path);
-	    $self->items($self->children($this->path));
-	    $self->focusedItem(-1);
-	    $self->repaint;
-	    $self->focusedItem(0);
-	    $self->repaint;
+	    $self->goto($this->path . "FIRST");
 	} elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	    # show picture in other window and raise it unless remote
 	    $self->viewer($code == -1 ? 1 : 0)->IV->viewimage($this);
 	}
-	$self->clear_event;
 	return;
     } elsif ($key == kb::Escape) {
 	$self->goto($self->cwd);
-	$self->clear_event;
 	return;
     }
     if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
