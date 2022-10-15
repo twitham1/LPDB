@@ -156,8 +156,8 @@ sub put {
 	    _aspect($picture->width, $picture->height, @size);
 	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
-	my @cmd = (qw(ffmpeg -y -loglevel warning -noautorotate -ss), $seek,
-		   '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
+	my @cmd = (qw(ffmpeg -y -loglevel warning -nostdin -noautorotate -ss),
+		   $seek, '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
 	# warn "@cmd\n";
 	system(@cmd) == 0 or warn "@cmd failed";
     }

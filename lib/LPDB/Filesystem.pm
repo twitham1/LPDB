@@ -204,8 +204,8 @@ sub _wanted {
 	$vfs->savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
 				    localtime $time), $row->file_id);
 
-	$vfs->savepathfile("/[Captions]/", $row->file_id)
-	    if $row->caption;
+	# $vfs->savepathfile("/[Captions]/", $row->file_id)
+	#     if $row->caption;
 
 	my %tags; map { $tags{$_}++ } split /,\s*/,
 		      $info->{Keywords} || $info->{Subject} || '';
@@ -261,6 +261,7 @@ sub _wanted {
 # TODO: maybe stat files only in dirs that changed !!!
 sub cleanup {
     my $self = shift;
+    $vfs->captions;		# move this somewhere?
     status "cleaning removed files from DB";
     my $tschema = $self->tschema;
     $schema->txn_begin; $tschema->txn_begin;

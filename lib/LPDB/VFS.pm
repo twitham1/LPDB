@@ -66,6 +66,28 @@ sub savepathfile {
 	  file_id => $id });
 }
 
+# update [Captions] from the pictures
+sub captions {
+    my($self) = @_;
+    if (my $pics = $self->{schema}->resultset('Picture')->search(
+	    { caption => { '!=' => undef }},
+	    { columns => [ qw/file_id caption/ ]})) {
+	while (my $pic = $pics->next) {
+	    $self->savepathfile("/[Captions]/All/",
+				$pic->file_id);
+	    my $cap = $pic->caption;
+	    $cap =~ /^(.)/;
+	    my $letter = uc $1;
+	    $self->savepathfile("/[Captions]/Alphabetical/$letter/",
+				$pic->file_id);
+	    my $n = split/\s+/, $cap;
+	    $self->savepathfile(sprintf("/[Captions]/Words/%03d/", $n),
+				$pic->file_id);
+	}
+    }
+    # TODO: fix captions that disappeared or changed
+}
+
 # READING METHODS ------------------------------------------------------------
 
 sub pathpics {		     # return paths and pictures in given path
