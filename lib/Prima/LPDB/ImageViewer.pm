@@ -171,19 +171,26 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     my $y = $th->count;
     my($w, $h) = $self->size;
     if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
-	my $each = $w / $y; # TODO: move to a new frame progress object
+	# TODO: move to a new frame progress object
+	my $s = 6;		# size of line
+	$self->lineWidth($s);
 	$self->color(cl::LightGreen);
-	$self->lineWidth(10);
 	$self->lineEnd(le::Round);
-	$self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
-	# $self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
+	$s /= 2;		# now position from edge
+	my $each = $w / $y;
+	my($b, $e) = ($each * ($x - 1), $each * $x);
+	$e > $b + $s or $e = $b + $s; # minimum indicator length
+	$self->polyline([$b, $h - $s, $e, $h - $s]);
+	$self->polyline([$b, $s, $e, $s]);
 	my($x, $y) = $th->xofy($th->focusedItem);
 	if ($y > 1) {
 	    $each = $h / $y;
-	    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
-	    # $self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
+	    my($b, $e) = ($each * ($x - 1), $each * $x);
+	    $e > $b + $s or $e = $b + $s;
+	    $self->polyline([$s, $h - $b, $s, $h - $e]);
+	    # $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
-	    $self->color(cl::Fore);
+	$self->color(cl::Fore);
     }
     $self->status(1);	      # update zoom label in case zoom changed
 }
