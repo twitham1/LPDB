@@ -51,7 +51,8 @@ sub create {
 
 sub status {
     $tty or return;
-    print STDERR "\r$done    @_      ";
+    # print STDERR "\r$done    @_      ";
+    print STDERR "\r\e[J$done    @_      ";
 }
 END {
     print STDERR "\n";
@@ -153,7 +154,7 @@ sub _wanted {
 	$schema->txn_begin;
     }
     if (-f $_) {
-	return unless $file =~ /$conf->{all}/;
+	return unless $file =~ /$conf->{all}/i;
 	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
@@ -165,13 +166,16 @@ sub _wanted {
 	    );
 	return if ($row->modified || 0) >= $modified; # unchanged
 	my $info = $exiftool->ImageInfo($key) or return;
-	if (my $dur = $info->{Duration}) {
-	    $row->duration($dur =~ /(\S+) s/ ? $1
-			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
-			   ? $1 * 3600 + $2 * 60 + $3
-			   : $dur); # should never happen
-	}
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
+	if (my $dur = $info->{Duration}) {
+	    if (!/\.gif$/i or	# ignore duration of 1 frame gif
+		($info->{FrameCount} and $info->{FrameCount} > 1)) {
+		$row->duration($dur =~ /(\S+) s/ ? $1
+			       : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			       ? $1 * 3600 + $2 * 60 + $3
+			       : $dur); # should never happen
+	    }
+	}
 	my $or = $info->{Orientation} || '';
 	my $rot = $or =~ /Rotate (\d+)/i ? $1 : $info->{Rotation} || 0;
 	my $swap = $rot == 90 || $rot == 270 || 0;
