@@ -87,31 +87,9 @@ END {
 my $lv;				# ListViewer
 my $iv;				# ImageViewer
 my $w;
-{			    # my application icon: stack of 3 "images"
-    my $size = 160;
-    my $ot = $size / 3;		# one third
-    my $tt = $size * 2 / 3;	# two thirds
-    my $i = Prima::Icon->new(
-	width => $size,
-	height => $size,
-	type   => im::bpp4,
-	);
-    $i->begin_paint;
-    $i->color(cl::Black);
-    $i->bar(0, 0, $size, $size);
-    $i->color(cl::Blue);
-    $i->bar(0, $size, $tt, $ot);
-    $i->color(cl::Red);
-    $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
-    $i->color(cl::Green);
-    $i->bar($ot, $tt, $size, 0);
-    $i->end_paint;
-    # $i->save("icon.png");	# prove img/mask are right
-    # my($a, $b) = $i->split;
-    # $a->save("img.png");
-    # $b->save("mask.png");
-    $::application->icon($i);
-}
+
+# seems I need the application icon before window creation
+$::application->icon(Prima::LPDB::ThumbViewer::icon);
 
 $w = Prima::LPDB::Fullscreen->create(
     mainWindow => 1, # promote myself to MainWindow per Prima::Window:

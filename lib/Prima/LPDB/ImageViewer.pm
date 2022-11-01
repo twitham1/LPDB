@@ -47,7 +47,7 @@ sub profile_default
 	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
 	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
 	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
-	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
+	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],

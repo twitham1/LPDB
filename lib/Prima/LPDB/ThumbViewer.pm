@@ -15,13 +15,13 @@ a selected picture.
 package Prima::LPDB::ThumbViewer;
 use strict;
 use warnings;
+use POSIX qw/strftime/;
 use LPDB::VFS;
 use LPDB::Thumbnail;
-use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
-use POSIX qw/strftime/;
+use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 use Prima::LPDB::PointerHider;	# could someday promote to Prima?
@@ -234,6 +234,33 @@ sub init {
     # $self->focused(1);
     $self->select;
     return %profile;
+}
+
+sub icon {		    # my application icon: stack of 3 "images"
+    my $size = 160;
+    my $ot = $size / 3;		# one third
+    my $tt = $size * 2 / 3;	# two thirds
+    my $i = Prima::Icon->new(
+	width => $size,
+	height => $size,
+	type   => im::bpp4,
+	);
+    $i->begin_paint;
+    $i->color(cl::Black);
+    $i->bar(0, 0, $size, $size);
+    $i->color(cl::Blue);
+    $i->bar(0, $size, $tt, $ot);
+    $i->color(cl::Red);
+    $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
+    $i->color(cl::Green);
+    $i->bar($ot, $tt, $size, 0);
+    $i->end_paint;
+    # $i->save("icon.png");	# prove img/mask are right
+    # my($a, $b) = $i->split;
+    # $a->save("img.png");
+    # $b->save("mask.png");
+    # $::application->icon($i);
+    return $i;
 }
 
 sub hitkey {
