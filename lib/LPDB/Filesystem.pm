@@ -22,7 +22,7 @@ my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
 my $vfs;	  # LPDB::VFS database methods
 our $conf;
-my $done = 0;			# records processed
+my $done = 0;			# time of last commit
 my $tty = -t STDERR;
 
 # create the database from lib/LPDB/*.sql
@@ -51,8 +51,8 @@ sub create {
 
 sub status {
     $tty or return;
-    # print STDERR "\r$done    @_      ";
-    print STDERR "\r\e[J$done    @_      ";
+    my $t = localtime $done;
+    print STDERR "\r\e[J$t    @_      ";
 }
 END {
     print STDERR "\n";
@@ -79,7 +79,7 @@ sub update {
 	$exiftool = new Image::ExifTool;
 	$exiftool->Options(FastScan => 1);
     }
-    status "update @dirs";
+    status "update @dirs\n";
     $schema->txn_begin;
     find ({ no_chdir => 1,
 	    preprocess => sub { sort @_ },
@@ -98,7 +98,7 @@ sub update {
 	defined $this and length $this or $this = './';
 	$this =~ m@/$@ or return;
 	unless ($id{$this}) {
-	    status ' ' x 60, "saving dir $this";
+	    status "updating dir $this\n";
 	    my $obj = $schema->resultset('Directory')->find_or_new(
 		{ directory => $this });
 	    unless ($obj->in_storage) { # pre-existing?
@@ -133,7 +133,7 @@ sub _wanted {
     my $modified = (stat $_)[9];
     $dir =~ s@\./@@;
     #    $dir = '' if $dir eq '.';
-    status "checking: $modified $_";
+    status "checking $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini') {
 	# my $tmp = LPDB::Picasa::readini($_);
 	# use Data::Dumper;
@@ -148,10 +148,11 @@ sub _wanted {
 	return;
     }
     #    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
-    unless (++$done % 100) {	# fix this!!! make configurable??...
+    unless ($done == time) {
 	$schema->txn_commit;
-	status "committed $done";
+	status "checked $done";
 	$schema->txn_begin;
+	$done = time;
     }
     if (-f $_) {
 	return unless $file =~ /$conf->{all}/i;
@@ -266,9 +267,9 @@ sub _wanted {
 sub cleanup {
     my $self = shift;
     $vfs->captions;		# move this somewhere?
-    status "cleaning removed files from DB";
+    status "cleaning removed files from DB\n";
     my $tschema = $self->tschema;
-    $schema->txn_begin; $tschema->txn_begin;
+    $schema->txn_begin;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
     while (my $pic = $rs->next) {
@@ -280,14 +281,15 @@ sub cleanup {
 	    # warn "removing $thumbs of ", $pic->file_id;
 	    $thumbs->delete_all;
 	}
+	unless ($done == time) {
+	    $schema->txn_commit;
+	    status "checked $done";
+	    $schema->txn_begin;
+	    $done = time;
+	}
 	-f $file and next;
 #	warn "removing $file";
 	$pic->delete;
-	unless (++$done % 100) { # fix this!!! make configurable??...
-	    $schema->txn_commit; $tschema->txn_commit;
-	    status "committed $done";
-	    $schema->txn_begin; $tschema->txn_begin;
-	}
     }
     my $paths = $schema->resultset('Path'); # clean paths of no more pictures
     while (my $path = $paths->next) {
@@ -297,13 +299,14 @@ sub cleanup {
 	$pics->count and next;
 #	warn "removing empty ", $path->path;
 	$path->delete;
-	unless (++$done % 100) { # fix this!!! make configurable??...
-	    $schema->txn_commit; $tschema->txn_commit;
-	    status "committed $done";
-	    $schema->txn_begin; $tschema->txn_begin;
+	unless ($done == time) {
+	    $schema->txn_commit;
+	    status "checked $done";
+	    $schema->txn_begin;
+	    $done = time;
 	}
     }
-    $schema->txn_commit; $tschema->txn_commit;
+    $schema->txn_commit;
 }
 
 # TODO: find and index duplicates
