@@ -1,0 +1,62 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Prima qw(Application Buttons);
+
+my $SIZE = 160;
+my $BORD = 20;
+my $BOTH = $SIZE + $BORD * 2;
+my $icon = icon();
+$::application->icon($icon);	# need this before window create
+
+$icon->save("icon.png");	# prove img/mask are right in files:
+my($img, $mask) = $icon->split;
+$img->save("img.png");
+$mask->save("mask.png");
+
+my $w = Prima::MainWindow->new(
+    text     => 'transparent icon?',
+    size     => [ $BOTH * 3, $BOTH * 2],
+    );
+$w-> insert( Button =>		# hack to paint on window
+	     text     => 'transparent icon?',
+	     onMouseEnter  => \&show,
+	     onClick => sub { $::application->close },
+    )->pack(-side => 'top');
+
+sub show {
+    $w-> begin_paint;
+    $w->color(cl::Red);
+    for (my $i = -1 * $BOTH; $i < $BOTH * 4; $i += $BORD) {
+	$w->line($i, 0, $i + $BOTH, $BOTH);
+	$w->line($i, 0, $i - $BOTH, $BOTH);
+    }
+    $w->put_image($BORD,		$BORD, $icon);
+    $w->put_image($BOTH + $BORD,	$BORD, $img);
+    $w->put_image($BOTH * 2 + $BORD,	$BORD, $mask);
+    $w-> end_paint;
+}
+run Prima;
+
+sub icon {		    # my application icon: stack of 3 "images"
+    my $size = $SIZE;
+    my $ot = $size / 3;		# one third
+    my $tt = $size * 2 / 3;	# two thirds
+    my $i = Prima::Icon->new(
+	width => $size,
+	height => $size,
+	type   => im::bpp4,
+	);
+    $i->begin_paint;
+    $i->color(cl::Black);
+    $i->bar(0, 0, $size, $size);
+    $i->color(cl::Blue);
+    $i->bar(0, $size, $tt, $ot);
+    # $i->color(cl::Red);
+    # $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
+    $i->color(cl::Green);
+    $i->bar($ot, $tt, $size, 0);
+    $i->end_paint;
+    return $i;
+}
