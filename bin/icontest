@@ -16,11 +16,11 @@ $img->save("img.png");
 $mask->save("mask.png");
 
 my $w = Prima::MainWindow->new(
-    text     => 'transparent icon?',
+    text     => 'transparent corners?',
     size     => [ $BOTH * 3, $BOTH * 2],
     );
 $w-> insert( Button =>		# hack to paint on window
-	     text     => 'transparent icon?',
+	     text     => 'transparent corners?',
 	     onMouseEnter  => \&show,
 	     onClick => sub { $::application->close },
     )->pack(-side => 'top');
