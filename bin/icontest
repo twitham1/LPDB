@@ -2,31 +2,51 @@
 
 use strict;
 use warnings;
-use Prima qw(Application Buttons);
+use Prima qw(Application Buttons MsgBox);
 
 my $SIZE = 160;
 my $BORD = 20;
 my $BOTH = $SIZE + $BORD * 2;
 my $icon = icon();
-$::application->icon($icon);	# need this before window create
+my $title;			# window title string
 
-$icon->save("icon.png");	# prove img/mask are right in files:
-my($img, $mask) = $icon->split;
-$img->save("img.png");
-$mask->save("mask.png");
+# this must be set before first window, and changes have no effect!
+$::application->icon($icon)
+    unless grep /noicon/, @ARGV;
 
 my $w = Prima::MainWindow->new(
-    text     => 'transparent corners?',
+    text     => 'Prima Icon Test',
     size     => [ $BOTH * 3, $BOTH * 2],
     );
-$w-> insert( Button =>		# hack to paint on window
-	     text     => 'transparent corners?',
-	     onMouseEnter  => \&show,
-	     onClick => sub { $::application->close },
+$w-> insert( Button =>
+	     text     => 'Random Application Icon',
+	     onClick => sub { newicon(0) },
+    )->pack(-side => 'left');
+$w-> insert( Button =>
+	     text     => 'Random Window Icon',
+	     onClick => sub { newicon(1) },
+    )->pack(-side => 'right');
+$w-> insert( Button =>
+	     text     => 'New Window',
+	     onClick => sub { message("icon from parent?") },
     )->pack(-side => 'top');
 
-sub show {
-    $w-> begin_paint;
+run Prima;
+
+sub newicon {	  # replace application or window icon with random one
+    $icon = icon();
+    $_[0] ? $w->icon($icon) : $::application->icon($icon);
+
+    my($t, $W, $H) = ($icon->type, $icon->width, $icon->height);
+    $icon->save("icon.png");	# prove img/mask are right in ./*.png:
+    my($img, $mask) = $icon->split;
+    $img->save("img.png");
+    $mask->save("mask.png");
+
+    $w->text("$title -> type $t");
+    $w-> begin_paint;		# show icon/image/mask on my window
+    $w->color(cl::Gray);
+    $w->bar(0, 0, $w->width, $w->height);
     $w->color(cl::Red);
     for (my $i = -1 * $BOTH; $i < $BOTH * 4; $i += $BORD) {
 	$w->line($i, 0, $i + $BOTH, $BOTH);
@@ -37,26 +57,28 @@ sub show {
     $w->put_image($BOTH * 2 + $BORD,	$BORD, $mask);
     $w-> end_paint;
 }
-run Prima;
 
-sub icon {		    # my application icon: stack of 3 "images"
-    my $size = $SIZE;
-    my $ot = $size / 3;		# one third
-    my $tt = $size * 2 / 3;	# two thirds
+sub icon { # return an icon of 4 random squares in random size and bpp
+    my $size = int(rand($SIZE/2) + $SIZE/2);
+    my @bpp = qw/1 4 8 16 24 32 64 128/;
+    my $t = $bpp[rand @bpp];
+    $title = "$t bpp ($size x $size)";
     my $i = Prima::Icon->new(
 	width => $size,
 	height => $size,
-	type   => im::bpp4,
+	type   => $t | im::Color,
 	);
     $i->begin_paint;
     $i->color(cl::Black);
     $i->bar(0, 0, $size, $size);
     $i->color(cl::Blue);
-    $i->bar(0, $size, $tt, $ot);
-    # $i->color(cl::Red);
-    # $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
+    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->color(cl::Red);
+    $i->bar(rand($size), rand($size), rand($size), rand($size));
     $i->color(cl::Green);
-    $i->bar($ot, $tt, $size, 0);
+    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->color(cl::Yellow);
+    $i->bar(rand($size), rand($size), rand($size), rand($size));
     $i->end_paint;
     return $i;
 }
