@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Prima qw(Application Buttons MsgBox);
+use Prima qw(Application MsgBox);
 
 my $SIZE = 160;
 my $BORD = 20;
@@ -41,14 +41,15 @@ sub newicon {	  # replace application or window icon with random one
     $icon = icon();
     $app ? $::application->icon($icon) : $w->icon($icon);
 
-    my($t, $W, $H) = ($icon->type, $icon->width, $icon->height);
-    $icon->save("icon.png");	# prove img/mask are right in ./*.png:
     my($img, $mask) = $icon->split;
-    $img->save("img.png");
-    $mask->save("mask.png");
-
+    if (grep /files/, @ARGV) {
+	$icon->save("icon.png"); # prove img/mask are right in ./*.png:
+	$img->save("img.png");
+	$mask->save("mask.png");
+    }
+    my $t = $icon->type;
     $w->text(($app ? 'application' : 'window') . " $title -> type $t");
-    $w-> begin_paint;		# show icon/image/mask on my window
+    $w->begin_paint;		# show icon/image/mask on my window
     $w->color(cl::Gray);
     $w->bar(0, 0, $w->width, $w->height);
     $w->color(cl::Red);
@@ -59,7 +60,7 @@ sub newicon {	  # replace application or window icon with random one
     $w->put_image($BORD,		$BORD, $icon);
     $w->put_image($BOTH + $BORD,	$BORD, $img);
     $w->put_image($BOTH * 2 + $BORD,	$BORD, $mask);
-    $w-> end_paint;
+    $w->end_paint;
 }
 
 sub icon { # return an icon of 4 random squares in random size and bpp
@@ -70,7 +71,7 @@ sub icon { # return an icon of 4 random squares in random size and bpp
     my $i = Prima::Icon->new(
 	width => $size,
 	height => $size,
-	type   => $t | im::Color,
+	type   => $t,
 	);
     $i->begin_paint;
     $i->color(cl::Black);
