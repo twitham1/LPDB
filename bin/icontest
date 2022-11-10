@@ -10,32 +10,36 @@ my $BOTH = $SIZE + $BORD * 2;
 my $icon = icon();
 my $title;			# window title string
 
-# this must be set before first window, and changes have no effect!
+# Under x11 with XFCE, this must be set before first window, and
+# changes have no effect!  -twitham
 $::application->icon($icon)
     unless grep /noicon/, @ARGV;
 
-my $w = Prima::MainWindow->new(
-    text     => 'Prima Icon Test',
-    size     => [ $BOTH * 3, $BOTH * 2],
+my $timer = Prima::Timer->create(
+    timeout => 1000,
+    onTick => sub { newicon(0) }
     );
-$w-> insert( Button =>
-	     text     => 'Random Application Icon',
-	     onClick => sub { newicon(0) },
-    )->pack(-side => 'left');
-$w-> insert( Button =>
-	     text     => 'Random Window Icon',
-	     onClick => sub { newicon(1) },
-    )->pack(-side => 'right');
-$w-> insert( Button =>
-	     text     => 'New Window',
-	     onClick => sub { message("icon from parent?") },
-    )->pack(-side => 'top');
+my $w = Prima::MainWindow->new(
+    text      => 'Prima Icon Test',
+    size      => [ $BOTH * 3, $BOTH ],
+    menuItems =>
+    [['~Icon' =>
+      [
+       ['Random ~Application Icon', 'a', ord 'a', sub { newicon(1) } ],
+       ['Random Window ~Icon',      'i', ord 'i', sub { newicon(0) } ],
+       ['@c', '~Cycle Window Icon', 'c', ord 'c', sub { $_[2] ? $timer->start : $timer->stop }],
+       ['New ~Window',              'w', ord 'w', sub { message("icon from parent?") }],
+       ['~Quit',                    'q', ord 'q', sub { exit } ],
+      ]
+     ]],
+    );
 
 run Prima;
 
 sub newicon {	  # replace application or window icon with random one
+    my($app) = @_;
     $icon = icon();
-    $_[0] ? $w->icon($icon) : $::application->icon($icon);
+    $app ? $::application->icon($icon) : $w->icon($icon);
 
     my($t, $W, $H) = ($icon->type, $icon->width, $icon->height);
     $icon->save("icon.png");	# prove img/mask are right in ./*.png:
@@ -43,7 +47,7 @@ sub newicon {	  # replace application or window icon with random one
     $img->save("img.png");
     $mask->save("mask.png");
 
-    $w->text("$title -> type $t");
+    $w->text(($app ? 'application' : 'window') . " $title -> type $t");
     $w-> begin_paint;		# show icon/image/mask on my window
     $w->color(cl::Gray);
     $w->bar(0, 0, $w->width, $w->height);
