@@ -7,8 +7,9 @@ use Prima qw(Application MsgBox);
 my $SIZE = 160;
 my $BORD = 20;
 my $BOTH = $SIZE + $BORD * 2;
-my $icon = icon();
+my $w;				# window
 my $title;			# window title string
+my $icon = icon();		# current icon
 
 # Under x11 with XFCE, this must be set before first window, and
 # changes have no effect!  -twitham
@@ -19,7 +20,7 @@ my $timer = Prima::Timer->create(
     timeout => 1000,
     onTick => sub { newicon(0) }
     );
-my $w = Prima::MainWindow->new(
+$w = Prima::MainWindow->new(
     text      => 'Prima Icon Test',
     size      => [ $BOTH * 3, $BOTH ],
     menuItems =>
@@ -29,6 +30,8 @@ my $w = Prima::MainWindow->new(
        ['Random Window ~Icon',      'i', ord 'i', sub { newicon(0) } ],
        ['@c', '~Cycle Window Icon', 'c', ord 'c', sub { $_[2] ? $timer->start : $timer->stop }],
        ['New ~Window',              'w', ord 'w', sub { message("icon from parent?") }],
+       ['@save', '~Save to Files',  's', ord 's', sub {}],
+       ['@all', 'All ~Depths',      'd', ord 'd', sub {}],
        ['~Quit',                    'q', ord 'q', sub { exit } ],
       ]
      ]],
@@ -42,7 +45,7 @@ sub newicon {	  # replace application or window icon with random one
     $app ? $::application->icon($icon) : $w->icon($icon);
 
     my($img, $mask) = $icon->split;
-    if (grep /files/, @ARGV) {
+    if ($w->menu->checked('save')) {
 	$icon->save("icon.png"); # prove img/mask are right in ./*.png:
 	$img->save("img.png");
 	$mask->save("mask.png");
@@ -65,7 +68,9 @@ sub newicon {	  # replace application or window icon with random one
 
 sub icon { # return an icon of 4 random squares in random size and bpp
     my $size = int(rand($SIZE/2) + $SIZE/2);
-    my @bpp = qw/1 4 8 16 24 32 64 128/;
+    my @bpp = $w && $w->menu->checked('all')
+	? qw/1 4 8 16 24 32 64 128/ # all of im::* bit depths
+	: qw/1 4 8 24 32/;	# only valid visual depths
     my $t = $bpp[rand @bpp];
     $title = "$t bpp ($size x $size)";
     my $i = Prima::Icon->new(
