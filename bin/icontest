@@ -4,9 +4,10 @@ use strict;
 use warnings;
 use Prima qw(Application MsgBox);
 
-my $SIZE = 160;
+my $MIN = 8;
+my $MAX = 120;
 my $BORD = 20;
-my $BOTH = $SIZE + $BORD * 2;
+my $BOTH = $MAX + $BORD * 2;
 my $w;				# window
 my $title;			# window title string
 my $icon = icon();		# current icon
@@ -67,28 +68,29 @@ sub newicon {	  # replace application or window icon with random one
 }
 
 sub icon { # return an icon of 4 random squares in random size and bpp
-    my $size = int(rand($SIZE/2) + $SIZE/2);
+    my $x = int(rand($MAX - $MIN) + $MIN);
+    my $y = int(rand($MAX - $MIN) + $MIN);
     my @bpp = $w && $w->menu->checked('all')
 	? qw/1 4 8 16 24 32 64 128/ # all of im::* bit depths
 	: qw/1 4 8 24 32/;	# only valid visual depths
     my $t = $bpp[rand @bpp];
-    $title = "$t bpp ($size x $size)";
+    $title = "$t bpp ($x x $y)";
     my $i = Prima::Icon->new(
-	width => $size,
-	height => $size,
+	width => $x,
+	height => $y,
 	type   => $t,
 	);
     $i->begin_paint;
     $i->color(cl::Black);
-    $i->bar(0, 0, $size, $size);
+    $i->bar(0, 0, $x, $y);
     $i->color(cl::Blue);
-    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->bar(rand($x), rand($y), rand($x), rand($y));
     $i->color(cl::Red);
-    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->bar(rand($x), rand($y), rand($x), rand($y));
     $i->color(cl::Green);
-    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->bar(rand($x), rand($y), rand($y), rand($y));
     $i->color(cl::Yellow);
-    $i->bar(rand($size), rand($size), rand($size), rand($size));
+    $i->bar(rand($x), rand($y), rand($x), rand($y));
     $i->end_paint;
     return $i;
 }
