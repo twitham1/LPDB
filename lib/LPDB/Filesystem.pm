@@ -22,7 +22,7 @@ my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
 my $vfs;	  # LPDB::VFS database methods
 our $conf;
-my $done = 0;			# time of last commit
+my $done = time;		# time of last commit
 my $tty = -t STDERR;
 
 # create the database from lib/LPDB/*.sql
@@ -98,7 +98,7 @@ sub update {
 	defined $this and length $this or $this = './';
 	$this =~ m@/$@ or return;
 	unless ($id{$this}) {
-	    status "updating dir $this\n";
+	    status "updating dir $this";
 	    my $obj = $schema->resultset('Directory')->find_or_new(
 		{ directory => $this });
 	    unless ($obj->in_storage) { # pre-existing?
@@ -143,7 +143,8 @@ sub _wanted {
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:
 	     $file eq 'Originals' or
-	     $file =~ /$conf->{reject}/) { 
+	     $file =~ /$conf->{reject}/) {
+	status("rejecting $_\n");
 	$File::Find::prune = 1;
 	return;
     }
@@ -168,6 +169,11 @@ sub _wanted {
 	return if ($row->modified || 0) >= $modified; # unchanged
 	my $info = $exiftool->ImageInfo($key) or return;
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
+	my $pix = $info->{ImageWidth} * $info->{ImageHeight};
+	if ($pix < $conf->{minpixels}) {
+	    status("skipping too small $pix at $_\n");
+	    return;
+	}
 	if (my $dur = $info->{Duration}) {
 	    if (!/\.gif$/i or	# ignore duration of 1 frame gif
 		($info->{FrameCount} and $info->{FrameCount} > 1)) {

@@ -21,6 +21,7 @@ our $conf = {
     guisqltrace => 0,	       # see SQL of GUI?
     thumbviewer => sub {},     # called at startup, gets viewer object
     imageviewer => sub {},     # called at startup, gets viewer object
+    minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
 };
 
 my @ext;			# all image formats we could support:

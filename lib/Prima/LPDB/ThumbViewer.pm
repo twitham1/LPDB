@@ -371,8 +371,8 @@ sub goto {			# goto path//file or path/path
 	    }
 	    return;
     };
-    $self->cwd($1);
-    $self->items($self->children($1));
+    $self->cwd($1);	       # this says "filter, sort, please wait"
+    $self->items($self->children($1)); # this blocks on the DB
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
