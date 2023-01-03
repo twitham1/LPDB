@@ -38,13 +38,15 @@ $w = Prima::MainWindow->new(
      ]],
     onPaint => sub {
 	my($self, $canvas) = @_;
+	$EACH = $self->width / 3;
+	$MAX = $EACH - $BORD * 2;
 	$canvas->clear;
 	$canvas->color(cl::Red);
 	for (my $i = -1 * $EACH; $i < $EACH * 4; $i += $BORD) {
 	    $canvas->line($i, 0, $i + $EACH, $EACH);
 	    $canvas->line($i, 0, $i - $EACH, $EACH);
 	}
-	my $icon = $self->icon;
+	my $icon = $self->icon or return;
 	my($img, $mask) = $icon->split;
 	$canvas->put_image($BORD,		$BORD, $icon);
 	$canvas->put_image($EACH + $BORD,	$BORD, $img);

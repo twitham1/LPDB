@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use Prima;
+use Prima 1.67;
 use Prima::Application name => "LPGallery";
 use Prima::LPDB::ThumbViewer;
 use LPDB;

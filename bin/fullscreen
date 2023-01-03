@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use FindBin q($Bin);
 use lib "$Bin/../lib";
-use Prima qw(Buttons Label Edit Application);
+use Prima 1.67 qw(Buttons Label Edit Application);
 use Data::Dumper;
 
 # Maybe promote to Prima::Fullscreen or even merge into Window:
@@ -129,15 +129,13 @@ sub showlocation {
 %5d, %5d (%5d x %5d) - frame
 
 \twindowstate: %d, fullscreen: %d
-%5d %5d %5d %5d - internal window_rect
 
     X     Y     W     H   get_monitor_rects
 ",
 	$::application->size,
 	$w->origin, $w->size,
 	$w->frameOrigin, $w->frameSize,
-    	$w->windowState, $w->fullscreen,
-	$w->{window_rect} ? @{$w->{window_rect}} : (-1, -1, -1, -1);
+    	$w->windowState, $w->fullscreen;
     for my $aref (@{$::application->get_monitor_rects}) {
 	$txt .= join(' ', map { sprintf '%5d', $_ } @$aref) . "\n"
     }
