@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use Prima;
+use Prima 1.67;
 use Prima::Application name => "LPGallery";
 use Prima::LPDB::ThumbViewer;
 use LPDB;
@@ -21,11 +21,14 @@ our $conf = {
     guisqltrace => 0,	       # see SQL of GUI?
     thumbviewer => sub {},     # called at startup, gets viewer object
     imageviewer => sub {},     # called at startup, gets viewer object
+    minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
 };
 
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
-print "could support: @ext";
+$conf->{ext} = \@ext;
+push @ext, qw/mp4 mov avi mpg asf wmv/;	# how to define video set???
+warn "autosupport: @ext";
 # exit;
 
 # configuration files: last option setting wins
@@ -62,9 +65,14 @@ if ($child = fork) {		# GUI starts after child is updating DB
     $lpdb = new LPDB($conf);
 } else {			# child updates DB, creating if needed
     $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
+    if ($conf->{noupdate}) {
+	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
+	exit 0;
+    }
     unlink $conf->{dbfile} if $create;
     $lpdb = new LPDB($conf);
     $lpdb->create if $create;
+#    $lpdb->create;
     $lpdb->update('.');
     $lpdb->cleanup;
     warn "$0: $$ done updating $conf->{dbfile}\n";
@@ -80,25 +88,9 @@ END {
 my $lv;				# ListViewer
 my $iv;				# ImageViewer
 my $w;
-{			    # my application icon: stack of 3 "images"
-    my $size = 160;
-    my $ot = $size / 3;		# one third
-    my $tt = $size * 2 / 3;	# two thirds
-    my $i = Prima::Icon->new(
-	width => $size,
-	height => $size,
-	type   => im::bpp24,
-	);
-    $i->begin_paint;
-    $i->color(cl::Blue);
-    $i->bar(0, $size, $tt, $ot);
-    $i->color(cl::Red);
-    $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
-    $i->color(cl::Green);
-    $i->bar($ot, $tt, $size, 0);
-    $i->end_paint;
-    $::application->icon($i);
-}
+
+# seems I need the application icon before window creation
+$::application->icon(Prima::LPDB::ThumbViewer::icon);
 
 $w = Prima::LPDB::Fullscreen->create(
     mainWindow => 1, # promote myself to MainWindow per Prima::Window:

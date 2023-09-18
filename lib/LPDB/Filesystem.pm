@@ -13,14 +13,16 @@ use Date::Parse;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
+use LPDB::VFS;
 #use LPDB::Picasa;		# !!!TODO
 use base 'Exporter::Tiny';
 our @EXPORT = qw(update create cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
+my $vfs;	  # LPDB::VFS database methods
 our $conf;
-my $done = 0;			# records processed
+my $done = time;		# time of last commit
 my $tty = -t STDERR;
 
 # create the database from lib/LPDB/*.sql
@@ -49,7 +51,8 @@ sub create {
 
 sub status {
     $tty or return;
-    print STDERR "\r$done    @_      ";
+    my $t = localtime $done;
+    print STDERR "\r\e[J$t    @_      ";
 }
 END {
     print STDERR "\n";
@@ -61,13 +64,22 @@ sub update {
     @dirs or @dirs = ('.');
     $schema = $self->schema;
     $conf = $self->conf;
+    if ($conf->{ext}) {		# supported filename extensions
+	my @ext = join '|', @{$conf->{ext}};
+	my $regex = "\\.(@ext)\$";
+	warn $regex;
+	$conf->{all} = $regex;
+    }
     # warn "self=$self, conf=$conf, reject=$conf->{reject}";
     # warn "reject: ", $self->conf('reject');
+    unless ($vfs) {
+	$vfs = new LPDB::VFS($self);
+    }
     unless ($exiftool) {
 	$exiftool = new Image::ExifTool;
 	$exiftool->Options(FastScan => 1);
     }
-    status "update @dirs";
+    status "update @dirs\n";
     $schema->txn_begin;
     find ({ no_chdir => 1,
 	    preprocess => sub { sort @_ },
@@ -77,7 +89,8 @@ sub update {
     $schema->txn_commit;
 }
 
-# add a directory and its parents to the Directories table
+# add a directory and its parents to the Directories table (see also
+# similar savepath of VFS.pm)
 {
     my %id;			# cache: {path} = id
     sub _savedirs {		# recursive up to root /
@@ -85,7 +98,7 @@ sub update {
 	defined $this and length $this or $this = './';
 	$this =~ m@/$@ or return;
 	unless ($id{$this}) {
-	    status ' ' x 60, "saving dir $this";
+	    status "updating dir $this";
 	    my $obj = $schema->resultset('Directory')->find_or_new(
 		{ directory => $this });
 	    unless ($obj->in_storage) { # pre-existing?
@@ -114,42 +127,13 @@ sub _dirtimes {
 	: $row->discard_changes;
 }
 
-# add a path and its parents to the virtual Paths table
-{
-    my %id;			# cache: {path} = id
-    sub _savepath {		# recursive up to root /
-	my($this) = @_;
-	$this =~ m@/$@ or return;
-	unless ($id{$this}) {
-	    status "saving path $this";
-	    my $obj = $schema->resultset('Path')->find_or_new(
-		{ path => $this });
-	    unless ($obj->in_storage) { # pre-existing?
-		my($dir, $file) = LPDB::dirfile $this;
-		$obj->parent_id(&_savepath($dir));
-		$obj->insert;
-	    }
-	    $id{$this} = $obj->path_id;
-	}
-	return $id{$this};
-    }
-}
-# connect a picture id to one logical path, creating it as needed
-sub _savepathfile {
-    my($path, $id) = @_;
-    my $path_id = &_savepath($path);
-    $schema->resultset('PicturePath')->find_or_create(
-	{ path_id => $path_id,
-	  file_id => $id });
-}
-
 # add a file or directory to the database, adapted from Picasa.pm
 sub _wanted {
     my($dir, $file) = LPDB::dirfile $_;
     my $modified = (stat $_)[9];
     $dir =~ s@\./@@;
     #    $dir = '' if $dir eq '.';
-    status "checking: $modified $_";
+    status "checking $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini') {
 	# my $tmp = LPDB::Picasa::readini($_);
 	# use Data::Dumper;
@@ -159,18 +143,21 @@ sub _wanted {
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:
 	     $file eq 'Originals' or
-	     $file =~ /$conf->{reject}/) { 
+	     $file =~ /$conf->{reject}/) {
+	status("rejecting $_\n");
 	$File::Find::prune = 1;
 	return;
     }
-#    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
-    unless (++$done % 100) {	# fix this!!! make configurable??...
+    #    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
+    unless ($done == time) {
 	$schema->txn_commit;
-	status "committed $done";
+	status "checked $done";
 	$schema->txn_begin;
+	$done = time;
     }
     if (-f $_) {
-	return unless $file =~ /$conf->{keep}/;
+	return unless $file =~ /$conf->{all}/i;
+	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
 	return unless -f $key and -s $key > 100;
@@ -178,17 +165,24 @@ sub _wanted {
 	my $row = $schema->resultset('Picture')->find_or_create(
 	    { dir_id => $dir_id,
 	      basename => $file },
-	    { columns => [qw/modified/]});
-	return if $row->modified || 0 >= $modified; # unchanged
-	my $info = $exiftool->ImageInfo($key);
-	return unless $info;
-	if (my $dur = $info->{Duration}) {
-	    $row->duration($dur =~ /(\S+) s/ ? $1
-			   : $dur =~ /(\d+):(\d\d):(\d\d)$/
-			   ? $1 * 3600 + $2 * 60 + $3
-			   : $dur); # should never happen
-	}
+	    );
+	return if ($row->modified || 0) >= $modified; # unchanged
+	my $info = $exiftool->ImageInfo($key) or return;
 	return unless $info->{ImageWidth} and $info->{ImageHeight};
+	my $pix = $info->{ImageWidth} * $info->{ImageHeight};
+	if ($pix < $conf->{minpixels}) {
+	    status("skipping too small $pix at $_\n");
+	    return;
+	}
+	if (my $dur = $info->{Duration}) {
+	    if (!/\.gif$/i or	# ignore duration of 1 frame gif
+		($info->{FrameCount} and $info->{FrameCount} > 1)) {
+		$row->duration($dur =~ /(\S+) s/ ? $1
+			       : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			       ? $1 * 3600 + $2 * 60 + $3
+			       : $dur); # should never happen
+	    }
+	}
 	my $or = $info->{Orientation} || '';
 	my $rot = $or =~ /Rotate (\d+)/i ? $1 : $info->{Rotation} || 0;
 	my $swap = $rot == 90 || $rot == 270 || 0;
@@ -198,7 +192,7 @@ sub _wanted {
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
 	$time ||= $modified;	# only if no exif of original time
-	
+
 	$row->time($time);
 	$row->modified($modified);
 	$row->bytes(-s $_);
@@ -213,16 +207,16 @@ sub _wanted {
 
 	&_dirtimes($dir_id, $time);
 
-	&_savepathfile("/[Folders]/$dir", $row->file_id);
+	$vfs->savepathfile("/[Folders]/$dir", $row->file_id);
 
-	&_savepathfile("/[Timeline]/All Time/", $row->file_id);
-	&_savepathfile(strftime("/[Timeline]/Years/%Y/",
-				localtime $time), $row->file_id);
-	&_savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
-				localtime $time), $row->file_id);
+	$vfs->savepathfile("/[Timeline]/All Time/", $row->file_id);
+	$vfs->savepathfile(strftime("/[Timeline]/Years/%Y/",
+				    localtime $time), $row->file_id);
+	$vfs->savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
+				    localtime $time), $row->file_id);
 
-	&_savepathfile("/[Captions]/", $row->file_id)
-	    if $row->caption;
+	# $vfs->savepathfile("/[Captions]/", $row->file_id)
+	#     if $row->caption;
 
 	my %tags; map { $tags{$_}++ } split /,\s*/,
 		      $info->{Keywords} || $info->{Subject} || '';
@@ -232,7 +226,7 @@ sub _wanted {
 	    $schema->resultset('PictureTag')->find_or_create(
 		{ tag_id => $rstag->tag_id,
 		  file_id => $row->file_id });
-	    &_savepathfile("/[Tags]/$tag/", $row->file_id);
+	    $vfs->savepathfile("/[Tags]/$tag/", $row->file_id);
 	}
 
 	# 	$this->{face}	= $db->faces($dir, $file, $this->{rot}); # picasa data for this pic
@@ -266,7 +260,7 @@ sub _wanted {
 	# $db->{dirs}{$dir}{"$file/"} or
 	#     $db->{dirs}{$dir}{"$file/"} = {};
     }
-#    $guard->commit;	       # DBIx::Class::Storage::TxnScopeGuard
+    #    $guard->commit;	       # DBIx::Class::Storage::TxnScopeGuard
     # unless ($db->{dir} and $db->{file}) {
     # 	my $tmp = $db->filter(qw(/));
     # 	$tmp and $tmp->{children} and $db->{dir} = $db->{file} = $tmp;
@@ -278,25 +272,30 @@ sub _wanted {
 # TODO: maybe stat files only in dirs that changed !!!
 sub cleanup {
     my $self = shift;
-    status "cleaning removed files from DB";
+    $vfs->captions;		# move this somewhere?
+    status "cleaning removed files from DB\n";
     my $tschema = $self->tschema;
-    $schema->txn_begin; $tschema->txn_begin;
+    $schema->txn_begin;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
     while (my $pic = $rs->next) {
 	my $file = $pic->pathtofile or next;
-	-f $file and next;
-	if (my $thumbs = $ts->search({ file_id => $pic->file_id })) {
-#	    warn "removing thumbs of ", $pic->file_id;
+	my $modified = (stat $file)[9]; # remove changed thumbnails
+	if (my $thumbs = $ts->search({ file_id => $pic->file_id, $modified
+					   ? (modified => {'<' => $modified})
+					   : () })) {
+	    # warn "removing $thumbs of ", $pic->file_id;
 	    $thumbs->delete_all;
 	}
+	unless ($done == time) {
+	    $schema->txn_commit;
+	    status "checked $done";
+	    $schema->txn_begin;
+	    $done = time;
+	}
+	-f $file and next;
 #	warn "removing $file";
 	$pic->delete;
-	unless (++$done % 100) { # fix this!!! make configurable??...
-	    $schema->txn_commit; $tschema->txn_commit;
-	    status "committed $done";
-	    $schema->txn_begin; $tschema->txn_begin;
-	}
     }
     my $paths = $schema->resultset('Path'); # clean paths of no more pictures
     while (my $path = $paths->next) {
@@ -306,13 +305,14 @@ sub cleanup {
 	$pics->count and next;
 #	warn "removing empty ", $path->path;
 	$path->delete;
-	unless (++$done % 100) { # fix this!!! make configurable??...
-	    $schema->txn_commit; $tschema->txn_commit;
-	    status "committed $done";
-	    $schema->txn_begin; $tschema->txn_begin;
+	unless ($done == time) {
+	    $schema->txn_commit;
+	    status "checked $done";
+	    $schema->txn_begin;
+	    $done = time;
 	}
     }
-    $schema->txn_commit; $tschema->txn_commit;
+    $schema->txn_commit;
 }
 
 # TODO: find and index duplicates

@@ -18,7 +18,7 @@ package Prima::LPDB::Fullscreen;
 
 use strict;
 use warnings;
-use Prima;
+use Prima 1.67;			# 1.67 added native fullscreen 2022/12
 use Prima::Classes;
 
 use vars qw(@ISA);
@@ -139,34 +139,17 @@ See also: C<virtual_screens>, C<closest_screen>
 sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
 {
     my($self, $fs) = @_;
-    $self->{fullscreen} ||= 0;
-    return $self->{fullscreen} unless defined $fs;
-    return if $self->{fullscreen} == $fs;
-    $fs = !$self->{fullscreen} if $fs < 0;
-    $self->{fullscreen} = $fs;
-
+    defined $fs
+	or return $self->windowState & ws::Fullscreen ? 1 : 0;
+    $fs == -1
+	and $fs = ! $self->windowState & ws::Fullscreen;
     if ($fs) {
-	$self->{window_rect} = [ $self->rect ];
-	my($x, $y, $w, $h) = @{$self->closest_screen};
-	$y++			# XFCE moves Y of 0 but not 1
-	    if $self->{addY1};
-	$h -= $::application->get_system_value(sv::YMenu)
-	    if $self->menuItems; # show menu bar (if any) over window
-	$self-> set(
-	    origin => [$x, $y],
-	    size   => [$w, $h],
-	    ($self->{NoIcons} ? (borderIcons => 0) : ()),
-	    ($self->{NoBorder} ? (borderStyle => bs::None) : ()),
-	    );
-	$self-> bring_to_front;
+	$self->SUPER::fullscreen;
+	$self->bring_to_front;	# should this be here? or configurable?
     } else {
-	$self-> set(
-	    rect        => $self->{window_rect},
-	    borderIcons => bi::All,
-	    borderStyle => bs::Sizeable,
-	    );
+	$self->restore;
     }
-    return $self->{fullscreen};
+    return $self->windowState & ws::Fullscreen ? 1 : 0;
 }
 
 =pod

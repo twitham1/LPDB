@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS Pictures (
          ON DELETE CASCADE
          ON UPDATE CASCADE
    );
--- length	INTEGER,	-- support video files this way?
 
 CREATE INDEX IF NOT EXISTS basename_index ON Pictures (basename);
 CREATE INDEX IF NOT EXISTS caption_index ON Pictures (caption);

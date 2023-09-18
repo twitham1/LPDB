@@ -15,13 +15,13 @@ a selected picture.
 package Prima::LPDB::ThumbViewer;
 use strict;
 use warnings;
-use LPDB::Tree;
+use POSIX qw/strftime/;
+use LPDB::VFS;
 use LPDB::Thumbnail;
-use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
-use POSIX qw/strftime/;
+use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 use Prima::LPDB::PointerHider;	# could someday promote to Prima?
@@ -35,11 +35,19 @@ sub profile_default
     my $def = $_[ 0]-> SUPER::profile_default;
     my %prf = (
 	popupItems => [
-	    ['navto' => '~Navigate To' => [
+	    ['navto' => '~Navigate to this image in...' => [
 		 # replaced by on_selectitem
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
 	    ['~AND Filters' => [
+		 ['clear'	=> 'Clear ~All Filters' => sub {
+		     map { $_[0]->popup->checked($_, 1) }
+		     qw/bothfiles bothshapes unlimited/;
+		     map { $_[0]->popup->checked($_, 0) }
+		     qw/tags captions/;
+		     $_[0]->goto($_[0]->current);
+		  }],
+		 [],
 		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
 		 ['pictures'	=> '~Still Pictures' => 'sorter'],
 		 [')videos'	=> 'Motion ~Videos'  => 'sorter'],
@@ -96,7 +104,6 @@ sub profile_default
 		  ]],
 
 	     ]],
-	    [],
 	    ['~Random Stack Centers' => [
 		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
 		 [],
@@ -116,6 +123,7 @@ sub profile_default
 	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
+	    ['@buffered', 'Hide Screen ~Updates','u', ord 'u', sub { $_[0]->buffered($_[2]) }],
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
@@ -128,7 +136,7 @@ sub profile_default
     return $def;
 }
 sub lpdb { $_[0]->{lpdb} }
-sub tree { $_[0]->{tree} }
+sub vfs { $_[0]->{vfs} }
 sub thumb { $_[0]->{thumb} }
 sub init {
     my $self = shift;
@@ -136,7 +144,7 @@ sub init {
     my %profile = $self->SUPER::init(@_);
 
     $self->{lpdb} = $hash{lpdb} or die "lpdb object required";
-    $self->{tree} = new LPDB::Tree($self->{lpdb});
+    $self->{vfs} = new LPDB::VFS($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
     $self->{viewer} = undef;
     $self->{firstlast} = '';	# cache of first/last viewed
@@ -188,7 +196,7 @@ sub init {
     $top->insert('Prima::Label',
 		 name => 'N',
 		 pack => { side => 'top' },
-		 text => $self->{notice} = 'Use arrow keys to navigate',
+		 text => 'Use arrow keys to navigate',
 		 hint => 'Scroll Up',
 		 onMouseClick => sub { $self->hitkey(kb::Up) },
 	);
@@ -228,6 +236,33 @@ sub init {
     return %profile;
 }
 
+sub icon {		    # my application icon: stack of 3 "images"
+    my $size = 160;
+    my $ot = $size / 3;		# one third
+    my $tt = $size * 2 / 3;	# two thirds
+    my $i = Prima::Icon->new(
+	width => $size,
+	height => $size,
+	type   => im::bpp4,
+	);
+    $i->begin_paint;
+    $i->color(cl::Black);
+    $i->bar(0, 0, $size, $size);
+    $i->color(cl::Blue);
+    $i->bar(0, $size, $tt, $ot);
+    $i->color(cl::Red);
+    $i->bar($ot/2, $tt+$ot/2, $tt+$ot/2, $ot/2);
+    $i->color(cl::Green);
+    $i->bar($ot, $tt, $size, 0);
+    $i->end_paint;
+    # $i->save("icon.png");	# prove img/mask are right
+    # my($a, $b) = $i->split;
+    # $a->save("img.png");
+    # $b->save("mask.png");
+    # $::application->icon($i);
+    return $i;
+}
+
 sub hitkey {
     my($self, $key) = @_;
     $self->key_down($key, $key);
@@ -240,10 +275,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
-    $self->owner->NORTH->N->text($self->{notice});
-    $self->{notice} = '   filtering and sorting, PLEASE WAIT...   ';
-    $self->repaint;
-    $::application->yield;
+    # warn "children of $parent";
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
     if ($m->checked('gname')) {
@@ -297,7 +329,7 @@ sub children {			# return children of given text path
 	time => { '>', time - 31 * 86400 };
 
     my($path, $file, $dur)
-	= $self->{tree}->pathpics($parent || '/', \@sort, \@$filter);
+	= $self->vfs->pathpics($parent || '/', \@sort, \@$filter);
     $self->{duration} = $dur;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
@@ -319,11 +351,11 @@ sub item {	    # return the path or picture object at given index
     $this or warn "index $index not found" and return;
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	return $this;
-    }				# else picture lookup:
-    $self->{tree}->picture($this);
+    }				# else picture lookup, slower:
+    $self->vfs->picture($this);
 }
 
-sub goto {  # for robot navigation (slideshow) also used by escape key
+sub goto {			# goto path//file or path/path
     my($self, $path) = @_;
     # warn "goto: $path";
     $path =~ m{(.*/)/(.+/?)} or	   # path // pathtofile
@@ -339,19 +371,30 @@ sub goto {  # for robot navigation (slideshow) also used by escape key
 	    }
 	    return;
     };
-    $self->cwd($1);
-    $self->items($self->children($1));
+    $self->cwd($1);	       # this says "filter, sort, please wait"
+    $self->items($self->children($1)); # this blocks on the DB
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
+    unless ($n) {
+	$self->owner->NORTH->N
+	    ->text('No Results, check ~Menu -> AND Filters or hit Escape!');
+	$self->owner->NORTH->NW->text('');
+	$self->owner->NORTH->NE->text('');
+    }
+    my $id = $self->vfs->id_of_path($2); # image or undef
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	if ($self->item($i)->pathtofile eq $2) {
+	if ($id) {
+	    if ($self->{items}[$i] == $id) { # quickly find image index
+		$self->focusedItem($i);
+		last;
+	    }
+	} elsif ($self->item($i)->pathtofile eq $2) { # or matching path
 	    $self->focusedItem($i);
 	    last;
 	}
     }
-    # $self->repaint;
 }
 
 sub current {			# path to current selected item
@@ -413,7 +456,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     $self->popup->submenu('navto',
 			  [ map { [ $me eq $_ ? "*$_" : $_,
 				    _trimfile($_), 'goto' ] }
-			    $self->{tree}->related($me, $id) ]);
+			    $self->vfs->related($me, $id) ]);
 }
 
 sub xofy {	      # find pic position in current gallery directory
@@ -445,9 +488,12 @@ sub xofy {	      # find pic position in current gallery directory
 sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
-    if ($cwd) {			# hack: assume no images
-	$self->owner->NORTH->N->text('0 images, check filters!');
-	$self->owner->NORTH->NE->text('0 / 0');
+    if ($cwd) {
+	$self->owner->NORTH->NW->text('Filtering, sorting, drawing...');
+	$self->owner->NORTH->N->text('');
+	$self->owner->NORTH->NE->text('...PLEASE BE PATIENT!');
+	$self->owner->NORTH->repaint;
+	$::application->yield;
     }
     return $self->{cwd} || '/';
 }
@@ -475,21 +521,14 @@ sub on_keydown			# code == -1 for remote navigation
 	my $this = $self->item($idx);
 	# warn $self->focusedItem, " is entered\n";
 	if ($this->isa('LPDB::Schema::Result::Path')) {
-	    $self->cwd($this->path);
-	    $self->items($self->children($this->path));
-	    $self->focusedItem(-1);
-	    $self->repaint;
-	    $self->focusedItem(0);
-	    $self->repaint;
+	    $self->goto($this->path . "FIRST");
 	} elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	    # show picture in other window and raise it unless remote
 	    $self->viewer($code == -1 ? 1 : 0)->IV->viewimage($this);
 	}
-	$self->clear_event;
 	return;
     } elsif ($key == kb::Escape) {
 	$self->goto($self->cwd);
-	$self->clear_event;
 	return;
     }
     if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
@@ -521,6 +560,7 @@ sub on_drawitem
 # replace the center picture of a path stack with random one
 sub stackcenter {		# called by {cycler} timer
     my($self) = @_;
+    my $canvas = $self->{canvas} or return;
     my $cwd = $self->{cwd};	   # using internals here not methods
     my $first = $self->{topItem};  # could be method
     my $last = $self->{lastItem};  # internal to Lists.pm, no method
@@ -559,11 +599,10 @@ sub stackcenter {		# called by {cycler} timer
 	ref $this or next;
 	my($pic) = $this->random;
 	$pic or next;
-	my $id = $pic->file_id;
 	my $im = $self->{thumb}->get($pic->file_id);
-	$im or return;
+	$im or next;
 	$self->begin_paint;
-	$self->_draw_thumb($im, 2, $self->{canvas},
+	$self->_draw_thumb($im, 2, $canvas,
 			   $idx, $self->item2rect($idx, @s),
 			   $idx == $self->{focusedItem});
 	$self->end_paint;
@@ -573,7 +612,7 @@ sub stackcenter {		# called by {cycler} timer
 # source -> destination, preserving aspect ratio
 sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my ($self, $im, $pos, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
-
+    $im or return;
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
@@ -711,7 +750,7 @@ sub draw_picture {
 	$canvas->draw_text(">> $dur >>",  @border,
 			   dt::Center|dt::VCenter|dt::Default);
     }
-    if ($sel) {			# help see selection by showing text
+    if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
     	$canvas->draw_text($str, @border,
     			   dt::Center|dt::Bottom|dt::Default);

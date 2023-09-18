@@ -47,7 +47,7 @@ sub profile_default
 	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
 	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
 	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
-	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
+	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
@@ -171,19 +171,26 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     my $y = $th->count;
     my($w, $h) = $self->size;
     if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
-	my $each = $w / $y; # TODO: move to a new frame progress object
+	# TODO: move to a new frame progress object
+	my $s = 6;		# size of line
+	$self->lineWidth($s);
 	$self->color(cl::LightGreen);
-	$self->lineWidth(10);
 	$self->lineEnd(le::Round);
-	$self->polyline([$each * ($x - 1), $h - 5, $each * $x, $h - 5]);
-	# $self->polyline([$each * ($x - 1), 5, $each * $x, 5]);
+	$s /= 2;		# now position from edge
+	my $each = $w / $y;
+	my($b, $e) = ($each * ($x - 1), $each * $x);
+	$e > $b + $s or $e = $b + $s; # minimum indicator length
+	$self->polyline([$b, $h - $s, $e, $h - $s]);
+	$self->polyline([$b, $s, $e, $s]);
 	my($x, $y) = $th->xofy($th->focusedItem);
 	if ($y > 1) {
 	    $each = $h / $y;
-	    $self->polyline([5, $h - $each * ($x - 1), 5, $h - $each * $x]);
-	    # $self->polyline([$w - 5, $h - $each * ($x - 1), $w - 5, $h - $each * $x]);
+	    my($b, $e) = ($each * ($x - 1), $each * $x);
+	    $e > $b + $s or $e = $b + $s;
+	    $self->polyline([$s, $h - $b, $s, $h - $e]);
+	    # $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
-	    $self->color(cl::Fore);
+	$self->color(cl::Fore);
     }
     $self->status(1);	      # update zoom label in case zoom changed
 }
@@ -197,12 +204,12 @@ sub on_close {
 sub autozoom {			# Enter == zoom picture or play video
     my($self, $which) = @_;
     my $pic;
-    if ($pic = $self->picture and $pic->duration) {
+    if ($pic = $self->picture and $pic->duration) { # video
 	my $file = $pic->pathtofile or return;
-	my $cmd = 'ffplay -fs -loglevel warning';
-	$self->popup->checked('autoplay') and $cmd .= ' -autoexit';
-	print `$cmd $file`;
-	$self->select if $self->popup->checked('autoplay'); # needed?
+	my @cmd = qw(ffplay -fs -loglevel warning);
+	$self->popup->checked('autoplay') and push @cmd, '-autoexit';
+	system(@cmd, $file) == 0 or warn "@cmd $file failed";
+	$self->owner->select;	# try not to lose focus
 	return;
     }
     $which and
@@ -241,9 +248,10 @@ sub on_keydown
 	return;			# now in sub autozoom
     }
     if ($key == kb::Escape) {	# return focus to caller
-	$self->popup->checked('slideshow', 0);
-	$self->{timer} and
-	    $self->{timer}->stop; # stop any show
+	if ($self->popup->checked('slideshow')) {
+	    $self->popup->checked('slideshow', 0);
+	    $self->slideshow;	# stop the show
+	}
 	my $owner = $self->{thumbviewer};
 	$owner->owner->select;
 	return;
@@ -520,11 +528,15 @@ sub slideshow {
     my $sec = $self->{seconds} || 4; # set by delay above
     my $n = $self->{thumbviewer}->count;
     my $d = $self->{thumbviewer}->duration;
-    my $t = "\nVideo AutoPlay " .
+    my $tot = $n * $sec + $d;
+    my $t = '';			# show timing information
+    $d and $t = "\nVideo AutoPlay " .
 	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
-    $t .= sprintf "\n%s picture time", _hms($n * $sec);
-    $t .= sprintf "\n%s  video  time", _hms($d) if $d;
-    $t .= sprintf "\n%s  total  time", _hms($n * $sec + $d) if $d;
+    $t .= sprintf "\n%s picture time%s", _hms($n * $sec),
+	$d ? sprintf(' %2.0f%%', $n * $sec / $tot * 100) : '';
+    $d and $t .= sprintf "\n%s  video  time %2.0f%%", _hms($d),
+	$d / $tot * 100;
+    $d and $t .= sprintf "\n%s  total  time", _hms($tot);
     $t .= "\nLoop show " .
 	($self->popup->checked('loop') ? 'ON' : 'OFF');
 
@@ -532,9 +544,17 @@ sub slideshow {
 	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
+	system(qw/xset s off/);	# hack!!! disable screensaver
+	if (my $tmp = `xset q`) {
+	    $self->{dpms} = $tmp =~ /DPMS is Enabled/i ? 1 : 0;
+	    # warn "DPMS is $self->{dpms}";
+	}
+	$self->{dpms} and system(qw/xset -dpms/);
     } else {
 	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
+	system(qw/xset s default/); # hack!!! reenable screensaver
+	$self->{dpms} and system(qw/xset +dpms/);
     }
 }
 

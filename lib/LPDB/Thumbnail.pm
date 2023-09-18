@@ -9,7 +9,7 @@ LPDB::Thumbnail - thumbnail images of local pictures/videos in sqlite
 This automatically caches thumnails for C<lpgallery> into a sqlite
 database.  Caching is done on-demand by C<Prima::LPDB::ThumbViewer>.
 
-The thumbnail database file is sparate from the primary C<LPDB>
+The thumbnail database file is separate from the primary C<LPDB>
 database file so that they don't block each other.  The files are
 joined by file_id so if the primary database is ever removed the
 thumbnails must be removed also to ensure regenerated file_ids will
@@ -43,12 +43,19 @@ sub new {
     my $self = { schema => $lpdb->schema,
 		 tschema => $lpdb->tschema,
 		 conf => $lpdb->conf };
+    my %codec; # heif is newer and clearer than jpeg, only slightly larger
+    map { $codec{$_->{name}} = $_->{codecID} } @{Prima::Image->codecs};
+    my $c = $codec{libheif} || $codec{JPEG} || $codec{PNG} or
+	die "can't find codec for thumbnails";
+    $self->{codecID} = $c;
     bless $self, $class;
     return $self;
 }
 
 sub _aspect {		    # modified from _draw_thumb of ThumbViewer
     my($sw, $sh, $dw, $dh) = @_;
+    return $sw, $sh		# return original if smaller than thumb!
+	if $sw < $dw and $sh < $dh;
     my $src = $sw / $sh;	# aspect ratios
     my $dst = $dw / $dh;
     if ($src > $dst) {		# image wider than cell: pad top/bot
@@ -114,7 +121,7 @@ by C<get> when needed so calling it should not be necessary.
 
 my $tmpfile;			# tmp .jpg file for video thumbnails
 BEGIN {				# this probably fails on Windows!!!
-    $tmpfile = "/tmp/.lpdb.$$.jpg"
+    $tmpfile = "/tmp/.lpdb.$$.png"
 }				# see $tmp below
 END {
     unlink $tmpfile if -f $tmpfile;
@@ -144,17 +151,18 @@ sub put {
     # 1, 0, 3 = video stack (0 = random path center), 2 = high-res for IV
     if (my $dur = $picture->duration) {
 	my $seek = $dur * $grab[$cid];
-	$cid == 2 and @size = (1920, 1080); # high res for ImageViewer
+	$cid == 2 and @size = (1280, 720); # higher res for ImageViewer
 	my $size = sprintf '%dx%d',
 	    _aspect($picture->width, $picture->height, @size);
 	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
-	my $cmd = "ffmpeg -y -loglevel warning -noautorotate -ss $seek";
-	$cmd .= " -i $path -frames:v 1 -s $size $tmp";
-	print `$cmd`;
+	my @cmd = (qw(ffmpeg -y -loglevel warning -nostdin -noautorotate -ss),
+		   $seek, '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
+	# warn "@cmd\n";
+	system(@cmd) == 0 or warn "@cmd failed";
     }
     my $codec;
-    if ($i = Prima::Image->load($tmp || $path, loadExtras => 1)) {
+    if ($i = Prima::Image->load($tmp || $path)) {
 	# PS: I've read somewhere that ist::Quadratic produces best
 	# visual results for the scaled-down images, while ist::Sinc
 	# and ist::Gaussian for the scaled-up. /Dmitry Karasik
@@ -183,13 +191,11 @@ sub put {
 		      dt::Center|dt::VCenter|dt::Default);
 	$i->end_paint;
     }
-    $codec = $i->{extras}{codecID} || 1;
-    # warn "codec: $codec for $path";
     my $data;
     open my $fh, '>', \$data
 	or die $!;
     binmode $fh;
-    $i->save($fh, codecID => $codec)
+    $i->save($fh, codecID => $self->{codecID})
 	or die $@;
     $row->image($data);
     $row->modified($modified ? time : 0);
