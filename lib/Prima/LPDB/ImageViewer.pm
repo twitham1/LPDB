@@ -31,6 +31,7 @@ sub profile_default
 	valignment  => ta::Middle,
 	alignment   => ta::Center,
 	autoZoom => 1,
+	zoomPrecision => 1000,
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
@@ -148,6 +149,7 @@ sub viewimage
     $self->{picture} = $picture;
     $self->{fileName} = $filename;
     $self->popup->checked('autozoom', 1);
+    $self->autoZoom(1);
     $self->apply_auto_zoom;
     $self->status;
     if ($picture->duration and $self->popup->checked('autoplay')) {
@@ -188,7 +190,7 @@ sub on_paint { # update metadata label overlays, later in front of earlier
 	    my($b, $e) = ($each * ($x - 1), $each * $x);
 	    $e > $b + $s or $e = $b + $s;
 	    $self->polyline([$s, $h - $b, $s, $h - $e]);
-	    # $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
+	    $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
 	$self->color(cl::Fore);
     }
@@ -227,17 +229,32 @@ sub autozoom {			# Enter == zoom picture or play video
     $self->autoZoom;
 }
 
-sub bigger {
-    my($self) = @_;
-    $self->autoZoom(0);
-    $self->popup->checked('autozoom', 0);
-    $self->zoom($self->zoom * 1.2);
-}
-sub smaller {
-    my($self) = @_;
-    $self->autoZoom(0);
-    $self->popup->checked('autozoom', 0);
-    $self->zoom($self->zoom / 1.2);
+{	   # zoom in/out on center point by calculating the new deltas
+    my $factor = 1.2;
+    sub bigger {
+	my($self) = @_;
+	$self->autoZoom(0);
+	$self->popup->checked('autozoom', 0);
+	my($w, $h) = $self->size;
+	my($x, $y) = $self->deltas;
+	my $z = $self->zoom;
+	$z * $factor < 2.5 or return;
+	$self->zoom($z * $factor);
+	$self->deltas(($x + $w/2) * $factor - $w/2,
+		      ($y + $h/2) * $factor - $h/2);
+    }
+    sub smaller {
+	my($self) = @_;
+	$self->autoZoom(0);
+	$self->popup->checked('autozoom', 0);
+	my($w, $h) = $self->size;
+	my($x, $y) = $self->deltas;
+	my $z = $self->zoom;
+	$z / $factor > 0.09 or return;
+	$self->zoom($z / $factor);
+	$self->deltas(($x + $w/2) / $factor - $w/2,
+		      ($y + $h/2) / $factor - $h/2);
+    }
 }
 
 sub on_keydown
