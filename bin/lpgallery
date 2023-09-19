@@ -6,8 +6,9 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use Prima 1.67;
-use Prima::Application name => "LPGallery";
+use Prima 1.67;			# need native fullscreen
+use Prima::Application name => 'LPGallery',
+    skin => 'classic'; # scroll bars hard to see in 1.69 default skin flat
 use Prima::LPDB::ThumbViewer;
 use LPDB;
 
@@ -184,8 +185,8 @@ as a stack of 3 grabs at 5%, 50% and 95% of the time.  This can be
 toggled with B<v>.  Either way the play time of the video is displayed
 in the center of the video image.
 
-All images can optionally be cropped to to consume their whole square
-in which case lines are overlayed that indicate displayed and missing
+All images can optionally be cropped to consume their whole square in
+which case lines are overlayed that indicate displayed and missing
 areas of the full image.
 
 The top level virtual paths of the grid are:
@@ -335,7 +336,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
