@@ -355,6 +355,29 @@ sub item {	    # return the path or picture object at given index
     $self->vfs->picture($this);
 }
 
+sub bgcolor {			# toggle colors per gallery directory
+    my($self) = @_;
+    my $max = $self->count;
+    # my $first = $self->{topItem};  # could be method
+    # my $last = $self->{lastItem};  # internal to Lists.pm, no method
+    my $prev = my $j = 0;
+    for (my $i = 0; $i < $max; $i++) {
+	my $now;
+	my $this = $self->{items}[$i];
+	if (ref $this) {	# only paths are refs, pics are ints
+	    $self->{bgcolor}[$i] = -1;
+	    $prev = '';
+	    next;
+	}
+	$this = $self->item($i) or next;
+	$now = $this->dir->dir_id;
+	$now != $prev and $j = $j ? 0 : 1;
+	$self->{bgcolor}[$i] = $j;
+	warn "color [$i] = $j";
+	$prev = $now;
+    }
+}
+
 sub goto {			# goto path//file or path/path
     my($self, $path) = @_;
     # warn "goto: $path";
@@ -373,6 +396,7 @@ sub goto {			# goto path//file or path/path
     };
     $self->cwd($1);	       # this says "filter, sort, please wait"
     $self->items($self->children($1)); # this blocks on the DB
+    $self->bgcolor;
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -444,9 +468,9 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	my($x, $y) = $self->xofy($idx->[0]);
 	$owner->NORTH->N->text($this->basename);
 	$owner->SOUTH->S->text($this->dir->directory . " $x / $y");
-	$owner->SOUTH->SE->text(sprintf '%dx%d=%.2f  %.1fMP %.0fKB',
-				$this->width , $this->height,
+	$owner->SOUTH->SE->text(sprintf '%.2f %dx%d %.1fMP %.0fKB',
 				$this->width / $this->height,
+				$this->width , $this->height,
 				$this->width * $this->height / 1000000,
 				$this->bytes / 1024);
 	$owner->SOUTH->SW->text(scalar localtime $this->time);
@@ -616,7 +640,11 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
-    my $bk = $sel ? $self->hiliteBackColor : cl::Back;
+    my $back = $self->{bgcolor}[$idx] || 0; # set by bgcolor in goto
+    my $bk = $sel ? $self->hiliteBackColor
+	: $back == -1 ? cl::Blue # picture collection background
+	: $back == 1 ? cl::Gray	 # toggle background per gallery
+	: cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
     $canvas->backColor($bk);
     $canvas->clear($x1, $y1, $x2, $y2) if $pos < 2; # 2 and 3 should stack
