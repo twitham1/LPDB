@@ -355,27 +355,26 @@ sub item {	    # return the path or picture object at given index
     $self->vfs->picture($this);
 }
 
-sub bgcolor {			# toggle colors per gallery directory
+sub galleries {		 # count and number galleries of the selection
     my($self) = @_;
     my $max = $self->count;
-    # my $first = $self->{topItem};  # could be method
-    # my $last = $self->{lastItem};  # internal to Lists.pm, no method
     my $prev = my $j = 0;
     for (my $i = 0; $i < $max; $i++) {
 	my $now;
 	my $this = $self->{items}[$i];
 	if (ref $this) {	# only paths are refs, pics are ints
-	    $self->{bgcolor}[$i] = -1;
-	    $prev = '';
+	    $self->{gallery}[$i] = -1;
+	    $prev = 0;
 	    next;
 	}
 	$this = $self->item($i) or next;
-	$now = $this->dir->dir_id;
-	$now != $prev and $j = $j ? 0 : 1;
-	$self->{bgcolor}[$i] = $j;
-	warn "color [$i] = $j";
+	$now = $this->dir_id;
+	$now != $prev and ++$j;
+	$self->{gallery}[$i] = $j;
+	# warn "gallery [$i] = $j";
 	$prev = $now;
     }
+    $self->{galleries} = $j;
 }
 
 sub goto {			# goto path//file or path/path
@@ -396,7 +395,7 @@ sub goto {			# goto path//file or path/path
     };
     $self->cwd($1);	       # this says "filter, sort, please wait"
     $self->items($self->children($1)); # this blocks on the DB
-    $self->bgcolor;
+    $self->galleries;
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -433,10 +432,11 @@ sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
-    my $x = $idx->[0] + 1;
+    $idx = $idx->[0];
+    my $x = $idx + 1;
     my $y = $self->count;
     my $p = sprintf '%.0f', $x / $y * 100;
-    my $this = $self->item($idx->[0]);
+    my $this = $self->item($idx);
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
@@ -465,15 +465,17 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	$owner->SOUTH->SW->text($p[0] ? scalar localtime $p[0]->time
 				: 'Check ~Menu -> AND Filters!');
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
-	my($x, $y) = $self->xofy($idx->[0]);
+	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->S->text($this->dir->directory . " $x / $y");
-	$owner->SOUTH->SE->text(sprintf '%.2f %dx%d %.1fMP %.0fKB',
+	$owner->SOUTH->S->text(sprintf ' %d / %d - %s - %d / %d ',
+			       $self->{gallery}[$idx], $self->{galleries},
+			       $this->dir->directory, $x, $y);
+	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB',
 				$this->width / $this->height,
 				$this->width , $this->height,
 				$this->width * $this->height / 1000000,
 				$this->bytes / 1024);
-	$owner->SOUTH->SW->text(scalar localtime $this->time);
+	$owner->SOUTH->SW->text(scalar(localtime $this->time) . ' ');
 	$id = $this->file_id;
     }
     my $me = $self->current;
@@ -640,10 +642,10 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
-    my $back = $self->{bgcolor}[$idx] || 0; # set by bgcolor in goto
+    my $back = $self->{gallery}[$idx] || 0; # set by galleries in goto
     my $bk = $sel ? $self->hiliteBackColor
 	: $back == -1 ? cl::Blue # picture collection background
-	: $back == 1 ? cl::Gray	 # toggle background per gallery
+	: $back % 2 ? cl::Gray	 # toggle background per gallery
 	: cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
     $canvas->backColor($bk);

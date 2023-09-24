@@ -489,7 +489,9 @@ sub info {			# update text overlay, per info level
 	$self->SE->hide;
     }
     $self->S->show;
-    $i == 3 ? $self->S->text(join ' ', $im->dir->directory, "$y / $Y ")
+    $i == 3 ? $self->S->text(sprintf ' %d / %d - %s - %d / %d ',
+			     $th->{gallery}[$x - 1], $th->{galleries},
+			     $im->dir->directory, $y, $Y)
 	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);
     $self->SW->show;
