@@ -80,14 +80,19 @@ sub resultset {		 # all files below logical path, in time order
     return $self->{resultset};
 }
 
+sub count {
+    my($self) = @_;
+    defined $self->{count} or $self->{count} = $self->resultset->count || 0;
+    return $self->{count};
+}
 sub picturecount {
-    return $_[0]->resultset->count || 0;
+    return $_[0]->count;
 }
 
 sub stack { # stack of up to 3 paths (first middle last), for thumbnails
     my($self) = @_;
     my $rs = $self->resultset;
-    my $num = $rs->count
+    my $num = $self->count
 	or return ();
     my $half = int($num/2);
     return (
@@ -109,7 +114,7 @@ sub time {		 # return begin/middle/end time from the stack
 sub random {			# return a random picture from the path
     my($self) = @_;
     my $rs = $self->resultset;
-    my $n = int(rand($rs->count));
+    my $n = int(rand($self->count));
     return ($rs->slice($n, $n));
 }
 
