@@ -401,7 +401,7 @@ sub goto {			# goto path//file or path/path
 	$self->owner->NORTH->NE->text('');
     }
     unless ($file eq 'FIRST') {
-	my $id = $file =~ /^\d+$/ ? $file    # go direct to fileid
+	my $id = $file =~ /^\d+$/ ? $file    # go direct to file_id
 	    : $self->vfs->id_of_path($file); # lookup id of image file
 	warn "\t\tid of $path / $file = $id";
 	for (my $i = 0; $i < $n; $i++) { # select myself in parent
@@ -489,20 +489,19 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
     my $max = $self->count;
-    my $this = $self->item($me);
-    $this or return (0, 0);
-    $this->isa('LPDB::Schema::Result::Picture') or return (0, 0);
-    my $dir = $this->dir->directory;
+    my $this = $self->{items}[$me];
+    'ARRAY' eq ref $this or return (0, 0);
+    my $dir = $this->[1];
     my $first = $me;
     while ($first > -1
-	   and $self->item($first)->isa('LPDB::Schema::Result::Picture')
-	   and $self->item($first)->dir->directory eq $dir) {
+	   and 'ARRAY' eq ref $self->{items}[$first]
+	   and $self->{items}[$first][1] == $dir) {
 	$first--;
     }
     my $last = $me;
     while ($last < $max
-	   and $self->item($last)->isa('LPDB::Schema::Result::Picture')
-	   and $self->item($last)->dir->directory eq $dir) {
+	   and 'ARRAY' eq ref $self->{items}[$last]
+	   and $self->{items}[$last][1] == $dir) {
 	$last++;
     }
     $last--;

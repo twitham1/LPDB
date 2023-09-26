@@ -481,7 +481,9 @@ sub info {			# update text overlay, per info level
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	$self->SE->text(($im->hms || '') . " $y / $Y ");
+	my $tmp = $th->gallery(-1) > 1 ?
+	    $th->gallery($x - 1) . ' / ' . $th->gallery(-1) . ',' : '';
+	$self->SE->text(($im->hms || '') . " $tmp $y / $Y ");
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;
