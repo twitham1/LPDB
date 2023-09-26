@@ -384,10 +384,12 @@ sub goto {			# goto path//file or path/path
 	    }
 	    return;
     };
-    $self->cwd($1);	       # this says "filter, sort, please wait"
+    my($path, $file) = ($1, $2);
+    $self->cwd($path);	       # this says "filter, sort, please wait"
     my $tm = [gettimeofday];
-    $self->items($self->children($1)); # this blocks on the DB
+    $self->items($self->children($path)); # this blocks on the DB
     warn "DB took ", tv_interval($tm);
+    $tm = [gettimeofday];
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -398,26 +400,33 @@ sub goto {			# goto path//file or path/path
 	$self->owner->NORTH->NW->text('');
 	$self->owner->NORTH->NE->text('');
     }
-    my $id = $self->vfs->id_of_path($2); # image or undef
-    for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	if ($id) {
-	    if ($self->{items}[$i][0] == $id) { # quickly find image index
+    unless ($file eq 'FIRST') {
+	my $id = $file =~ /^\d+$/ ? $file    # go direct to fileid
+	    : $self->vfs->id_of_path($file); # lookup id of image file
+	warn "\t\tid of $path / $file = $id";
+	for (my $i = 0; $i < $n; $i++) { # select myself in parent
+	    if ($id) {
+		if ($self->{items}[$i][0] == $id) { # quickly find image index
+		    $self->focusedItem($i);
+		    last;
+		}
+	    } elsif ($self->item($i)->pathtofile eq $file) { # or matching path
 		$self->focusedItem($i);
 		last;
 	    }
-	} elsif ($self->item($i)->pathtofile eq $2) { # or matching path
-	    $self->focusedItem($i);
-	    last;
 	}
     }
+    warn "rest took ", tv_interval($tm);
 }
 
 sub current {			# path to current selected item
     my($self) = @_;
     $self->focusedItem < 0 and return $self->cwd || '/';
-    my $this = $self->item($self->focusedItem);
+    my $idx = $self->focusedItem;
+    my $this = $self->item($idx);
     $self->cwd . ($this->basename =~ m{/$} ? $this->basename
-		  : '/' . $this->pathtofile);
+#		  : '/' . $this->pathtofile);
+		  : '/' . $self->{items}[$idx][0]);
 }
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }

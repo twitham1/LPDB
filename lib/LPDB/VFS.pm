@@ -150,7 +150,8 @@ sub related {			# paths related to given path or picture
 	    {prefetch => [ 'path', 'file' ]},
 	)) {
 	while (my $one = $paths->next) {
-	    $path{$one->path->path . '/' . $one->file->pathtofile } = 1;
+	    # $path{$one->path->path . '/' . $one->file->pathtofile } = 1;
+	    $path{$one->path->path . '/' . $id } = 1;
 	}
 	return sort keys %path;
     }
