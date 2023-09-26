@@ -31,7 +31,7 @@ sub profile_default
 	valignment  => ta::Middle,
 	alignment   => ta::Center,
 	autoZoom => 1,
-	zoomPrecision => 1000,
+#	zoomPrecision => 1000,	# this sometimes breaks aspect ratio
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
@@ -312,7 +312,7 @@ sub on_keydown
 	my $th = $self->{thumbviewer};
 	$th->key_down($code, $key);
 	my $idx = $th->focusedItem;
-	my $this = $th->{items}[$idx];
+	my $this = $th->item($idx);
 	if ($this->isa('LPDB::Schema::Result::Path')) {
 	    # warn "this node is a path $idx";
 	    #    my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
@@ -490,7 +490,7 @@ sub info {			# update text overlay, per info level
     }
     $self->S->show;
     $i == 3 ? $self->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			     $th->{gallery}[$x - 1], $th->{galleries},
+			     $th->gallery($x - 1), $th->gallery(-1),
 			     $im->dir->directory, $y, $Y)
 	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);

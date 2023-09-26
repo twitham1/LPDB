@@ -112,7 +112,7 @@ sub pathpics {		     # return paths and pictures in given path
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
 	      prefetch => [ 'picture_paths', 'dir', 'picture_tags'],
-	      columns => [ qw/file_id duration/ ],
+	      columns => [ qw/file_id dir_id duration/ ],
 	      # required to tell DBIC to collapse has_many relationships
 	      collapse => 1,
 	    })) {
@@ -123,14 +123,19 @@ sub pathpics {		     # return paths and pictures in given path
 	# records is slow no matter what, so "Fast" menu option exists
 	# to take the fast DB order immediately (assumes Ungrouped).
 
+	my $prev = my $gal = 0;
 	if (@$sort > 0) {	# slow full sort required
 	    while (my $one = $pics->next) {
-		push @pics, $one->file_id;
+		my $now = $one->dir_id;
+		$now != $prev and ++$gal;
+		$prev = $now;
+		push @pics, [ $one->file_id, $gal ];
 		$dur += $one->duration || 0;
 	    }
 	} else {		# no sort, instant DB order
-	    @pics = $pics->get_column('file_id')->all;
-	    map { $dur += $_ || 0 } @pics;
+	    @pics =  $pics->get_column('file_id')->all;
+	    map { $dur += $_ || 0 } @pics; # is this right?!!!!!!!!!!!!!!!!!!!!!!
+	    @pics = map { [ $_, ++$gal ] } @pics;
 	}
 #	warn "pics: @pics";
     }

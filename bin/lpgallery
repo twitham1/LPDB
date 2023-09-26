@@ -102,7 +102,6 @@ $w = Prima::LPDB::Fullscreen->create(
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
-$w->{addY1} = 1;		# since not yet a property!!!
 
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';

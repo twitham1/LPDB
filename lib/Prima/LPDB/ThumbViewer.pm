@@ -16,6 +16,7 @@ package Prima::LPDB::ThumbViewer;
 use strict;
 use warnings;
 use POSIX qw/strftime/;
+use Time::HiRes qw(gettimeofday tv_interval); # for profiling
 use LPDB::VFS;
 use LPDB::Thumbnail;
 use Prima::FrameSet;
@@ -331,6 +332,8 @@ sub children {			# return children of given text path
     my($path, $file, $dur)
 	= $self->vfs->pathpics($parent || '/', \@sort, \@$filter);
     $self->{duration} = $dur;
+    $self->{galleries} = 0;
+    $self->{galleries} = $file->[-1][1] if @$file > 0;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
@@ -346,35 +349,23 @@ sub duration {			# total video duration
 }
 
 sub item {	    # return the path or picture object at given index
-    my($self, $index) = @_;
+    my($self, $index, $gallery) = @_;
     my $this = $self->{items}[$index];
     $this or warn "index $index not found" and return;
-    if ($this->isa('LPDB::Schema::Result::Path')) {
-	return $this;
+    if ('ARRAY' eq ref $this) {	# [ file_id, dir_number ]
+	return $gallery ? $this->[1]
+	    : $self->vfs->picture($this->[0]);
+    }
+    elsif ($this->isa('LPDB::Schema::Result::Path')) {
+	return $gallery ? -1 : $this;
     }				# else picture lookup, slower:
-    $self->vfs->picture($this);
+    return;
 }
 
-sub galleries {		 # count and number galleries of the selection
-    my($self) = @_;
-    my $max = $self->count;
-    my $prev = my $j = 0;
-    for (my $i = 0; $i < $max; $i++) {
-	my $now;
-	my $this = $self->{items}[$i];
-	if (ref $this) {	# only paths are refs, pics are ints
-	    $self->{gallery}[$i] = -1;
-	    $prev = 0;
-	    next;
-	}
-	$this = $self->item($i) or next;
-	$now = $this->dir_id;
-	$now != $prev and ++$j;
-	$self->{gallery}[$i] = $j;
-	# warn "gallery [$i] = $j";
-	$prev = $now;
-    }
-    $self->{galleries} = $j;
+sub gallery {		      # return the gallery number of the image
+    my($self, $idx) = @_;
+    $idx >= 0 or return $self->{galleries};
+    return $self->item($idx, 1);
 }
 
 sub goto {			# goto path//file or path/path
@@ -394,8 +385,9 @@ sub goto {			# goto path//file or path/path
 	    return;
     };
     $self->cwd($1);	       # this says "filter, sort, please wait"
+    my $tm = [gettimeofday];
     $self->items($self->children($1)); # this blocks on the DB
-    $self->galleries;
+    warn "DB took ", tv_interval($tm);
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -409,7 +401,7 @@ sub goto {			# goto path//file or path/path
     my $id = $self->vfs->id_of_path($2); # image or undef
     for (my $i = 0; $i < $n; $i++) { # select myself in parent
 	if ($id) {
-	    if ($self->{items}[$i] == $id) { # quickly find image index
+	    if ($self->{items}[$i][0] == $id) { # quickly find image index
 		$self->focusedItem($i);
 		last;
 	    }
@@ -468,7 +460,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
 	$owner->SOUTH->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			       $self->{gallery}[$idx], $self->{galleries},
+			       $self->gallery($idx), $self->gallery(-1),
 			       $this->dir->directory, $x, $y);
 	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB',
 				$this->width / $this->height,
@@ -594,8 +586,9 @@ sub stackcenter {		# called by {cycler} timer
     if ($self->{firstlast} ne $key) { # update the view cache
 	my @path;
 	for (my $i = $first; $i <= $last; $i++) {
-	    my $this = $self->{items}[$i];
+	    my $this = $self->item($i);
 	    ref $this or next;	# only paths are refs, pics are ints
+	    $this->isa('LPDB::Schema::Result::Path') or next;
 	    $this->picturecount > 2 or next;
 	    push @path, $i;
 	}
@@ -610,7 +603,7 @@ sub stackcenter {		# called by {cycler} timer
     if ($self->popup->checked('csel')) {
 	my $cur = $self->{focusedItem};
 	$idx{$cur} = 1 if $cur > -1
-	    and $self->{items}[$cur]->isa('LPDB::Schema::Result::Path');
+	    and $self->item($cur)->isa('LPDB::Schema::Result::Path');
     }
     if ($self->popup->checked('corder')) {
 	$idx{$self->{pathsnow}[$self->{corder}++]} = 1;
@@ -621,8 +614,8 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
-	my $this = $self->{items}[$idx] or next;
-	ref $this or next;
+	my $this = $self->item($idx) or next;
+	$this->isa('LPDB::Schema::Result::Path') or next;
 	my($pic) = $this->random;
 	$pic or next;
 	my $im = $self->{thumb}->get($pic->file_id);
@@ -642,7 +635,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
-    my $back = $self->{gallery}[$idx] || 0; # set by galleries in goto
+    my $back = $self->gallery($idx) || 0;
     my $bk = $sel ? $self->hiliteBackColor
 	: $back == -1 ? cl::Blue # picture collection background
 	: $back % 2 ? cl::Gray	 # toggle background per gallery
@@ -808,7 +801,6 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 	    text => 'Image Viewer',
 	    size => [1600, 900],
 	    );
-	$w->{addY1} = 1;	# since not yet a property!!!
 	$w->insert(
 	    'Prima::LPDB::ImageViewer',
 	    name => 'IV',
