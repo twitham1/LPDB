@@ -76,6 +76,7 @@ sub resultset {		 # all files below logical path, in time order
 	{order_by => { -asc => 'time' },
 	 group_by => 'file_id',
 	 columns => [ qw/time file_id dir_id/ ],
+	 # cache => 1,		# does this work?
     	});
     return $self->{resultset};
 }
@@ -91,15 +92,15 @@ sub picturecount {
 
 sub stack { # stack of up to 3 paths (first middle last), for thumbnails
     my($self) = @_;
+    $self->{stack} and return @{$self->{stack}}; # TODO: when to drop cache?
     my $rs = $self->resultset;
     my $num = $self->count
 	or return ();
     my $half = int($num/2);
-    return (
-	$rs->slice(0, 0),
-	($half && $half != $num - 1 ?  $rs->slice($half, $half) : undef),
-	($num > 1 ?  $rs->slice($num - 1, $num - 1) : undef),
-	);
+    my @out = $rs->slice(0, 0);
+    push @out, ($half && $half != $num - 1 ?  $rs->slice($half, $half) : undef);
+    push @out, ($num > 1 ?  $rs->slice($num - 1, $num - 1) : undef);
+    return @{$self->{stack} = [ @out ]};
 }
 
 sub time {		 # return begin/middle/end time from the stack
