@@ -387,9 +387,9 @@ sub profile {
     $self->lpdb->conf('profile') or return;
     $msg or
 	$self->{tm} = [gettimeofday] and return;
-    my $str =  "\tseconds: " . tv_interval($self->{tm}) . " $msg";
+    my $str =  "\tseconds: " . tv_interval($self->{tm}) . " $msg\n";
     $self->{tm} = [gettimeofday];
-    return $str;
+    warn $str;
 }
 
 sub goto {			# goto path//file or path/path
@@ -413,7 +413,7 @@ sub goto {			# goto path//file or path/path
     $self->cwd($path);	       # this says "filter, sort, please wait"
     $self->profile;
     $self->items($self->children($path)); # this blocks on the DB
-    warn $self->profile("in DB");
+    $self->profile("in DB");
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -441,7 +441,7 @@ sub goto {			# goto path//file or path/path
 	    }
 	}
     }
-    warn $self->profile("locating in page");
+    $self->profile("locating in page");
 }
 
 sub current {			# path to current selected item
@@ -458,27 +458,22 @@ sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
-    $self->profile;
     $idx = $idx->[0];
     my $x = $idx + 1;
     my $y = $self->count;
-    warn $self->profile("count");
     my $p = sprintf '%.0f', $x / $y * 100;
     my $this = $self->item($idx);
-    warn $self->profile("item");
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
     my $progress = "$p% $x / $y";
     @{$self->{filter}} and $progress = "[ $progress ]";
     $owner->NORTH->NE->text($progress);
-    warn $self->profile("text");
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$this->path =~ m{(.*/)(.+/?)};
 	$owner->NORTH->N->text($2);
 	$self->{filter} and $this->{filter} = $self->{filter};
 	my @p = $this->stack;
-	warn $self->profile("stack");
 	my $span = $p[2] ? $p[2]->time - $p[0]->time : 1;
 	my $len =		# timespan of selection
 	    $span > 3*365*86400 ? sprintf('%.0f years',  $span /365.25/86400)
@@ -487,9 +482,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	    : $span >      3600 ? sprintf('%.0f hours',  $span / 3600)
 	    : $span >        60 ? sprintf('%.0f minutes', $span / 60)
 	    : '1 minute';
-	warn $self->profile("times");
 	my $n = $this->picturecount;
-	warn $self->profile("count");
 	my $p = $n > 1 ? 's' : '';
 	$owner->SOUTH->S->text("$n image$p in $len" .
 			       (@{$self->{filter}} ? ' (filtered)' : ''));
@@ -516,7 +509,6 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 			  [ map { [ $me eq $_ ? "*$_" : $_,
 				    _trimfile($_), 'goto' ] }
 			    $self->vfs->related($me, $id) ]);
-    warn $self->profile("navto menu");
 }
 
 sub xofy {	      # find pic position in current gallery directory
