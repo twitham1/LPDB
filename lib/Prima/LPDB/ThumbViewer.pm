@@ -276,6 +276,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
+    $parent ||= '/';
     # warn "children of $parent";
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
@@ -329,8 +330,21 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    my($path, $file, $dur)
-	= $self->vfs->pathpics($parent || '/', \@sort, \@$filter);
+    use Data::Dumper;
+    local $Data::Dumper::Terse = 1;
+    (my $string = Dumper($parent, \@sort, $filter)) =~ s/\n//g;
+    $string =~ s/ +//g;
+
+    my($path, $file, $dur);	# cache lookups for faster redos
+    if ($self->{cache}{$string}) {
+	warn "hit! on $string";
+    } else {
+	warn "miss! on $string";
+	$self->{cache}{$string} =
+	    [ $self->vfs->pathpics($parent, \@sort, \@$filter) ];
+    }
+    ($path, $file, $dur) = (@{$self->{cache}{$string}});
+
     $self->{duration} = $dur;
     $self->{galleries} = 0;
     $self->{galleries} = $file->[-1][1] if @$file > 0;
@@ -368,6 +382,16 @@ sub gallery {		      # return the gallery number of the image
     return $self->item($idx, 1);
 }
 
+sub profile {
+    my($self, $msg) = @_;
+    $self->lpdb->conf('profile') or return;
+    $msg or
+	$self->{tm} = [gettimeofday] and return;
+    my $str =  "\tseconds: " . tv_interval($self->{tm}) . " $msg";
+    $self->{tm} = [gettimeofday];
+    return $str;
+}
+
 sub goto {			# goto path//file or path/path
     my($self, $path) = @_;
     # warn "goto: $path";
@@ -384,12 +408,12 @@ sub goto {			# goto path//file or path/path
 	    }
 	    return;
     };
-    my($path, $file) = ($1, $2);
+    my $file;
+    ($path, $file) = ($1, $2);
     $self->cwd($path);	       # this says "filter, sort, please wait"
-    my $tm = [gettimeofday];
+    $self->profile;
     $self->items($self->children($path)); # this blocks on the DB
-    warn "DB took ", tv_interval($tm);
-    $tm = [gettimeofday];
+    warn $self->profile("in DB");
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -403,7 +427,8 @@ sub goto {			# goto path//file or path/path
     unless ($file eq 'FIRST') {
 	my $id = $file =~ /^\d+$/ ? $file    # go direct to file_id
 	    : $self->vfs->id_of_path($file); # lookup id of image file
-	warn "\t\tid of $path / $file = $id";
+	$id ||= 0;
+	warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
 	for (my $i = 0; $i < $n; $i++) { # select myself in parent
 	    if ($id) {
 		if ($self->{items}[$i][0] == $id) { # quickly find image index
@@ -416,7 +441,7 @@ sub goto {			# goto path//file or path/path
 	    }
 	}
     }
-    warn "rest took ", tv_interval($tm);
+    warn $self->profile("locating in page");
 }
 
 sub current {			# path to current selected item
@@ -433,22 +458,27 @@ sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
+    $self->profile;
     $idx = $idx->[0];
     my $x = $idx + 1;
     my $y = $self->count;
+    warn $self->profile("count");
     my $p = sprintf '%.0f', $x / $y * 100;
     my $this = $self->item($idx);
+    warn $self->profile("item");
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
     my $progress = "$p% $x / $y";
     @{$self->{filter}} and $progress = "[ $progress ]";
     $owner->NORTH->NE->text($progress);
+    warn $self->profile("text");
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$this->path =~ m{(.*/)(.+/?)};
 	$owner->NORTH->N->text($2);
 	$self->{filter} and $this->{filter} = $self->{filter};
 	my @p = $this->stack;
+	warn $self->profile("stack");
 	my $span = $p[2] ? $p[2]->time - $p[0]->time : 1;
 	my $len =		# timespan of selection
 	    $span > 3*365*86400 ? sprintf('%.0f years',  $span /365.25/86400)
@@ -457,7 +487,9 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	    : $span >      3600 ? sprintf('%.0f hours',  $span / 3600)
 	    : $span >        60 ? sprintf('%.0f minutes', $span / 60)
 	    : '1 minute';
+	warn $self->profile("times");
 	my $n = $this->picturecount;
+	warn $self->profile("count");
 	my $p = $n > 1 ? 's' : '';
 	$owner->SOUTH->S->text("$n image$p in $len" .
 			       (@{$self->{filter}} ? ' (filtered)' : ''));
@@ -484,6 +516,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 			  [ map { [ $me eq $_ ? "*$_" : $_,
 				    _trimfile($_), 'goto' ] }
 			    $self->vfs->related($me, $id) ]);
+    warn $self->profile("navto menu");
 }
 
 sub xofy {	      # find pic position in current gallery directory
@@ -515,9 +548,9 @@ sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
     if ($cwd) {
-	$self->owner->NORTH->NW->text('Filtering, sorting, drawing...');
+	$self->owner->NORTH->NW->text('Filtering, sorting, grouping...');
 	$self->owner->NORTH->N->text('');
-	$self->owner->NORTH->NE->text('...PLEASE BE PATIENT!');
+	$self->owner->NORTH->NE->text('...PLEASE WAIT!');
 	$self->owner->NORTH->repaint;
 	$::application->yield;
     }
@@ -557,7 +590,8 @@ sub on_keydown			# code == -1 for remote navigation
 	$self->goto($self->cwd);
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
+    if ($code == ord 'm' or $code == ord '?' # popup menu
+	or $code == 13) {	# ctrl-m is blue remote button
 	my @sz = $self->size;
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;

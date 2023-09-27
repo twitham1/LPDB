@@ -125,7 +125,7 @@ sub pathpics {		     # return paths and pictures in given path
 
 	my $prev = my $gal = 0;
 	if (@$sort > 0) {	# slow full sort required
-	    while (my $one = $pics->next) {
+	    for my $one ($pics->all) {
 		my $now = $one->dir_id;
 		$now != $prev and ++$gal;
 		$prev = $now;
@@ -134,23 +134,22 @@ sub pathpics {		     # return paths and pictures in given path
 	    }
 	} else {		# no sort, instant DB order
 	    @pics =  $pics->get_column('file_id')->all;
-	    map { $dur += $_ || 0 } @pics; # is this right?!!!!!!!!!!!!!!!!!!!!!!
-	    @pics = map { [ $_, ++$gal ] } @pics;
+	    @pics = map { [ $_, ++$gal ] } @pics; # checkerboard!
 	}
 #	warn "pics: @pics";
     }
     return [ $paths->all ], \@pics, $dur;
 }
 
-sub related {			# paths related to given path or picture
+sub related {		      # paths related to given path or picture
     my($self, $path, $id) = @_;
     my %path = ( $path => 1 );
-    if ($id and my $paths = $self->{schema}->resultset('PicturePath')->search(
+    if ($id and my $paths =
+	$self->{schema}->resultset('PicturePath')->search(
     	    {"me.file_id" => $id},
 	    {prefetch => [ 'path', 'file' ]},
 	)) {
 	while (my $one = $paths->next) {
-	    # $path{$one->path->path . '/' . $one->file->pathtofile } = 1;
 	    $path{$one->path->path . '/' . $id } = 1;
 	}
 	return sort keys %path;
