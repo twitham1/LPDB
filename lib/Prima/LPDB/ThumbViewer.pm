@@ -336,7 +336,8 @@ sub children {			# return children of given text path
     $string =~ s/ +//g;
 
     my($path, $file, $dur);	# cache lookups for faster redos
-    if ($self->{cache}{$string}) {
+    if ($self->lpdb->conf('noupdate') # but no cache when updating
+	&& $self->{cache}{$string}) {
 	warn "hit! on $string";
     } else {
 	warn "miss! on $string";
