@@ -31,6 +31,7 @@ sub profile_default
 	valignment  => ta::Middle,
 	alignment   => ta::Center,
 	autoZoom => 1,
+#	zoomPrecision => 1000,	# this sometimes breaks aspect ratio
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
@@ -148,6 +149,7 @@ sub viewimage
     $self->{picture} = $picture;
     $self->{fileName} = $filename;
     $self->popup->checked('autozoom', 1);
+    $self->autoZoom(1);
     $self->apply_auto_zoom;
     $self->status;
     if ($picture->duration and $self->popup->checked('autoplay')) {
@@ -188,7 +190,7 @@ sub on_paint { # update metadata label overlays, later in front of earlier
 	    my($b, $e) = ($each * ($x - 1), $each * $x);
 	    $e > $b + $s or $e = $b + $s;
 	    $self->polyline([$s, $h - $b, $s, $h - $e]);
-	    # $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
+	    $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
 	$self->color(cl::Fore);
     }
@@ -227,17 +229,32 @@ sub autozoom {			# Enter == zoom picture or play video
     $self->autoZoom;
 }
 
-sub bigger {
-    my($self) = @_;
-    $self->autoZoom(0);
-    $self->popup->checked('autozoom', 0);
-    $self->zoom($self->zoom * 1.2);
-}
-sub smaller {
-    my($self) = @_;
-    $self->autoZoom(0);
-    $self->popup->checked('autozoom', 0);
-    $self->zoom($self->zoom / 1.2);
+{	   # zoom in/out on center point by calculating the new deltas
+    my $factor = 1.2;
+    sub bigger {
+	my($self) = @_;
+	$self->autoZoom(0);
+	$self->popup->checked('autozoom', 0);
+	my($w, $h) = $self->size;
+	my($x, $y) = $self->deltas;
+	my $z = $self->zoom;
+	$z * $factor < 2.5 or return;
+	$self->zoom($z * $factor);
+	$self->deltas(($x + $w/2) * $factor - $w/2,
+		      ($y + $h/2) * $factor - $h/2);
+    }
+    sub smaller {
+	my($self) = @_;
+	$self->autoZoom(0);
+	$self->popup->checked('autozoom', 0);
+	my($w, $h) = $self->size;
+	my($x, $y) = $self->deltas;
+	my $z = $self->zoom;
+	$z / $factor > 0.09 or return;
+	$self->zoom($z / $factor);
+	$self->deltas(($x + $w/2) / $factor - $w/2,
+		      ($y + $h/2) / $factor - $h/2);
+    }
 }
 
 sub on_keydown
@@ -295,7 +312,7 @@ sub on_keydown
 	my $th = $self->{thumbviewer};
 	$th->key_down($code, $key);
 	my $idx = $th->focusedItem;
-	my $this = $th->{items}[$idx];
+	my $this = $th->item($idx);
 	if ($this->isa('LPDB::Schema::Result::Path')) {
 	    # warn "this node is a path $idx";
 	    #    my ($self, $canvas, $idx, $x1, $y1, $x2, $y2, $sel, $foc, $pre, $col) = @_;
@@ -464,7 +481,9 @@ sub info {			# update text overlay, per info level
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	$self->SE->text(($im->hms || '') . " $y / $Y ");
+	my $tmp = $th->gallery(-1) > 1 ?
+	    $th->gallery($x - 1) . ' / ' . $th->gallery(-1) . ',' : '';
+	$self->SE->text(($im->hms || '') . " $tmp $y / $Y ");
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;
@@ -472,7 +491,9 @@ sub info {			# update text overlay, per info level
 	$self->SE->hide;
     }
     $self->S->show;
-    $i == 3 ? $self->S->text(join ' ', $im->dir->directory, "$y / $Y ")
+    $i == 3 ? $self->S->text(sprintf ' %d / %d - %s - %d / %d ',
+			     $th->gallery($x - 1), $th->gallery(-1),
+			     $im->dir->directory, $y, $Y)
 	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);
     $self->SW->show;
@@ -600,12 +621,7 @@ sub SUPERon_paint
 {
 	my ( $self, $canvas) = @_;
 	my @size   = $self-> size;
-
-	$self-> rect_bevel( $canvas, Prima::rect->new(@size)->inclusive,
-		width  => $self-> {borderWidth},
-		panel  => 1,
-		fill   => $self-> {image} ? undef : $self->backColor,
-	);
+	$self-> draw_border( $canvas, $self-> {image} ? undef : $self->backColor, @size);
 	return 1 unless $self->{image};
 
 	my @r = $self-> get_active_area( 0, @size);
@@ -686,25 +702,34 @@ PAINT:
 		);
 		if ( $iS > $iI ) {
 			# scaling kernel may need pixels beyond the cliprect
-			if ( $xDest >= $iI) {
-				$xDest -= $iI;
-				$imXz  += $iS;
-				$imX   += $iI;
-				$xFrom += $iS;
+			my $ks = {
+				ist::Triangle,  1,
+				ist::Quadratic, 2,
+				ist::Sinc,      4,
+				ist::Hermite,   1,
+				ist::Cubic,     2,
+				ist::Gaussian,  2,
+			}->{$self->{scaling}};
+
+			if ( $xDest >= $iI * $ks) {
+				$xDest -= $iI * $ks;
+				$imXz  += $iS * $ks;
+				$imX   += $iI * $ks;
+				$xFrom += $iS * $ks;
 			}
-			if ( $xDest + $imX <= $self->{imageX} - $iI ) {
-				$imX   += $iI;
-				$imXz  += $iS;
+			if ( $xDest + $imX <= $self->{imageX} - $iI * $ks ) {
+				$imX   += $iI * $ks;
+				$imXz  += $iS * $ks;
 			}
-			if ( $yDest >= $iI ) {
-				$yDest -= $iI;
-				$imYz  += $iS;
-				$imY   += $iI;
-				$yFrom += $iS;
+			if ( $yDest >= $iI * $ks ) {
+				$yDest -= $iI * $ks;
+				$imYz  += $iS * $ks;
+				$imY   += $iI * $ks;
+				$yFrom += $iS * $ks;
 			}
-			if ( $yDest + $imY <= $self->{imageY} - $iI ) {
-				$imY   += $iI;
-				$imYz  += $iS;
+			if ( $yDest + $imY <= $self->{imageY} - $iI * $ks ) {
+				$imY   += $iI * $ks;
+				$imYz  += $iS * $ks;
 			}
 		}
 		my $i = $self->{image}->extract( $xDest, $yDest, $imX, $imY );

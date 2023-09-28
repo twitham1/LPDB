@@ -16,6 +16,7 @@ package Prima::LPDB::ThumbViewer;
 use strict;
 use warnings;
 use POSIX qw/strftime/;
+use Time::HiRes qw(gettimeofday tv_interval); # for profiling
 use LPDB::VFS;
 use LPDB::Thumbnail;
 use Prima::FrameSet;
@@ -275,6 +276,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 
 sub children {			# return children of given text path
     my($self, $parent) = @_;
+    $parent ||= '/';
     # warn "children of $parent";
     my $m = $self->popup;
     my @sort;		      # menu sort options to database order_by
@@ -328,9 +330,24 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    my($path, $file, $dur)
-	= $self->vfs->pathpics($parent || '/', \@sort, \@$filter);
+    use Data::Dumper;
+    local $Data::Dumper::Terse = 1;
+    (my $string = Dumper($parent, \@sort, $filter)) =~ s/\n//g;
+    $string =~ s/ +//g;
+
+    my($path, $file, $dur);	# cache lookups for faster redos
+    if ($self->{cache}{$string}) {
+	warn "hit! on $string";
+    } else {
+	warn "miss! on $string";
+	$self->{cache}{$string} =
+	    [ $self->vfs->pathpics($parent, \@sort, \@$filter) ];
+    }
+    ($path, $file, $dur) = (@{$self->{cache}{$string}});
+
     $self->{duration} = $dur;
+    $self->{galleries} = 0;
+    $self->{galleries} = $file->[-1][1] if @$file > 0;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
@@ -346,13 +363,33 @@ sub duration {			# total video duration
 }
 
 sub item {	    # return the path or picture object at given index
-    my($self, $index) = @_;
+    my($self, $index, $gallery) = @_;
     my $this = $self->{items}[$index];
     $this or warn "index $index not found" and return;
-    if ($this->isa('LPDB::Schema::Result::Path')) {
-	return $this;
+    if ('ARRAY' eq ref $this) {	# [ file_id, dir_number ]
+	return $gallery ? $this->[1]
+	    : $self->vfs->picture($this->[0]);
+    }
+    elsif ($this->isa('LPDB::Schema::Result::Path')) {
+	return $gallery ? -1 : $this;
     }				# else picture lookup, slower:
-    $self->vfs->picture($this);
+    return;
+}
+
+sub gallery {		      # return the gallery number of the image
+    my($self, $idx) = @_;
+    $idx >= 0 or return $self->{galleries};
+    return $self->item($idx, 1);
+}
+
+sub profile {
+    my($self, $msg) = @_;
+    $self->lpdb->conf('profile') or return;
+    $msg or
+	$self->{tm} = [gettimeofday] and return;
+    my $str =  "\tseconds: " . tv_interval($self->{tm}) . " $msg\n";
+    $self->{tm} = [gettimeofday];
+    warn $str;
 }
 
 sub goto {			# goto path//file or path/path
@@ -371,8 +408,12 @@ sub goto {			# goto path//file or path/path
 	    }
 	    return;
     };
-    $self->cwd($1);	       # this says "filter, sort, please wait"
-    $self->items($self->children($1)); # this blocks on the DB
+    my $file;
+    ($path, $file) = ($1, $2);
+    $self->cwd($path);	       # this says "filter, sort, please wait"
+    $self->profile;
+    $self->items($self->children($path)); # this blocks on the DB
+    $self->profile("in DB");
     $self->focusedItem(-1);
     # $self->repaint;
     $self->focusedItem(0);
@@ -383,36 +424,44 @@ sub goto {			# goto path//file or path/path
 	$self->owner->NORTH->NW->text('');
 	$self->owner->NORTH->NE->text('');
     }
-    my $id = $self->vfs->id_of_path($2); # image or undef
-    for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	if ($id) {
-	    if ($self->{items}[$i] == $id) { # quickly find image index
+    unless ($file eq 'FIRST') {
+	my $id = $file =~ /^\d+$/ ? $file    # go direct to file_id
+	    : $self->vfs->id_of_path($file); # lookup id of image file
+	$id ||= 0;
+	warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
+	for (my $i = 0; $i < $n; $i++) { # select myself in parent
+	    if ($id) {
+		if ($self->{items}[$i][0] == $id) { # quickly find image index
+		    $self->focusedItem($i);
+		    last;
+		}
+	    } elsif ($self->item($i)->pathtofile eq $file) { # or matching path
 		$self->focusedItem($i);
 		last;
 	    }
-	} elsif ($self->item($i)->pathtofile eq $2) { # or matching path
-	    $self->focusedItem($i);
-	    last;
 	}
     }
+    $self->profile("locating in page");
 }
 
 sub current {			# path to current selected item
     my($self) = @_;
     $self->focusedItem < 0 and return $self->cwd || '/';
-    my $this = $self->item($self->focusedItem);
+    my $idx = $self->focusedItem;
+    my $this = $self->item($idx);
     $self->cwd . ($this->basename =~ m{/$} ? $this->basename
-		  : '/' . $this->pathtofile);
+		  : '/' . $self->{items}[$idx][0]);
 }
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
-    my $x = $idx->[0] + 1;
+    $idx = $idx->[0];
+    my $x = $idx + 1;
     my $y = $self->count;
     my $p = sprintf '%.0f', $x / $y * 100;
-    my $this = $self->item($idx->[0]);
+    my $this = $self->item($idx);
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
@@ -441,15 +490,17 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	$owner->SOUTH->SW->text($p[0] ? scalar localtime $p[0]->time
 				: 'Check ~Menu -> AND Filters!');
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
-	my($x, $y) = $self->xofy($idx->[0]);
+	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->S->text($this->dir->directory . " $x / $y");
-	$owner->SOUTH->SE->text(sprintf '%dx%d=%.2f  %.1fMP %.0fKB',
-				$this->width , $this->height,
+	$owner->SOUTH->S->text(sprintf ' %d / %d - %s - %d / %d ',
+			       $self->gallery($idx), $self->gallery(-1),
+			       $this->dir->directory, $x, $y);
+	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB',
 				$this->width / $this->height,
+				$this->width , $this->height,
 				$this->width * $this->height / 1000000,
 				$this->bytes / 1024);
-	$owner->SOUTH->SW->text(scalar localtime $this->time);
+	$owner->SOUTH->SW->text(scalar(localtime $this->time) . ' ');
 	$id = $this->file_id;
     }
     my $me = $self->current;
@@ -462,20 +513,19 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
     my $max = $self->count;
-    my $this = $self->item($me);
-    $this or return (0, 0);
-    $this->isa('LPDB::Schema::Result::Picture') or return (0, 0);
-    my $dir = $this->dir->directory;
+    my $this = $self->{items}[$me];
+    'ARRAY' eq ref $this or return (0, 0);
+    my $dir = $this->[1];
     my $first = $me;
     while ($first > -1
-	   and $self->item($first)->isa('LPDB::Schema::Result::Picture')
-	   and $self->item($first)->dir->directory eq $dir) {
+	   and 'ARRAY' eq ref $self->{items}[$first]
+	   and $self->{items}[$first][1] == $dir) {
 	$first--;
     }
     my $last = $me;
     while ($last < $max
-	   and $self->item($last)->isa('LPDB::Schema::Result::Picture')
-	   and $self->item($last)->dir->directory eq $dir) {
+	   and 'ARRAY' eq ref $self->{items}[$last]
+	   and $self->{items}[$last][1] == $dir) {
 	$last++;
     }
     $last--;
@@ -489,9 +539,12 @@ sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
     if ($cwd) {
-	$self->owner->NORTH->NW->text('Filtering, sorting, drawing...');
+	my $str = '';
+	my $tmp = $self->vfs->pathobject($cwd);
+	$tmp and $tmp = $tmp->picturecount and $str = " $tmp images";
+	$self->owner->NORTH->NW->text("Filtering, sorting, grouping$str...");
 	$self->owner->NORTH->N->text('');
-	$self->owner->NORTH->NE->text('...PLEASE BE PATIENT!');
+	$self->owner->NORTH->NE->text('...PLEASE WAIT!');
 	$self->owner->NORTH->repaint;
 	$::application->yield;
     }
@@ -531,7 +584,8 @@ sub on_keydown			# code == -1 for remote navigation
 	$self->goto($self->cwd);
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
+    if ($code == ord 'm' or $code == ord '?' # popup menu
+	or $code == 13) {	# ctrl-m is blue remote button
 	my @sz = $self->size;
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
@@ -568,8 +622,9 @@ sub stackcenter {		# called by {cycler} timer
     if ($self->{firstlast} ne $key) { # update the view cache
 	my @path;
 	for (my $i = $first; $i <= $last; $i++) {
-	    my $this = $self->{items}[$i];
+	    my $this = $self->item($i);
 	    ref $this or next;	# only paths are refs, pics are ints
+	    $this->isa('LPDB::Schema::Result::Path') or next;
 	    $this->picturecount > 2 or next;
 	    push @path, $i;
 	}
@@ -584,7 +639,7 @@ sub stackcenter {		# called by {cycler} timer
     if ($self->popup->checked('csel')) {
 	my $cur = $self->{focusedItem};
 	$idx{$cur} = 1 if $cur > -1
-	    and $self->{items}[$cur]->isa('LPDB::Schema::Result::Path');
+	    and $self->item($cur)->isa('LPDB::Schema::Result::Path');
     }
     if ($self->popup->checked('corder')) {
 	$idx{$self->{pathsnow}[$self->{corder}++]} = 1;
@@ -595,8 +650,8 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
-	my $this = $self->{items}[$idx] or next;
-	ref $this or next;
+	my $this = $self->item($idx) or next;
+	$this->isa('LPDB::Schema::Result::Path') or next;
 	my($pic) = $this->random;
 	$pic or next;
 	my $im = $self->{thumb}->get($pic->file_id);
@@ -616,7 +671,11 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
     $self->{canvas} ||= $canvas; # for middle image rotator
-    my $bk = $sel ? $self->hiliteBackColor : cl::Back;
+    my $back = $self->gallery($idx) || 0;
+    my $bk = $sel ? $self->hiliteBackColor
+	: $back == -1 ? cl::Blue # picture collection background
+	: $back % 2 ? cl::Gray	 # toggle background per gallery
+	: cl::Back;
     $bk = $self->prelight_color($bk) if $pre;
     $canvas->backColor($bk);
     $canvas->clear($x1, $y1, $x2, $y2) if $pos < 2; # 2 and 3 should stack
@@ -778,7 +837,6 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 	    text => 'Image Viewer',
 	    size => [1600, 900],
 	    );
-	$w->{addY1} = 1;	# since not yet a property!!!
 	$w->insert(
 	    'Prima::LPDB::ImageViewer',
 	    name => 'IV',

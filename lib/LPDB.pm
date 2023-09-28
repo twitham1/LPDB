@@ -121,9 +121,11 @@ sub tschema {
     return $self->{tschema};
 }
 
-# Everything below here might be used by picasagallery but is likely
-# never used by lpgallery.  Not well tested.  Should probably be
-# offloaded to a different file.
+# ------------------------------------------------------------
+# Everything below here might be used by legacy picasagallery but is
+# likely never used by current lpgallery.  Not well tested.  Should be
+# offloaded to a separate file. -twitham
+# ------------------------------------------------------------
 
 # stats of given result set moves values from DB to perl object
 sub plstats {
