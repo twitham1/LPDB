@@ -6,7 +6,8 @@ LPDB::VFS - interact with the virtual file system of LPDB
 
 =head1 DESCRIPTION
 
-Not yet documented, see the source.
+Not yet documented, see the source.  The VFS is a path hierarchy that
+organizes the images by metadata in several ways.
 
 =cut
 
@@ -90,6 +91,19 @@ sub captions {
 
 # READING METHODS ------------------------------------------------------------
 
+sub pathobject {		# return object of given path
+    my($self, $parent) = @_;
+    $parent or return;
+#    warn "pathobj $parent";
+    $parent =~ s{/+}{/};	# cleanup
+    if ($parent and my $obj =
+	$self->{schema}->resultset('Path')->find(
+	    { path => $parent })) {
+	return $obj;
+    }
+    return;
+}
+
 sub pathpics {		     # return paths and pictures in given path
     my($self, $parent, $sort, $filter) = @_;
     my @filter;
@@ -98,13 +112,13 @@ sub pathpics {		     # return paths and pictures in given path
     my $id = $self->{id};
     if ($parent and my $obj =
 	$self->{schema}->resultset('Path')->find(
-	    { path => $parent})) {
+	    { path => $parent })) {
 	$id =  $obj->path_id;
     }
     $self->{id} = $id;
     my $paths;
     if ($paths = $self->{schema}->resultset('Path')->search(
-	    {parent_id => $id})) {
+	    { parent_id => $id })) {
     }
     my @pics;
     my $dur = 0;		# total video duration

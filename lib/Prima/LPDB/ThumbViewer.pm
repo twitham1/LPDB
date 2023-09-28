@@ -450,7 +450,6 @@ sub current {			# path to current selected item
     my $idx = $self->focusedItem;
     my $this = $self->item($idx);
     $self->cwd . ($this->basename =~ m{/$} ? $this->basename
-#		  : '/' . $this->pathtofile);
 		  : '/' . $self->{items}[$idx][0]);
 }
 
@@ -540,7 +539,10 @@ sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
     if ($cwd) {
-	$self->owner->NORTH->NW->text('Filtering, sorting, grouping...');
+	my $str = '';
+	my $tmp = $self->vfs->pathobject($cwd);
+	$tmp and $tmp = $tmp->picturecount and $str = " $tmp images";
+	$self->owner->NORTH->NW->text("Filtering, sorting, grouping$str...");
 	$self->owner->NORTH->N->text('');
 	$self->owner->NORTH->NE->text('...PLEASE WAIT!');
 	$self->owner->NORTH->repaint;
