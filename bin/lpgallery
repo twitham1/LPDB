@@ -28,7 +28,7 @@ our $conf = {
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
 $conf->{ext} = \@ext;
-push @ext, qw/mp4 mov avi mpg asf wmv/;	# how to define video set???
+push @ext, qw/mp4 mov avi mpg asf wmv dv/; # how to define video set???
 warn "autosupport: @ext";
 # exit;
 

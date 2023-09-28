@@ -77,7 +77,11 @@ sub update {
     }
     unless ($exiftool) {
 	$exiftool = new Image::ExifTool;
-	$exiftool->Options(FastScan => 1);
+	$exiftool->Options(FastScan => 1,
+			   QuickTimeUTC => 1);
+	# QuickTimeUTC might lose on cameras that don't know the time
+	# zone and use local time against the spec.  But smart phone
+	# cameras know the time zone so they are using UTC time.
     }
     status "update @dirs\n";
     $schema->txn_begin;
