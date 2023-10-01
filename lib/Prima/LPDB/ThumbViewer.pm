@@ -635,27 +635,37 @@ sub stackcenter {		# called by {cycler} timer
 	$self->{corder} = 0;
     }
     my $n = @{$self->{pathsnow}};
-    $n or return;
+
     my %idx;			# indexes to replace
     if ($self->popup->checked('csel')) {
 	my $cur = $self->{focusedItem};
-	$idx{$cur} = 1 if $cur > -1
-	    and $self->item($cur)->isa('LPDB::Schema::Result::Path');
+	if ($cur > -1) {
+	    my $item = $self->item($cur);
+	    $idx{$cur} = 1
+		if $item->isa('LPDB::Schema::Result::Path');
+	    $idx{$cur} = 1
+		if $item->isa('LPDB::Schema::Result::Picture') and
+		$item->duration;
+	}
     }
-    if ($self->popup->checked('corder')) {
+    if ($n and $self->popup->checked('corder')) {
 	$idx{$self->{pathsnow}[$self->{corder}++]} = 1;
 	$self->{corder} = 0
 	    if $self->{corder} >= $n;
-    } elsif ($self->popup->checked('crandom')) {
+    } elsif ($n and $self->popup->checked('crandom')) {
 	$idx{$self->{pathsnow}[int rand $n]} = 1;
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
 	my $this = $self->item($idx) or next;
-	$this->isa('LPDB::Schema::Result::Path') or next;
-	my($pic) = $this->random;
-	$pic or next;
-	my $im = $self->{thumb}->get($pic->file_id);
+	my $im;
+	if ($this->isa('LPDB::Schema::Result::Path')) {
+	    my($pic) = $this->random;
+	    $pic or next;
+	    $im = $self->{thumb}->get($pic->file_id);
+	} elsif (my $dur = $this->duration) {
+	    $im = $self->{thumb}->put($this->file_id, -1);
+	}
 	$im or next;
 	$self->begin_paint;
 	$self->_draw_thumb($im, 2, $canvas,
@@ -807,8 +817,9 @@ sub draw_picture {
 			       dt::Right|dt::Top|dt::Default);
     }
     if ($dur) {
-	$canvas->draw_text(">> $dur >>",  @border,
-			   dt::Center|dt::VCenter|dt::Default);
+	$canvas->draw_text(">> $dur >>",  @border, $sel
+			   ? dt::Center|dt::Top|dt::Default
+			   : dt::Center|dt::VCenter|dt::Default);
     }
     if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
@@ -873,7 +884,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

@@ -128,7 +128,7 @@ END {
 }
 my @grab = qw/0.5 0.05 0.5 0.95/; # video frame grab positions
 my $SIZE = 320;			 # 1920/6=320
-sub put {
+sub put {	       # cid -1 is random video center not saved to DB
     my($self, $id, $cid) = @_;
     $cid ||= 0;
     # warn "putting $id/$cid in $self\n";
@@ -138,19 +138,23 @@ sub put {
 	contact_id => $cid},
 	{columns => [qw/basename dir_id width height rotation duration/]});
     my $path = $picture->pathtofile;
-    my $modified = -f $path ? (stat _)[9] : 0;
-    my $tschema = $self->{tschema};
-    my $row = $tschema->resultset('Thumb')->find_or_create(
-	{ file_id => $id,
-	  contact_id => $cid });
-    $modified and $row->modified || 0 >= $modified and
-	return $row->image;	# unchanged
+    my($row, $modified);
+    if ($cid > -1) {		# not random video center
+	$modified = -f $path ? (stat _)[9] : 0;
+	my $tschema = $self->{tschema};
+	$row = $tschema->resultset('Thumb')->find_or_create(
+	    { file_id => $id,
+	      contact_id => $cid });
+	$modified and $row->modified || 0 >= $modified and
+	    return $row->image;	# unchanged
+    }
     my $i;
     my $tmp;			# used only for video frame grabs
     my @size = ($SIZE, $SIZE);
     # 1, 0, 3 = video stack (0 = random path center), 2 = high-res for IV
     if (my $dur = $picture->duration) {
 	my $seek = $dur * $grab[$cid];
+	$cid == -1 and $seek = rand $dur; # random video center
 	$cid == 2 and @size = (1280, 720); # higher res for ImageViewer
 	my $size = sprintf '%dx%d',
 	    _aspect($picture->width, $picture->height, @size);
@@ -191,6 +195,8 @@ sub put {
 		      dt::Center|dt::VCenter|dt::Default);
 	$i->end_paint;
     }
+    $cid == -1 and return $i;	# random video center, all done!
+
     my $data;
     open my $fh, '>', \$data
 	or die $!;
@@ -219,7 +225,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
