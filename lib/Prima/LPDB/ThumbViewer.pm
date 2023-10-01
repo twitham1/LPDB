@@ -223,7 +223,7 @@ sub init {
     $bot->insert('Prima::Label',
 		 name => 'S',
 		 pack => { side => 'bottom' },
-		 text => 'summary',
+		 text => 'file location',
 		 hint => 'Scroll Down',
 		 onMouseClick => sub { $self->hitkey(kb::Down) },
 	);

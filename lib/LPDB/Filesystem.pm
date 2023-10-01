@@ -182,7 +182,7 @@ sub _wanted {
 	    if (!/\.gif$/i or	# ignore duration of 1 frame gif
 		($info->{FrameCount} and $info->{FrameCount} > 1)) {
 		$row->duration($dur =~ /(\S+) s/ ? $1
-			       : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			       : $dur =~ /(\d+):(\d\d):(\d\d)/
 			       ? $1 * 3600 + $2 * 60 + $3
 			       : $dur); # should never happen
 	    }

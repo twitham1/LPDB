@@ -28,10 +28,8 @@ use Time::HiRes qw(gettimeofday tv_interval); # for profiling
 use Data::Dumper;
 
 my $conf = {		       # override any keys in first arg to new
-    reject	=> 'PATTERN OF FILES TO REJECT',
+    reject	=> '\.import', # pattern of files/dirs to reject
     keep	=> '(?i)\.(jpe?g|png|mp4|mov)$',
-    # datefmt	=> '%Y-%m-%d.%H:%M:%S', # must be sortable order
-#    datefmt	=> undef,		# undef == EXIF format
     update	=> sub {},  # callback after each directory is scanned
     debug	=> 0,	    # diagnostics to STDERR
     filter	=> {},	    # filters

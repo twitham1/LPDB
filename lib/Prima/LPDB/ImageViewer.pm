@@ -111,7 +111,7 @@ sub viewimage
 	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id, 2)) {
 	$self->image($i);
 	$self->popup->checked('autoplay') or
-	    $self->message(">> Enter to play $dur >>");
+	    $self->say(">> Enter to play $dur >>");
     } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
@@ -210,7 +210,10 @@ sub autozoom {			# Enter == zoom picture or play video
 	my $file = $pic->pathtofile or return;
 	my @cmd = qw(ffplay -fs -loglevel warning);
 	$self->popup->checked('autoplay') and push @cmd, '-autoexit';
-	system(@cmd, $file) == 0 or warn "@cmd $file failed";
+	unless (system(@cmd, $file) == 0) {
+	    warn my $msg = "@cmd $file failed";
+	    message($msg, mb::OK);
+	}
 	$self->owner->select;	# try not to lose focus
 	return;
     }
@@ -500,7 +503,7 @@ sub info {			# update text overlay, per info level
 }
 
 # show temporary message in center of the screen
-sub message {
+sub say {
     my($self, $message, $seconds) = @_;
     $self->CENTER->text($message);
     $self->CENTER->show;	# hidden by ->status above after:
@@ -562,7 +565,7 @@ sub slideshow {
 	($self->popup->checked('loop') ? 'ON' : 'OFF');
 
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
-	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
+	$self->say(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
 	system(qw/xset s off/);	# hack!!! disable screensaver
@@ -572,7 +575,7 @@ sub slideshow {
 	}
 	$self->{dpms} and system(qw/xset -dpms/);
     } else {
-	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
+	$self->say("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
 	system(qw/xset s default/); # hack!!! reenable screensaver
 	$self->{dpms} and system(qw/xset +dpms/);
