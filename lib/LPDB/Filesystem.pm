@@ -68,7 +68,7 @@ sub update {
 	my @ext = join '|', @{$conf->{ext}};
 	my $regex = "\\.(@ext)\$";
 	warn $regex;
-	$conf->{all} = $regex;
+	$conf->{regex} = $regex;
     }
     # warn "self=$self, conf=$conf, reject=$conf->{reject}";
     # warn "reject: ", $self->conf('reject');
@@ -160,7 +160,7 @@ sub _wanted {
 	$done = time;
     }
     if (-f $_) {
-	return unless $file =~ /$conf->{all}/i;
+	return unless $file =~ /$conf->{regex}/i;
 	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;

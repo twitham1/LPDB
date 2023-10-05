@@ -466,9 +466,12 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
+    $owner->NORTH->NW->backColor($self->lpdb->conf('noupdate')
+				 ? cl::Back : $self->hiliteBackColor);
     my $progress = "$p% $x / $y";
-    @{$self->{filter}} and $progress = "[ $progress ]";
     $owner->NORTH->NE->text($progress);
+    $owner->NORTH->NE->backColor(@{$self->{filter}}
+				 ? $self->hiliteBackColor : cl::Back);
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$this->path =~ m{(.*/)(.+/?)};
 	$owner->NORTH->N->text($2);
@@ -486,6 +489,8 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	my $p = $n > 1 ? 's' : '';
 	$owner->SOUTH->S->text("$n image$p in $len" .
 			       (@{$self->{filter}} ? ' (filtered)' : ''));
+	$owner->SOUTH->S->backColor(@{$self->{filter}}
+				    ? $self->hiliteBackColor : cl::Back);
 	$owner->SOUTH->SE->text($p[2] ? scalar localtime $p[2]->time
 				: '  ');
 	$owner->SOUTH->SW->text($p[0] ? scalar localtime $p[0]->time

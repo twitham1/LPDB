@@ -60,24 +60,31 @@ if ($create) {
 
 my $lpdb;			# LPDB object, a local picture database
 my $child;
+my $ppid = $$;
 if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
     $conf->{guisqltrace} and $conf->{sqltrace} = 1;
+    $conf->{child} = $child;
     sleep 10 if $create;
     $lpdb = new LPDB($conf);
+    $SIG{USR1} = sub {
+	warn "$$: signal USR1 received, DB updated!";
+	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
+    }
 } else {			# child updates DB, creating if needed
     $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
     if ($conf->{noupdate}) {
 	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
-	exit 0;
+    } else {
+	unlink $conf->{dbfile} if $create;
+	$lpdb = new LPDB($conf);
+	$lpdb->create if $create;
+	#    $lpdb->create;
+	$lpdb->update('.');
+	$lpdb->cleanup;
+	warn "$0: $$ done updating $conf->{dbfile}\n";
     }
-    unlink $conf->{dbfile} if $create;
-    $lpdb = new LPDB($conf);
-    $lpdb->create if $create;
-#    $lpdb->create;
-    $lpdb->update('.');
-    $lpdb->cleanup;
-    warn "$0: $$ done updating $conf->{dbfile}\n";
+    kill 'USR1', $ppid;		# tell GUI I'm done
     exit;
 }
 END {

@@ -73,7 +73,11 @@ sub init {
     $self->{thumbviewer} = $profile{thumbviewer}; # object to return focus to
 
     $self->{exif} = new Image::ExifTool; # for collecting picture metadata
-    $self->{exif}->Options(FastScan => 1); # , DateFormat => $conf->{datefmt});
+    $self->{exif}->Options(FastScan => 1,
+			   QuickTimeUTC => 1);
+    # QuickTimeUTC might lose on cameras that don't know the time
+    # zone and use local time against the spec.  But smart phone
+    # cameras know the time zone so they are using UTC time.
 
     # my $pad = $self->{pad} = sv::XScrollbar; # too small
     # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
@@ -329,9 +333,9 @@ sub on_keydown
 	return;
     }
     $self->right if $key == kb::Right;
-    $self->left	if $key == kb::Left;
-    $self->down	if $key == kb::Down;
-    $self->up	if $key == kb::Up;
+    $self->left	 if $key == kb::Left;
+    $self->down	 if $key == kb::Down;
+    $self->up	 if $key == kb::Up;
 }
 sub right{my @d=$_[0]->deltas; $_[0]->deltas($d[0] + $_[0]->width/5, $d[1])}
 sub left {my @d=$_[0]->deltas; $_[0]->deltas($d[0] - $_[0]->width/5, $d[1])}
@@ -771,7 +775,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
