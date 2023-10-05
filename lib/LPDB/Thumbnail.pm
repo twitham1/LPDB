@@ -160,9 +160,10 @@ sub put {	       # cid -1 is random video center not saved to DB
 	    _aspect($picture->width, $picture->height, @size);
 	# warn "$path: seeking to $seek in $dur seconds for $cid @ $size";
 	$tmp = $tmpfile;
-	my @cmd = (qw(ffmpeg -y -loglevel warning -nostdin -noautorotate -ss),
+	my @cmd = (qw(ffmpeg -y -loglevel error -nostdin -noautorotate -ss),
 		   $seek, '-i', $path, qw(-frames:v 1 -s), $size, $tmp);
 	# warn "@cmd\n";
+	$::application->yield; # helps menu updates, for example, before block:
 	system(@cmd) == 0 or warn "@cmd failed";
     }
     my $codec;

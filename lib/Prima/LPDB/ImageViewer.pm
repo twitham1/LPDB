@@ -208,7 +208,7 @@ sub autozoom {			# Enter == zoom picture or play video
     my $pic;
     if ($pic = $self->picture and $pic->duration) { # video
 	my $file = $pic->pathtofile or return;
-	my @cmd = qw(ffplay -fs -loglevel warning);
+	my @cmd = qw(ffplay -fs -loglevel error);
 	$self->popup->checked('autoplay') and push @cmd, '-autoexit';
 	unless (system(@cmd, $file) == 0) {
 	    warn my $msg = "@cmd $file failed";

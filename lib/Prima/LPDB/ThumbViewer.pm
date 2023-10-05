@@ -604,7 +604,7 @@ sub on_keydown			# code == -1 for remote navigation
 sub on_drawitem
 {
     my $self = shift;
-    my $this = $self->item($_[1]);
+    my $this = $self->item($_[1]) or return;
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$self->draw_path(@_);
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
@@ -817,9 +817,8 @@ sub draw_picture {
 			       dt::Right|dt::Top|dt::Default);
     }
     if ($dur) {
-	$canvas->draw_text(">> $dur >>",  @border, $sel
-			   ? dt::Center|dt::Top|dt::Default
-			   : dt::Center|dt::VCenter|dt::Default);
+	$canvas->draw_text(">> $dur >>",  @border,
+			   dt::Center|dt::Top|dt::Default);
     }
     if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
