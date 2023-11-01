@@ -335,6 +335,7 @@ sub children {			# return children of given text path
     (my $string = Dumper($parent, \@sort, $filter)) =~ s/\n//g;
     $string =~ s/ +//g;
 
+    # my($path, $file, $dur) = $self->vfs->pathpics($parent, \@sort, \@$filter);
     my($path, $file, $dur);	# cache lookups for faster redos
     if ($self->lpdb->conf('noupdate') # but no cache when updating
 	&& $self->{cache}{$string}) {
@@ -468,13 +469,13 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     $owner->NORTH->NW->text($self->cwd);
     $owner->NORTH->NW->backColor($self->lpdb->conf('noupdate')
 				 ? cl::Back : $self->hiliteBackColor);
-    my $progress = "$p% $x / $y";
-    $owner->NORTH->NE->text($progress);
+    my $progress = "$p%  $x / $y";
     $owner->NORTH->NE->backColor(@{$self->{filter}}
 				 ? $self->hiliteBackColor : cl::Back);
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$this->path =~ m{(.*/)(.+/?)};
 	$owner->NORTH->N->text($2);
+	$owner->NORTH->NE->text(" $progress ");
 	$self->{filter} and $this->{filter} = $self->{filter};
 	my @p = $this->stack;
 	my $span = $p[2] ? $p[2]->time - $p[0]->time : 1;
@@ -487,8 +488,8 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	    : '1 minute';
 	my $n = $this->picturecount;
 	my $p = $n > 1 ? 's' : '';
-	$owner->SOUTH->S->text("$n image$p in $len" .
-			       (@{$self->{filter}} ? ' (filtered)' : ''));
+	$owner->SOUTH->S->text(" $n image$p in $len " .
+			       (@{$self->{filter}} ? '(filtered) ' : ''));
 	$owner->SOUTH->S->backColor(@{$self->{filter}}
 				    ? $self->hiliteBackColor : cl::Back);
 	$owner->SOUTH->SE->text($p[2] ? scalar localtime $p[2]->time
@@ -498,10 +499,11 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			       $self->gallery($idx), $self->gallery(-1),
-			       $this->dir->directory, $x, $y);
-	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB',
+	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ',
+				$self->gallery($idx), $self->gallery(-1),
+				$x, $y, $progress);
+	$owner->SOUTH->S->text($this->dir->directory);
+	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB ',
 				$this->width / $this->height,
 				$this->width , $this->height,
 				$this->width * $this->height / 1000000,

@@ -82,9 +82,9 @@ if ($child = fork) {		# GUI starts after child is updating DB
 	#    $lpdb->create;
 	$lpdb->update('.');
 	$lpdb->cleanup;
+	kill 'USR1', $ppid;	# tell GUI I'm done
 	warn "$0: $$ done updating $conf->{dbfile}\n";
     }
-    kill 'USR1', $ppid;		# tell GUI I'm done
     exit;
 }
 END {

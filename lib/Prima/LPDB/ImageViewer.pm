@@ -441,12 +441,14 @@ sub info {			# update text overlay, per info level
     my $X = $th->count;
     my($w, $h) = $self->size;
     my $im = $self->picture or return;
-    $self->NW->text($i == 3 ?
-		    sprintf('%.0f%% of %dx%d=%.2f',
+    $self->NW->text($i > 2 ?
+		    sprintf(' %.0f%%  %.2f  %dx%d  %.1fMP  %.0fKB ',
 			    $self->zoom * 100,
+			    $im->width / $im->height,
 			    $im->width, $im->height,
-			    $im->width / $im->height)
-		    : sprintf('%.0f%%', $self->zoom * 100));
+			    $im->width * $im->height / 1000000,
+			    $im->bytes / 1024)
+		    : sprintf(' %.0f%% ', $self->zoom * 100));
     $self->NW->show;
     $quick and return; # only zoom has changed, all else remains same:
     my $cap = $i == 3 ? $im->basename : '';
@@ -454,16 +456,15 @@ sub info {			# update text overlay, per info level
     $self->N->text($cap);
     $self->N->top($h - $self->{pad}); # hack!!! since growMode doesn't handle size changing
     ($i > 1 and $cap) ? $self->N->show : $self->N->hide;
+    my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     $self->NE->text($i > 2 ?
-		    sprintf '%.1fMP %.0fKB, %.0f%% %d / %d',
-		    $im->width * $im->height / 1000000,
-		    $im->bytes / 1024,
+		    sprintf ' %d / %d  %d / %d  %.0f%%  %d / %d ',
+		    $th->gallery($x - 1), $th->gallery(-1), $y, $Y,
 		    $x / $X * 100, $x, $X
-		    : sprintf '%.0f%% %d / %d',
+		    : sprintf ' %.0f%% %d / %d ',
 		    $x / $X * 100, $x, $X);
     $self->NE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
     $self->NE->show;
-    my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     my @info;
     if ($i == 3) {
 	my $info = $self->{exif}->ImageInfo($im->pathtofile);
@@ -488,9 +489,10 @@ sub info {			# update text overlay, per info level
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	my $tmp = $th->gallery(-1) > 1 ?
-	    $th->gallery($x - 1) . ' / ' . $th->gallery(-1) . ',' : '';
-	$self->SE->text(($im->hms || '') . " $tmp $y / $Y ");
+	my $tmp = $im->hms || '';
+	$tmp = sprintf ' %s%d / %d  %d / %d ', $tmp ? "$tmp  " : '',
+	    $th->gallery($x - 1), $th->gallery(-1), $y, $Y;
+	$self->SE->text($tmp);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;
@@ -498,9 +500,7 @@ sub info {			# update text overlay, per info level
 	$self->SE->hide;
     }
     $self->S->show;
-    $i == 3 ? $self->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			     $th->gallery($x - 1), $th->gallery(-1),
-			     $im->dir->directory, $y, $Y)
+    $i == 3 ? $self->S->text(sprintf ' %s ', $im->dir->directory)
 	: $self->S->hide;
     $self->SW->text(scalar localtime $im->time);
     $self->SW->show;

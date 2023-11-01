@@ -145,7 +145,7 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
 	and $fs = ! $self->windowState & ws::Fullscreen;
     if ($fs) {
 	$self->SUPER::fullscreen;
-	$self->bring_to_front;	# should this be here? or configurable?
+#	$self->bring_to_front;	# should this be here? or configurable?
     } else {
 	$self->restore;
     }
@@ -166,7 +166,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2022 Timothy D Witham.
+Copyright 2022 - 2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
