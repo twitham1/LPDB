@@ -10,6 +10,7 @@ use strict;
 use warnings;
 use File::Find;
 use Date::Parse;
+use Time::Local;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
@@ -196,6 +197,11 @@ sub _wanted {
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
 	$time ||= $modified;	# only if no exif of original time
+	my @t = localtime $time;
+	if ($t[5] < 66) { # hack!!! fix negative time from QuickTimeUTC
+	    $t[5] += 66;  # year += 66
+	    $time = timelocal(@t);
+	}
 
 	$row->time($time);
 	$row->modified($modified);

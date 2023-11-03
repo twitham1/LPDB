@@ -502,7 +502,8 @@ sub info {			# update text overlay, per info level
     $self->S->show;
     $i == 3 ? $self->S->text(sprintf ' %s ', $im->dir->directory)
 	: $self->S->hide;
-    $self->SW->text(scalar localtime $im->time);
+    my $t = scalar localtime $im->time;
+    $self->SW->text(" $t ");
     $self->SW->show;
 }
 
