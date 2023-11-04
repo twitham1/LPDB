@@ -737,7 +737,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
 	: $pos == 1 ? ($x1 + $b, $y2 - $b - $dh) # North West
 	: $pos == 2 ? (($x1 + $x2)/2 - $dw/2, ($y1 + $y2)/2 - $dh/2) # center
 	: $pos == 3 ? ($x2 - $b - $dw, $y1 + $b) # South East
-	: ($x1, $y1));		# should never happen 
+	: ($x1, $y1));		# should never happen
     $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
 				$self->rop)
 	or warn "put_image failed: $@";
