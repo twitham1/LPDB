@@ -499,9 +499,9 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
-	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ',
+	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,
 				$self->gallery($idx), $self->gallery(-1),
-				$x, $y, $progress);
+				$progress);
 	$owner->SOUTH->S->text($this->dir->directory);
 	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB ',
 				$this->width / $this->height,
@@ -880,7 +880,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 
 =head1 SEE ALSO
 
-L<lpgallery>, L<Prima::LPDB::TileViewer>, L<Prima::LPBD::ImageViewer>,
+L<lpgallery>, L<Prima::LPDB::TileViewer>, L<Prima::LPDB::ImageViewer>,
 L<LPDB>
 
 

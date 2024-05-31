@@ -459,7 +459,7 @@ sub info {			# update text overlay, per info level
     my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     $self->NE->text($i > 2 ?
 		    sprintf ' %d / %d  %d / %d  %.0f%%  %d / %d ',
-		    $th->gallery($x - 1), $th->gallery(-1), $y, $Y,
+		    $y, $Y, $th->gallery($x - 1), $th->gallery(-1),
 		    $x / $X * 100, $x, $X
 		    : sprintf ' %.0f%% %d / %d ',
 		    $x / $X * 100, $x, $X);
@@ -491,7 +491,7 @@ sub info {			# update text overlay, per info level
     } elsif ($i == 2) {
 	my $tmp = $im->hms || '';
 	$tmp = sprintf ' %s%d / %d  %d / %d ', $tmp ? "$tmp  " : '',
-	    $th->gallery($x - 1), $th->gallery(-1), $y, $Y;
+	    $y, $Y, $th->gallery($x - 1), $th->gallery(-1);
 	$self->SE->text($tmp);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
