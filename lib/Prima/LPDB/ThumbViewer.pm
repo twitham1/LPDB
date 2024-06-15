@@ -149,7 +149,7 @@ sub keyaliases {     # remote control key aliases that push other keys
 	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
 	kb::AudioForward => [ord 's'],
 	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
-	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
+	# ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
 	ord('I') - 64	=> [ord 'i'], # Ctrl-I = Info (green)
 	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
 	# kb::MediaPrevTrack => [ord 'p'], # prev gal
@@ -724,6 +724,17 @@ sub stackcenter {		# called by {cycler} timer
 			   $idx, $self->item2rect($idx, @s),
 			   $idx == $self->{focusedItem});
 	$self->end_paint;
+	my $me;
+	if ($self->{viewer} and Prima::Object::alive($self->{viewer})
+	    and $me = $self->{viewer}->IV and my $canvas = $me->{canvas}) {
+	    my($W, $H) = $me->size;
+	    my($w, $h) = $im->size;
+	    $me->begin_paint;
+	    $self->_draw_thumb($im, 2, $canvas, 1,
+			       $W/2-$w*2, $H/2-$h*2, $W/2+$w*2, $H/2+$h*2,
+			       0);
+	    $me->end_paint;
+	}
     }
 }
 
@@ -733,7 +744,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     $im or return;
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
-    $self->{canvas} ||= $canvas; # for middle image rotator
+    $self->{canvas} ||= $canvas; # for middle image rotator (StackCenter)
     my $back = $self->gallery($idx) || 0;
     my $bk = $sel ? $self->hiliteBackColor
 	: $back == -1 ? cl::Blue # picture collection background

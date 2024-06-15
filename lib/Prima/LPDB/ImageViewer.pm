@@ -114,8 +114,8 @@ sub viewimage
     if (my $dur = $picture->hms and # cid 2 is high resolution:
 	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id, 2)) {
 	$self->image($i);
-	$self->popup->checked('autoplay') or
-	    $self->say(">> Enter to play $dur >>");
+	# $self->popup->checked('autoplay') or
+	#     $self->say(">> Enter to play $dur >>");
     } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
@@ -163,6 +163,7 @@ sub viewimage
 
 sub on_paint { # update metadata label overlays, later in front of earlier
     my($self, $canvas) = @_;
+    $self->{canvas} ||= $canvas; # for middle image rotator (TV::StackCenter)
 
     # PS: I've read somewhere that ist::Quadratic produces best
     # visual results for the scaled-down images, while ist::Sinc
@@ -477,7 +478,7 @@ sub info {			# update text overlay, per info level
 	$self->SE->show;
     } elsif ($i == 2) {
 	my $tmp = $im->hms || '';
-	$tmp = sprintf ' %s%d / %d  %d / %d ', $tmp ? "$tmp  " : '',
+	$tmp = sprintf ' %s%d / %d  %d / %d ', $tmp ? ">> Enter to play $tmp >>  " : '',
 	    $y, $Y, $th->gallery($x - 1), $th->gallery(-1);
 	$self->SE->text($tmp);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
