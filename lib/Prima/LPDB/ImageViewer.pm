@@ -46,8 +46,8 @@ sub profile_default
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
 	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
-	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
-	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
+	    ['faster',     'F~aster Show',           'a', ord 'a', 'delayorzoom'],
+	    ['slower',     '~Slower Show',           's', ord 's', 'delayorzoom'],
 	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
@@ -280,7 +280,7 @@ sub on_keydown
 	$owner->owner->select;
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
+    if ($code == ord 'm') {	# popup menu
 	my @sz = $self->size;
 	if ($self->popup->checked('slideshow')) {
 	    $self->popup->checked('slideshow', 0);
@@ -289,23 +289,10 @@ sub on_keydown
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == 9) {		# ctrl-i = info cycle, in menu
-	$self->key_down(ord 'i');
-	return;
-    } elsif ($code == ord 'i') {
+    if ($code == ord 'i') {
 	$self->infocycle;
 	return;
-    } elsif ($code == 6) {	# ctrl-shift-f = faster remote button
-	$self->key_down(ord 'a');
-	return;
-    } elsif ($code == 2) {	# ctrl-shift-b = slower remote button
-	$self->key_down(ord 's');
-	return;
-    }	
-    # if ($key == kb::F11) {
-    # 	warn "f11 hit";
-    # 	$self->fullscreen(-1);
-    # }
+    }
 
     return if $self->{stretch};
 
@@ -520,6 +507,13 @@ sub _hms {			# sec -> hh:mm:ss
     my($sec) = @_;
     return sprintf '%02d:%02d:%02d',
 	$sec / 3600, $sec % 3600 / 60, $sec % 60
+}
+sub delayorzoom {		# adjust slideshow speed or zoom image
+    my($self, $name) = @_;
+    $self->popup->checked('slideshow')
+	and return $self->delay($name);
+    $name =~ /faster/ and $self->key_down(ord 'q');
+    $name =~ /slower/ and $self->key_down(ord 'z');
 }
 my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {

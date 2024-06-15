@@ -103,7 +103,7 @@ $::application->icon(Prima::LPDB::ThumbViewer::icon);
 
 $w = Prima::LPDB::Fullscreen->create(
     mainWindow => 1, # promote myself to MainWindow per Prima::Window:
-    onDestroy  => sub { $::application-> close },
+    onDestroy  => sub { $::application->close },
     name => 'LPG',
     text => 'Local Picture Gallery',
     packPropagate => 0,

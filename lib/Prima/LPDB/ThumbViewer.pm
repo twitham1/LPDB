@@ -22,6 +22,7 @@ use LPDB::Thumbnail;
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
+use Prima::EventHook;		# for remote control key aliases
 use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
@@ -121,7 +122,7 @@ sub profile_default
 		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
 	    [],
-	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
+	    ['*@croppaths', 'Crop ~Galleries',  'g', ord 'g', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    ['@buffered', 'Hide Screen ~Updates','u', ord 'u', sub { $_[0]->buffered($_[2]) }],
@@ -135,6 +136,46 @@ sub profile_default
 	]);
     @$def{keys %prf} = values %prf;
     return $def;
+}
+sub keyaliases {     # remote control key aliases that push other keys
+    my %keymap = (
+	kb::F11		=> [ord 'f'], # fullscreen toggle
+	kb::Menu	=> [ord 'm'], # modern media control keys
+	kb::BrowserHome	=> [ord 'i'],
+	kb::BrowserBack	=> [0, kb::Escape],
+	kb::MediaPlay	=> [ord 'p'],
+	ord('B') - 64	=> [ord 'a'], # Ctrl-B = Back (ARC-1100)
+	kb::AudioRewind	=> [ord 'a'],
+	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
+	kb::AudioForward => [ord 's'],
+	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
+	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
+	ord('I') - 64	=> [ord 'i'], # Ctrl-I = Info (green)
+	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
+	# kb::MediaPrevTrack => [ord 'p'], # prev gal
+	# kb::MediaNextTrack => [ord 'p'], # next gal
+	);
+    sub hook
+    {
+	my ( $my_param, $object, $event, @params) = @_;
+	print "Object $object received event $event @params\n";
+	if ($event eq 'KeyDown') {
+	    my ($code, $key, $mod) = @params;
+	    if (my $k = $keymap{$code || $key}) {
+		warn "hitting @$k";
+		$object->key_down(@$k);
+		return 0;
+	    }
+	}
+	return 1;
+    }
+    Prima::EventHook::install( \&hook,
+			       param    => {},
+			       object   => $::application,
+			       # event    => [qw(KeyDown Menu Popup)],
+			       event    => [qw(KeyDown)],
+			       children => 1
+	);
 }
 sub lpdb { $_[0]->{lpdb} }
 sub vfs { $_[0]->{vfs} }
@@ -234,6 +275,7 @@ sub init {
     # $self->selected(1);
     # $self->focused(1);
     $self->select;
+    $self->keyaliases;
     return %profile;
 }
 
@@ -578,7 +620,7 @@ sub on_keydown			# code == -1 for remote navigation
     my ($self, $code, $key, $mod) = @_;
     #    warn "keydown  @_";
     my $idx = $self->focusedItem;
-    if ($key == kb::Enter && $idx >= 0) {
+    if (($key == kb::Enter || $code == ord 'p') && $idx >= 0) {
 	my $this = $self->item($idx);
 	# warn $self->focusedItem, " is entered\n";
 	if ($this->isa('LPDB::Schema::Result::Path')) {
@@ -586,24 +628,27 @@ sub on_keydown			# code == -1 for remote navigation
 	} elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	    # show picture in other window and raise it unless remote
 	    $self->viewer($code == -1 ? 1 : 0)->IV->viewimage($this);
+	    if ($code == ord 'p') {	# play show from here
+		$self->viewer->IV->popup->checked('slideshow', 1);
+		$self->viewer->IV->slideshow;
+	    }
 	}
 	return;
-    } elsif ($key == kb::Escape) {
+    } elsif ($key == kb::Escape) { # back up to parent
 	$self->goto($self->cwd);
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' # popup menu
-	or $code == 13) {	# ctrl-m is blue remote button
+    if ($code == ord 'm') {	# popup menu
 	my @sz = $self->size;
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == 5) {		# ctrl-e is red remote button
-	$self->key_down(ord 'i'); # image crops
+    if ($code == ord 'a') {
+	$self->key_down(ord 'q'); # smaller
 	return;
     }
-    if ($code == 20) {		# ctrl-t is yellow remote button
-	$self->key_down(ord 'p'); # path crops
+    if ($code == ord 's') {
+	$self->key_down(ord 'z'); # bigger
 	return;
     }
     $self->SUPER::on_keydown($code, $key, $mod);
