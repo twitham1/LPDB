@@ -149,7 +149,8 @@ sub keyaliases {     # remote control key aliases that push other keys
 	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
 	kb::AudioForward => [ord 's'],
 	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
-	# ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
+	kb::Return	=> -1,	      # no-op, different than:
+	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
 	ord('I') - 64	=> [ord 'i'], # Ctrl-I = Info (green)
 	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
 	# kb::MediaPrevTrack => [ord 'p'], # prev gal
@@ -161,7 +162,8 @@ sub keyaliases {     # remote control key aliases that push other keys
 	print "Object $object received event $event @params\n";
 	if ($event eq 'KeyDown') {
 	    my ($code, $key, $mod) = @params;
-	    if (my $k = $keymap{$code || $key}) {
+	    if (my $k = $keymap{$key} || $keymap{$code}) {
+		$k > 0 or return 1;
 		warn "hitting @$k";
 		$object->key_down(@$k);
 		return 0;
@@ -499,6 +501,11 @@ sub current {			# path to current selected item
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
+sub on_close {	    # restore focus to original window, else no focus!
+    $_[0]->owner->select;
+    $_[0]->owner->focus;
+}
+
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
     $idx = $idx->[0];
@@ -724,15 +731,18 @@ sub stackcenter {		# called by {cycler} timer
 			   $idx, $self->item2rect($idx, @s),
 			   $idx == $self->{focusedItem});
 	$self->end_paint;
+	$idx == $self->{focusedItem} or next;
 	my $me;
-	if ($self->{viewer} and Prima::Object::alive($self->{viewer})
-	    and $me = $self->{viewer}->IV and my $canvas = $me->{canvas}) {
+	if ($self->{viewer}
+	    and Prima::Object::alive($self->{viewer})
+	    and $me = $self->{viewer}->IV
+	    and $me->focused
+	    and my $canvas = $me->{canvas}) {
 	    my($W, $H) = $me->size;
 	    my($w, $h) = $im->size;
 	    $me->begin_paint;
 	    $self->_draw_thumb($im, 2, $canvas, 1,
-			       $W/2-$w*2, $H/2-$h*2, $W/2+$w*2, $H/2+$h*2,
-			       0);
+			       $W/2-$w*2, $H/2-$h*2, $W/2+$w*2, $H/2+$h*2);
 	    $me->end_paint;
 	}
     }
@@ -744,7 +754,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     $im or return;
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
-    $self->{canvas} ||= $canvas; # for middle image rotator (StackCenter)
+    $self->{canvas} ||= $canvas; # for middle image rotator (stackcenter)
     my $back = $self->gallery($idx) || 0;
     my $bk = $sel ? $self->hiliteBackColor
 	: $back == -1 ? cl::Blue # picture collection background

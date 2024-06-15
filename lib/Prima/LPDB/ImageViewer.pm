@@ -163,7 +163,7 @@ sub viewimage
 
 sub on_paint { # update metadata label overlays, later in front of earlier
     my($self, $canvas) = @_;
-    $self->{canvas} ||= $canvas; # for middle image rotator (TV::StackCenter)
+    $self->{canvas} ||= $canvas; # for middle image rotator (TV::stackcenter)
 
     # PS: I've read somewhere that ist::Quadratic produces best
     # visual results for the scaled-down images, while ist::Sinc
@@ -206,6 +206,7 @@ sub on_close {
     my $owner = $_[0]->{thumbviewer};
     $owner or return;
     $owner->owner->select;
+    $owner->owner->focus;
 }
 
 sub autozoom {			# Enter == zoom picture or play video
