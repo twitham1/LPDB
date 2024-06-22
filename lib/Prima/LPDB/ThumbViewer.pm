@@ -129,7 +129,7 @@ sub profile_default
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
-	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
+	    ['smaller',     'Zoom ~Out',    'a', ord 'a', sub { $_[0]->smaller }],
 	    [],
 	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
 	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
@@ -137,8 +137,14 @@ sub profile_default
     @$def{keys %prf} = values %prf;
     return $def;
 }
-sub keyaliases {     # remote control key aliases that push other keys
+sub keyaliases {		# key aliases that push other keys
     my %keymap = (
+	# ord 'i'		=> [0, kb::Up], # conflicts with info
+	# ord 'j'		=> [0, kb::Left],
+	# ord 'k'		=> [0, kb::Down],
+	# ord 'l'		=> [0, kb::Right],
+	# ord 'e'		=> [0, kb::Prior],
+	# ord 'd'		=> [0, kb::Next],
 	kb::F11		=> [ord 'f'], # fullscreen toggle
 	kb::Menu	=> [ord 'm'], # modern media control keys
 	kb::BrowserHome	=> [ord 'i'],
@@ -146,8 +152,8 @@ sub keyaliases {     # remote control key aliases that push other keys
 	kb::MediaPlay	=> [ord 'p'],
 	ord('B') - 64	=> [ord 'a'], # Ctrl-B = Back (ARC-1100)
 	kb::AudioRewind	=> [ord 'a'],
-	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
-	kb::AudioForward => [ord 's'],
+	ord('F') - 64	=> [ord 'z'], # Ctrl-F = Forward
+	kb::AudioForward => [ord 'z'],
 	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
 	kb::Return	=> -1,	      # no-op, different than:
 	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
@@ -235,7 +241,7 @@ sub init {
 		 pack => { side => 'right' },
 		 text => 'Enter = select / Escape = back',
 		 hint => 'Q = Zoom Out',
-		 onMouseClick => sub { $self->hitkey(ord 'q') },
+		 onMouseClick => sub { $self->hitkey(ord 'a') },
 	);
     $top->insert('Prima::Label',
 		 name => 'N',
@@ -635,7 +641,7 @@ sub on_keydown			# code == -1 for remote navigation
 	} elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	    # show picture in other window and raise it unless remote
 	    $self->viewer($code == -1 ? 1 : 0)->IV->viewimage($this);
-	    if ($code == ord 'p') {	# play show from here
+	    if ($code == ord 'p') { # play show from here
 		$self->viewer->IV->popup->checked('slideshow', 1);
 		$self->viewer->IV->slideshow;
 	    }
@@ -648,14 +654,6 @@ sub on_keydown			# code == -1 for remote navigation
     if ($code == ord 'm') {	# popup menu
 	my @sz = $self->size;
 	$self->popup->popup(50, $sz[1] - 50); # near top left
-	return;
-    }
-    if ($code == ord 'a') {
-	$self->key_down(ord 'q'); # smaller
-	return;
-    }
-    if ($code == ord 's') {
-	$self->key_down(ord 'z'); # bigger
 	return;
     }
     $self->SUPER::on_keydown($code, $key, $mod);
@@ -956,7 +954,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2023 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

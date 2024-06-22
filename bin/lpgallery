@@ -161,6 +161,10 @@ lpgallery - remote-control (keyboard) driven local picture browser
 
 lpgallery [startup file]
 
+What would happen if all your pictures were available in just 1 local
+file and all their metadata in another?  Any or all pictures could be
+seen instantly and in any order.  This is that!
+
 UNDER CONSTRUCTION - Picasa features don't yet exist!!!
 
 =head1 DESCRIPTION
@@ -343,7 +347,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2023 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

@@ -47,17 +47,18 @@ sub profile_default
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
 	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
 	    ['faster',     'F~aster Show',           'a', ord 'a', 'delayorzoom'],
-	    ['slower',     '~Slower Show',           's', ord 's', 'delayorzoom'],
+	    ['slower',     '~Slower Show',           'z', ord 'z', 'delayorzoom'],
 	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',     '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
-	    ['smaller',    'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
+	    ['bigger',     '~Zoom In',     sub { $_[0]->bigger }],
+	    ['smaller',    'Zoom ~Out',    sub { $_[0]->smaller }],
 	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
 	    ['help', '~Help', 'h', ord('h'), 'help'],
+	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -350,7 +351,7 @@ sub on_mousewheel {
 sub on_mouseclick {		# click/touch zones
     my($self, $button, $mod, $x, $y) = @_;
     my($w, $h) = $self->size;
-    my @key = reverse([kb::Escape,	kb::Up,		ord 'q'],
+    my @key = reverse([kb::Escape,	kb::Up,		ord 'a'],
 		      [kb::Left,	kb::Enter,	kb::Right],
 		      [ord 'm',		kb::Down,	ord 'z']);
     $button == mb::Middle
@@ -514,8 +515,8 @@ sub delayorzoom {		# adjust slideshow speed or zoom image
     my($self, $name) = @_;
     $self->popup->checked('slideshow')
 	and return $self->delay($name);
-    $name =~ /faster/ and $self->key_down(ord 'q');
-    $name =~ /slower/ and $self->key_down(ord 'z');
+    $name =~ /faster/ and $self->smaller;
+    $name =~ /slower/ and $self->bigger;
 }
 my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {
@@ -772,7 +773,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2023 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
