@@ -119,6 +119,22 @@ sub tschema {
     return $self->{tschema};
 }
 
+sub namevalue {			# key / value store
+    my($self, $name, $value) = @_;
+    defined $name or return;
+    my $schema = $self->schema;
+    my $row;
+    if (defined $value) {
+	$row = $schema->resultset('NameValue')->find_or_create(
+	    { name => $name });
+	$row->value($value);
+	$row->update;
+    }
+    $row or $row = $schema->resultset('NameValue')->find(
+	{ name => $name });
+    return $row ? $row->value : undef;
+}
+
 # ------------------------------------------------------------
 # Everything below here might be used by legacy picasagallery but is
 # likely never used by current lpgallery.  Not well tested.  Should be

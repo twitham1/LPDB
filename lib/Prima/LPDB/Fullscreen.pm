@@ -107,7 +107,7 @@ sub closest_screen {
     return [0, 0, $::application->size]; # shouldn't get here
 }
 
-# NOTES on going fullscreen:
+# NOTES on going fullscreen, possibly obsolete by 2024:
 
 # In X11 we can only guarantee fullscreen by creating a
 # non-WM-manageable widget.  This is portable, but we cannot bring
@@ -149,6 +149,9 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
     } else {
 	$self->restore;
     }
+    # why is size wrong, reporting prior size?  How to fix? !!!
+    warn join "---", $fs, $self->size, $self->width, $self->height, $self->frameSize;
+    # $self->notify('Size', $self->size, $self->size);
     return $self->windowState & ws::Fullscreen ? 1 : 0;
 }
 

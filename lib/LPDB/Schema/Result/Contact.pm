@@ -89,9 +89,26 @@ __PACKAGE__->set_primary_key("contact_id");
 
 __PACKAGE__->add_unique_constraint("name_unique", ["name"]);
 
+=head1 RELATIONS
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2022-09-21 00:11:24
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:kk1FI/XJSBgPhk8YWsn8Mw
+=head2 thumbs
+
+Type: has_many
+
+Related object: L<LPDB::Schema::Result::Thumb>
+
+=cut
+
+__PACKAGE__->has_many(
+  "thumbs",
+  "LPDB::Schema::Result::Thumb",
+  { "foreign.contact_id" => "self.contact_id" },
+  { cascade_copy => 0, cascade_delete => 0 },
+);
+
+
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-06-25 18:46:37
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:LJaQl9AoR195WOq/7I2gyA
 
 
 # You can replace this text with custom code or comments, and it will

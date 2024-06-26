@@ -65,7 +65,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
     $conf->{guisqltrace} and $conf->{sqltrace} = 1;
     $conf->{child} = $child;
-    sleep 10 if $create;
+    sleep($create ? 10 : 2);
     $lpdb = new LPDB($conf);
     $SIG{USR1} = sub {
 	warn "$$: signal USR1 received, DB updated!";
@@ -78,7 +78,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     } else {
 	unlink $conf->{dbfile} if $create;
 	$lpdb = new LPDB($conf);
-	$lpdb->create if $create;
+	$lpdb->create;		# or update schema via *.sql
 	$lpdb->update('.');
 	$lpdb->cleanup;
 	$lpdb->disconnect;
@@ -120,8 +120,6 @@ $w = Prima::LPDB::Fullscreen->create(
 # Prima.Back: black
 # Prima.HiliteBackColor: gray33
 
-sub myclose { $w->deselect; $::application->close } # segfaults!??!!!
-
 # print sort map {"$_->{name}\n"} @{$::application-> fonts}; # see available fonts!!!
 
 $lv = $w->insert(
@@ -137,8 +135,9 @@ $lv = $w->insert(
     );
 
 $lv->smaller(6);		# resize thumbs to fill the window
-$lv->focusedItem(0);
-$w->repaint;
+#$lv->focusedItem(0);
+#$w->repaint;
+
 
 #$::application->yield;
 if ($conf->{thumbviewer}) {	# optional startup configuration

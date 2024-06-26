@@ -137,7 +137,7 @@ sub profile_default
     @$def{keys %prf} = values %prf;
     return $def;
 }
-sub keyaliases {		# key aliases that push other keys
+{				# key aliases that push other keys
     my %keymap = (
 	# ord 'i'		=> [0, kb::Up], # conflicts with info
 	# ord 'j'		=> [0, kb::Left],
@@ -162,13 +162,12 @@ sub keyaliases {		# key aliases that push other keys
 	# kb::MediaPrevTrack => [ord 'p'], # prev gal
 	# kb::MediaNextTrack => [ord 'p'], # next gal
 	);
-    sub hook
-    {
+    sub hook {
 	my ( $my_param, $object, $event, @params) = @_;
 	print "Object $object received event $event @params\n";
 	if ($event eq 'KeyDown') {
 	    my ($code, $key, $mod) = @params;
-	    if (my $k = $keymap{$key} || $keymap{$code}) {
+	    if (my $k = ($keymap{$key} || $keymap{$code} || 0)) {
 		$k > 0 or return 1;
 		warn "hitting @$k";
 		$object->key_down(@$k);
@@ -177,13 +176,15 @@ sub keyaliases {		# key aliases that push other keys
 	}
 	return 1;
     }
-    Prima::EventHook::install( \&hook,
+    sub keyaliases {
+	Prima::EventHook::install( \&hook,
 			       param    => {},
 			       object   => $::application,
 			       # event    => [qw(KeyDown Menu Popup)],
 			       event    => [qw(KeyDown)],
 			       children => 1
-	);
+	    );
+    }
 }
 sub lpdb { $_[0]->{lpdb} }
 sub vfs { $_[0]->{vfs} }
@@ -284,6 +285,10 @@ sub init {
     # $self->focused(1);
     $self->select;
     $self->keyaliases;
+    if (my $last = $self->bookmark('LAST')) { # restore last location
+    	warn "restoring last position $last";
+    	$self->goto($last);
+    }
     return %profile;
 }
 
@@ -506,11 +511,6 @@ sub current {			# path to current selected item
 }
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
-
-sub on_close {	    # restore focus to original window, else no focus!
-    $_[0]->owner->select;
-    $_[0]->owner->focus;
-}
 
 sub on_selectitem { # update metadata labels, later in front of earlier
     my ($self, $idx, $state) = @_;
@@ -936,6 +936,40 @@ sub viewer {		 # reuse existing image viewer, or recreate it
     $noraise or $self->{viewer}->bring_to_front;
     $self->{viewer}->repaint;
     $self->{viewer};
+}
+
+sub bookmark {			# key / value store for GUI bookmarks
+    my($self, $name, $value) = @_;
+    defined $name or return;
+    my $schema = $self->{lpdb}->{tschema};
+    my $row;
+    if (defined $value) {
+	$row = $schema->resultset('BookMark')->find_or_create(
+	    { name => $name });
+	$row->value($value);
+	$row->update;
+	$schema->txn_commit;
+	$schema->txn_begin;
+    }
+    $row or $row = $schema->resultset('BookMark')->find(
+	{ name => $name });
+    warn "$name $value $row";
+    return $row ? $row->value : undef;
+}
+
+sub on_close {
+    my($self) = @_;
+    $self or return;
+    my $last = $self->current;
+    warn "$$ saving $last";
+    $self->bookmark('LAST', $last);
+    warn "trying to refocus";
+    $self->owner->select; # restore focus to original window, else no focus!
+    $self->owner->focus;
+}
+sub on_destroy {
+    warn "$$ ENDING";
+    &on_close;
 }
 
 1;

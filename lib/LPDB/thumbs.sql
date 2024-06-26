@@ -40,3 +40,19 @@ CREATE TABLE IF NOT EXISTS Thumbs (
          ON UPDATE CASCADE
    );
 CREATE INDEX IF NOT EXISTS thumb_id_index ON Thumbs (file_id, contact_id);
+
+---------------------------------------- BOOKMARKS
+INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
+   ('BookMarks', 'Name / Value data store');
+
+INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
+   ('BookMarks', 'name',	 'Name of the key'),
+   ('BookMarks', 'value', 'Value of the key');
+
+CREATE TABLE IF NOT EXISTS BookMarks (
+   name_id	INTEGER PRIMARY KEY NOT NULL,
+   name		TEXT UNIQUE NOT NULL,
+   value	TEXT
+   );
+
+CREATE UNIQUE INDEX IF NOT EXISTS bookmark_name_index ON BookMarks (name);
