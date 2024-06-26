@@ -164,7 +164,7 @@ sub profile_default
 	);
     sub hook {
 	my ( $my_param, $object, $event, @params) = @_;
-	print "Object $object received event $event @params\n";
+	# warn "Object $object received event $event @params\n";
 	if ($event eq 'KeyDown') {
 	    my ($code, $key, $mod) = @params;
 	    if (my $k = ($keymap{$key} || $keymap{$code} || 0)) {
@@ -281,15 +281,33 @@ sub init {
     $self->items($self->children('/'));
     $self->focusedItem(0);
     $self->repaint;
-    # $self->selected(1);
-    # $self->focused(1);
     $self->select;
     $self->keyaliases;
+    return %profile;
+}
+
+sub on_create {
+    my($self) = @_;
+    warn "created!!!!!111111111111111111111111";
+    if (my $code = $self->lpdb->conf('thumbviewer')) {
+	&{$code}($self);
+	warn "configured $code($self)!!!!!!!!!!!!";
+	# $self->bigger;
+	# $self->smaller;
+	# $self->repaint;
+    }
     if (my $last = $self->bookmark('LAST')) { # restore last location
     	warn "restoring last position $last";
     	$self->goto($last);
     }
-    return %profile;
+    Prima::StartupWindow::unimport;
+}
+
+sub on_size {			# keep selection in view
+    my($self) = @_;
+    my $tmp = $self->focusedItem;
+    $self->focusedItem(-1);
+    $self->focusedItem($tmp);
 }
 
 sub icon {		    # my application icon: stack of 3 "images"
@@ -472,7 +490,7 @@ sub goto {			# goto path//file or path/path
     $self->items($self->children($path)); # this blocks on the DB
     $self->profile("in DB");
     $self->focusedItem(-1);
-    # $self->repaint;
+    #$self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
     unless ($n) {
@@ -904,6 +922,41 @@ sub draw_picture {
     $canvas->rect_focus( $x1, $y1, $x2, $y2 ) if $foc;
 }
 
+sub bookmark {			# key / value store for GUI bookmarks
+    my($self, $name, $value) = @_;
+    defined $name or return;
+    my $schema = $self->{lpdb}->{tschema};
+    my $row;
+    if (defined $value) {
+	$row = $schema->resultset('BookMark')->find_or_create(
+	    { name => $name });
+	$row->value($value);
+	$row->update;
+	$schema->txn_commit;
+	$schema->txn_begin;
+    }
+    $row or $row = $schema->resultset('BookMark')->find(
+	{ name => $name });
+    warn "$name $value $row";
+    return $row ? $row->value : undef;
+}
+
+sub on_close {
+    my($self) = @_;
+    $self or return;
+    my $last = $self->current;
+    warn "$$ saving $last";
+    $self->bookmark('LAST', $last);
+    warn "trying to refocus";
+    $self->owner->select; # restore focus to original window, else no focus!
+    $self->owner->focus;
+}
+
+# sub on_destroy {
+#     warn "$$ ENDING";
+#     &on_close;
+# }
+
 # TODO, move this to ImageViewer or ImageWindow or somewhere?
 
 sub viewer {		 # reuse existing image viewer, or recreate it
@@ -936,40 +989,6 @@ sub viewer {		 # reuse existing image viewer, or recreate it
     $noraise or $self->{viewer}->bring_to_front;
     $self->{viewer}->repaint;
     $self->{viewer};
-}
-
-sub bookmark {			# key / value store for GUI bookmarks
-    my($self, $name, $value) = @_;
-    defined $name or return;
-    my $schema = $self->{lpdb}->{tschema};
-    my $row;
-    if (defined $value) {
-	$row = $schema->resultset('BookMark')->find_or_create(
-	    { name => $name });
-	$row->value($value);
-	$row->update;
-	$schema->txn_commit;
-	$schema->txn_begin;
-    }
-    $row or $row = $schema->resultset('BookMark')->find(
-	{ name => $name });
-    warn "$name $value $row";
-    return $row ? $row->value : undef;
-}
-
-sub on_close {
-    my($self) = @_;
-    $self or return;
-    my $last = $self->current;
-    warn "$$ saving $last";
-    $self->bookmark('LAST', $last);
-    warn "trying to refocus";
-    $self->owner->select; # restore focus to original window, else no focus!
-    $self->owner->focus;
-}
-sub on_destroy {
-    warn "$$ ENDING";
-    &on_close;
 }
 
 1;

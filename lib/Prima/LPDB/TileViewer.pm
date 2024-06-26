@@ -84,7 +84,7 @@ sub smaller {
     $c > 3 or $c = 4;
     my @i = $self->indents;	# border / scrollbar indents
     my $new = int(($self->width - $i[0] - $i[2]) / $c);
-    $new > 100 or $new = 100;
+    $new > 180 or $new = 180;
     $self->itemWidth(int $new);
     $self->itemHeight(int $self->itemHeight * $new / $old);
     $self->font->height($new/12);
