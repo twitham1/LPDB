@@ -111,6 +111,9 @@ $w = Prima::LPDB::Fullscreen->create(
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
+$::application->yield;
+# $w->repaint;
+# $w->update_view;
 
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
@@ -131,6 +134,10 @@ $lv = $w->insert(
     pack => { expand => 1, fill => 'both' },
     );
 
+$::application->yield;
+$w->repaint;
+$w->update_view;
+
 run Prima;
 
 exit 0;
@@ -147,9 +154,12 @@ lpgallery - remote-control (keyboard) driven local picture browser
 
 lpgallery [startup file]
 
-What would happen if all your pictures were available in just 1 local
-file and all their metadata in another?  Any or all pictures could be
-seen instantly and in any order.  This is that!
+What would happen if all your pictures(*) were available in just 1
+local file and all their metadata in a second file?  Any or all
+pictures could be seen instantly and in any order.  This is that!
+
+(*) thumbnails only, full resolution remains available in the original
+separate local files.
 
 UNDER CONSTRUCTION - Picasa features don't yet exist!!!
 
@@ -167,24 +177,36 @@ your couch.  Currently this is read-only, it will never modify any
 images.  The database is updated once from the filesystem in the
 background at start up.
 
+=head2 Remote and Keyboard Controls
+
+B<Enter> selects a path or image while B<Escape> returns back.  Arrow
+keys navigate the grid as expected while B<j> and B<k> navigate to the
+previous or next gallery.  Home row navigation is also built around
+these at B<u/<o> = Up/Down and B<h/l> = Left/Right.
+
+B<m> opens the menu which lists other keys that can be used such as
+B<q> for immediate quit.  B<a> and B<s> zoom in or out or change speed
+during a slide show.
+
+B<Rewind> and B<Seek> of media remotes control the zoom or speed like
+B<a/s>.  B<Prev/Next Track> find the next gallery like B<j/k>.
+
 =head2 Thumbnail Grid
 
-The main window is a grid of thumnail images.  Picture collections are
-represented by a stack of three images: the oldest, center (or random)
-and youngest picture in the path below that point in the tree.  Arrow
-keys move around the grid while the B<Enter> key moves into a lower
-path or presents a single picture.  The B<Escape> key moves back up to
-the parent path.  Metadata about the selected path is displayed above
-and below the grid.
+The main window is a grid of thumnail images.  Pictures below this
+path in the tree are represented by a stack of three images: the
+oldest, center (or random) and youngest.  Metadata about the selected
+path is displayed above and below the grid.
 
 Any videos are shown as a frame grab from the center of the video or
 as a stack of 3 grabs at 5%, 50% and 95% of the time.  This can be
 toggled with B<v>.  Either way the play time of the video is displayed
-in the center of the video image.
+above the video image.
 
-All images can optionally be cropped to consume their whole square in
-which case lines are overlayed that indicate displayed and missing
-areas of the full image.
+All images can optionally be cropped with the B<i> key to consume
+their whole square in which case lines are overlayed that indicate
+displayed and missing areas of the full image.  When cropped, portrait
+and ultra wide images get an indicating flag in the corner.
 
 The top level virtual paths of the grid are:
 
@@ -295,21 +317,19 @@ directory.  This simply chooses which to display first.
 
 =head2 SLIDE SHOW
 
-The B<p> key on the Image Viewer can Play or Pause a slide show and
-the menu can adjust its playback speed.  The slideshow is the pictures
-from the Thumbnail grid in order.  Therefore you can order the
-slideshow by the filtering and sorting options of the grid.  The
-defaults may work well while a random show would need I<Ungrouped>
-galleries and I<Random> images.
+The B<p> key can Play or Pause a slide show while B<a> and B<s> adjust
+its playback speed.  The slideshow is the pictures from the Thumbnail
+grid in order.  Therefore you can order the slideshow by the filtering
+and sorting options of the grid.  The defaults may work well while a
+random show would need I<Ungrouped> galleries and I<Random> images.
 
 Arrow key navigation and info cycling is available while the slideshow
 plays.  Menu or escape back to the grid automatically pauses the show,
-then you can B<Enter> and B<p> to continue playback from any point on
-the grid.
+then you can B<p> to continue playback from any point on the grid.
 
-Videos are previewed with a frame from the center of the time.
-B<Enter> will play the video (B<Escape> to return) or you can hit B<v>
-to toggle video autoplay.
+Videos are previewed with random frames from the video.  B<Enter> will
+play the video (B<Escape> to return) or you can hit B<v> to toggle
+video autoplay.
 
 =head1 TODO
 

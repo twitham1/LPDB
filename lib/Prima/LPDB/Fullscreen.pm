@@ -149,8 +149,11 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
     } else {
 	$self->restore;
     }
+    $::application->yield;
+    # $self->repaint;
+    # $self->update_view;
     # why is size wrong, reporting prior size?  How to fix? !!!
-    warn join "---", $fs, $self->size, $self->width, $self->height, $self->frameSize;
+    # warn join "---", $fs, $self->size, $self->width, $self->height, $self->frameSize;
     # $self->notify('Size', $self->size, $self->size);
     return $self->windowState & ws::Fullscreen ? 1 : 0;
 }

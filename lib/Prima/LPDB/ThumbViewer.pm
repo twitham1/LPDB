@@ -37,9 +37,9 @@ sub profile_default
     my $def = $_[ 0]-> SUPER::profile_default;
     my %prf = (
 	popupItems => [
-	    ['navto' => '~Navigate to this image in...' => [
-		 # replaced by on_selectitem
-		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
+	    ['navgal' => 'Navigate ~To Gallery...' => [
+		 ['galprev', '~Previous Gallery', 'j', ord 'j', 'galprev'],
+		 ['galprev', '~Next Gallery',     'k', ord 'k', 'galnext'],
 	     ]],
 	    ['~AND Filters' => [
 		 ['clear'	=> 'Clear ~All Filters' => sub {
@@ -121,30 +121,32 @@ sub profile_default
 		 ['c3000', '1 per 3 seconds', sub { $_[0]->{cycler}->timeout(3000)}],
 		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
+	    ['navto' => '~Navigate to this image in...' => [
+		 # replaced by on_selectitem
+		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
+	     ]],
 	    [],
-	    ['*@croppaths', 'Crop ~Galleries',  'g', ord 'g', sub { $_[0]->repaint }],
+	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
-	    ['@buffered', 'Hide Screen ~Updates','u', ord 'u', sub { $_[0]->buffered($_[2]) }],
+	    ['@buffered', 'Hide Screen ~Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
+	    ['bigger',      '~Zoom In',     's', ord 's', sub { $_[0]->bigger }],
 	    ['smaller',     'Zoom ~Out',    'a', ord 'a', sub { $_[0]->smaller }],
 	    [],
-	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
-	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
+	    ['help', '~Help', sub { $::application->open_help("file://$0") }],
+	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	]);
     @$def{keys %prf} = values %prf;
     return $def;
 }
 {				# key aliases that push other keys
     my %keymap = (
-	# ord 'i'		=> [0, kb::Up], # conflicts with info
-	# ord 'j'		=> [0, kb::Left],
-	# ord 'k'		=> [0, kb::Down],
-	# ord 'l'		=> [0, kb::Right],
-	# ord 'e'		=> [0, kb::Prior],
-	# ord 'd'		=> [0, kb::Next],
+	ord 'u'		=> [0, kb::Up], # home row arrows around j/k prev/next
+        ord 'o'		=> [0, kb::Down],
+	ord 'h'		=> [0, kb::Left],
+        ord 'l'		=> [0, kb::Right],
 	kb::F11		=> [ord 'f'], # fullscreen toggle
 	kb::Menu	=> [ord 'm'], # modern media control keys
 	kb::BrowserHome	=> [ord 'i'],
@@ -152,15 +154,15 @@ sub profile_default
 	kb::MediaPlay	=> [ord 'p'],
 	ord('B') - 64	=> [ord 'a'], # Ctrl-B = Back (ARC-1100)
 	kb::AudioRewind	=> [ord 'a'],
-	ord('F') - 64	=> [ord 'z'], # Ctrl-F = Forward
-	kb::AudioForward => [ord 'z'],
+	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
+	kb::AudioForward => [ord 's'],
 	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
 	kb::Return	=> -1,	      # no-op, different than:
 	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
 	ord('I') - 64	=> [ord 'i'], # Ctrl-I = Info (green)
 	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
-	# kb::MediaPrevTrack => [ord 'p'], # prev gal
-	# kb::MediaNextTrack => [ord 'p'], # next gal
+	kb::MediaPrevTrack => [ord 'j'], # prev gal
+	kb::MediaNextTrack => [ord 'k'], # next gal
 	);
     sub hook {
 	my ( $my_param, $object, $event, @params) = @_;
@@ -169,7 +171,7 @@ sub profile_default
 	    my ($code, $key, $mod) = @params;
 	    if (my $k = ($keymap{$key} || $keymap{$code} || 0)) {
 		$k > 0 or return 1;
-		warn "hitting @$k";
+		# warn "hitting @$k";
 		$object->key_down(@$k);
 		return 0;
 	    }
@@ -193,7 +195,6 @@ sub init {
     my $self = shift;
     my(%hash) = @_;
     my %profile = $self->SUPER::init(@_);
-
     $self->{lpdb} = $hash{lpdb} or die "lpdb object required";
     $self->{vfs} = new LPDB::VFS($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
@@ -268,7 +269,7 @@ sub init {
 		 pack => { side => 'right' },
 		 text => 'end time or image statistics',
 		 hint => 'Z = Zoom In',
-		 onMouseClick => sub { $self->hitkey(ord 'z') },
+		 onMouseClick => sub { $self->hitkey(ord 's') },
 	);
     $bot->insert('Prima::Label',
 		 name => 'S',
@@ -288,26 +289,14 @@ sub init {
 
 sub on_create {
     my($self) = @_;
-    warn "created!!!!!111111111111111111111111";
     if (my $code = $self->lpdb->conf('thumbviewer')) {
 	&{$code}($self);
-	warn "configured $code($self)!!!!!!!!!!!!";
-	# $self->bigger;
-	# $self->smaller;
-	# $self->repaint;
     }
     if (my $last = $self->bookmark('LAST')) { # restore last location
     	warn "restoring last position $last";
     	$self->goto($last);
     }
     Prima::StartupWindow::unimport;
-}
-
-sub on_size {			# keep selection in view
-    my($self) = @_;
-    my $tmp = $self->focusedItem;
-    $self->focusedItem(-1);
-    $self->focusedItem($tmp);
 }
 
 sub icon {		    # my application icon: stack of 3 "images"
@@ -614,6 +603,25 @@ sub xofy {	      # find pic position in current gallery directory
     my $y = $last - $first;
     # warn "$first -> $me -> $last == ($x of $y)";
     return $x, $y;
+}
+
+sub galprev {
+    my($self) = @_;
+    my $idx = $self->focusedItem;
+    my($x, $y) = $self->xofy($idx);
+    $idx -= $x;			# last image of prev gal
+    ($x, $y) = $self->xofy($idx);
+    $idx -= ($y - 1);		# first image of prev gal
+    $idx < 0 and $idx = 0;
+    $self->focusedItem($idx);
+}
+sub galnext {
+    my($self) = @_;
+    my($idx, $end) = ($self->focusedItem, $self->count);
+    my($x, $y) = $self->xofy($idx);
+    $idx += 1 + ($y - $x);	# first image of next gal
+    $idx > $end and $idx = $end;
+    $self->focusedItem($idx);
 }
 
 sub cwd {
@@ -937,7 +945,7 @@ sub bookmark {			# key / value store for GUI bookmarks
     }
     $row or $row = $schema->resultset('BookMark')->find(
 	{ name => $name });
-    warn "$name $value $row";
+#    warn "$name $value $row";
     return $row ? $row->value : undef;
 }
 
@@ -945,9 +953,9 @@ sub on_close {
     my($self) = @_;
     $self or return;
     my $last = $self->current;
-    warn "$$ saving $last";
+#    warn "$$ saving $last";
     $self->bookmark('LAST', $last);
-    warn "trying to refocus";
+#    warn "trying to refocus";
     $self->owner->select; # restore focus to original window, else no focus!
     $self->owner->focus;
 }

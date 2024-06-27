@@ -45,20 +45,20 @@ sub profile_default
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
-	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
+	    ['*@loop',     '~Loop Slide Show',                     'slideshow'],
+	    ['slower',     '~Slower Show',           's', ord 's', 'delayorzoom'],
 	    ['faster',     'F~aster Show',           'a', ord 'a', 'delayorzoom'],
-	    ['slower',     '~Slower Show',           'z', ord 'z', 'delayorzoom'],
 	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
 	    [],
-	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['@overlay', '~Overlay Images',  sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',     '~Zoom In',     sub { $_[0]->bigger }],
-	    ['smaller',    'Zoom ~Out',    sub { $_[0]->smaller }],
+	    ['bigger',      '~Zoom In',    's', ord 's', 'delayorzoom'],
+	    ['smaller',     'Zoom ~Out',   'a', ord 'a', 'delayorzoom'],
 	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
-	    ['help', '~Help', 'h', ord('h'), 'help'],
-	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
+	    ['help', '~Help', 'help'],
+	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -248,7 +248,7 @@ sub autozoom {			# Enter == zoom picture or play video
 	my($w, $h) = $self->size;
 	my($x, $y) = $self->deltas;
 	my $z = $self->zoom;
-	$z * $factor < 2.5 or return;
+	$z * $factor < 5 or return;
 	$self->zoom($z * $factor);
 	$self->deltas(($x + $w/2) * $factor - $w/2,
 		      ($y + $h/2) * $factor - $h/2);
@@ -299,8 +299,11 @@ sub on_keydown
 
     return if $self->{stretch};
 
-    my $c = $code & 0xFF;
+    my $c = $code & 0xFF;   # per navgal and keymap in ThumbViewer.pm:
     return unless $c >= ord '0' and $c <= ord '9'
+	or $c == ord 'u' or $c == ord 'o'
+	or $c == ord 'h' or $c == ord 'l'
+	or $c == ord 'j' or $c == ord 'k'
 	or grep { $key == $_ } (
 	kb::Left, kb::Right, kb::Down, kb::Up,
     );
@@ -353,7 +356,7 @@ sub on_mouseclick {		# click/touch zones
     my($w, $h) = $self->size;
     my @key = reverse([kb::Escape,	kb::Up,		ord 'a'],
 		      [kb::Left,	kb::Enter,	kb::Right],
-		      [ord 'm',		kb::Down,	ord 'z']);
+		      [ord 'm',		kb::Down,	ord 's']);
     $button == mb::Middle
 	and $self->key_down(0, kb::Escape);
     $button == mb::Left or return;
