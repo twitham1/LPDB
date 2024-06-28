@@ -41,7 +41,7 @@ sub profile_default
 	    [],
 	    ['(info0',	'~No Information Overlay',	'status'],
 	    ['info1',	'Progress ~Markers',		'status'],
-	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
+	    ['*info2',	'Brief ~Information', 'n', 0,	'status'],
 	    [')info3',	'~Verbose Information',		'status'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
@@ -56,8 +56,8 @@ sub profile_default
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['bigger',      '~Zoom In',    's', ord 's', 'delayorzoom'],
 	    ['smaller',     'Zoom ~Out',   'a', ord 'a', 'delayorzoom'],
-	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
-	    ['help', '~Help', 'help'],
+	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom'],
+	    ['help', '~Help', 'h', ord 'h', 'help'],
 	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	],
 	);
@@ -292,18 +292,17 @@ sub on_keydown
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == ord 'i') {
+    if ($code == ord 'n') {
 	$self->infocycle;
 	return;
     }
 
     return if $self->{stretch};
 
-    my $c = $code & 0xFF;   # per navgal and keymap in ThumbViewer.pm:
+    my $c = $code & 0xFF; # must match navgal and keymap in ThumbViewer.pm:
     return unless $c >= ord '0' and $c <= ord '9'
+	or $c >= ord 'i' and $c <= ord 'l'
 	or $c == ord 'u' or $c == ord 'o'
-	or $c == ord 'h' or $c == ord 'l'
-	or $c == ord 'j' or $c == ord 'k'
 	or grep { $key == $_ } (
 	kb::Left, kb::Right, kb::Down, kb::Up,
     );
@@ -372,9 +371,9 @@ sub help {			# click/touch zone documentation
     $self->backColor(cl::Black);
     $self->lineWidth(3);
     my @desc = (
-	"Escape\nback to Grid", "Up\nPrevious Row", "Q\nZoom Out",
+	"Escape\nback to Grid", "Up\nPrevious Row", "A\nZoom Out",
 	"Left\nPrevious Picture", "Enter\nToggle Zoom", "Right\nNext Picture",
-	"M\nMenu Options", "Down\nNext Row", "Z\nZoom In");
+	"M\nMenu Options", "Down\nNext Row", "S\nZoom In");
     for my $y ($h * 2 / 3, $h / 3, 0) {
 	for my $x (0, $w / 3, $w * 2 / 3) {
 	    my $txt = shift @desc; $txt =~ s/(\w+)/<$1>/;

@@ -27,6 +27,7 @@ use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 use Prima::LPDB::PointerHider;	# could someday promote to Prima?
+use Prima::LPDB::HelpViewer;
 
 use vars qw(@ISA);
 @ISA = qw(Prima::LPDB::TileViewer);
@@ -36,10 +37,15 @@ sub profile_default
 {
     my $def = $_[ 0]-> SUPER::profile_default;
     my %prf = (
+	# hiliteBackColor	=> 0x74EE15, # neon green
+	# hiliteBackColor	=> 0xFFE700, # neon yellow
+	# hiliteBackColor	=> 0xF000FF, # neon magenta
+	# hiliteBackColor	=> cl::Magenta,
 	popupItems => [
-	    ['navgal' => 'Navigate ~To Gallery...' => [
-		 ['galprev', '~Previous Gallery', 'j', ord 'j', 'galprev'],
-		 ['galprev', '~Next Gallery',     'k', ord 'k', 'galnext'],
+	    ['escape' => 'Escape back to Thumb Viewer', sub {}],
+	    ['navgal' => 'Navigate ~To Gallery' => [
+		 ['galprev', '~U = Previous Gallery', 'u', ord 'u', 'galprev'],
+		 ['galprev', '~O = Next Gallery',     'o', ord 'o', 'galnext'],
 	     ]],
 	    ['~AND Filters' => [
 		 ['clear'	=> 'Clear ~All Filters' => sub {
@@ -127,7 +133,7 @@ sub profile_default
 	     ]],
 	    [],
 	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
-	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
+	    ['@cropimages', 'Crop ~Images', 'n', ord 'n', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    ['@buffered', 'Hide Screen ~Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],
@@ -135,7 +141,7 @@ sub profile_default
 	    ['bigger',      '~Zoom In',     's', ord 's', sub { $_[0]->bigger }],
 	    ['smaller',     'Zoom ~Out',    'a', ord 'a', sub { $_[0]->smaller }],
 	    [],
-	    ['help', '~Help', sub { $::application->open_help("file://$0") }],
+	    ['help', '~Help', 'h', ord 'h', sub { $::application->open_help("file://$0") }],
 	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	]);
     @$def{keys %prf} = values %prf;
@@ -143,15 +149,17 @@ sub profile_default
 }
 {				# key aliases that push other keys
     my %keymap = (
-	ord 'u'		=> [0, kb::Up], # home row arrows around j/k prev/next
-        ord 'o'		=> [0, kb::Down],
-	ord 'h'		=> [0, kb::Left],
+	ord 'i'		=> [0, kb::Up], # home row arrows around u/o prev/next
+	ord 'j'		=> [0, kb::Left],
+        ord 'k'		=> [0, kb::Down],
         ord 'l'		=> [0, kb::Right],
 	kb::F11		=> [ord 'f'], # fullscreen toggle
 	kb::Menu	=> [ord 'm'], # modern media control keys
-	kb::BrowserHome	=> [ord 'i'],
+	kb::BrowserHome	=> [ord 'n'], # info
 	kb::BrowserBack	=> [0, kb::Escape],
 	kb::MediaPlay	=> [ord 'p'],
+	kb::MediaPrevTrack => [ord 'u'], # prev gal
+	kb::MediaNextTrack => [ord 'o'], # next gal
 	ord('B') - 64	=> [ord 'a'], # Ctrl-B = Back (ARC-1100)
 	kb::AudioRewind	=> [ord 'a'],
 	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
@@ -159,10 +167,8 @@ sub profile_default
 	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
 	kb::Return	=> -1,	      # no-op, different than:
 	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
-	ord('I') - 64	=> [ord 'i'], # Ctrl-I = Info (green)
+	ord('I') - 64	=> [ord 'n'], # Ctrl-I = Info (green)
 	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
-	kb::MediaPrevTrack => [ord 'j'], # prev gal
-	kb::MediaNextTrack => [ord 'k'], # next gal
 	);
     sub hook {
 	my ( $my_param, $object, $event, @params) = @_;
@@ -703,11 +709,13 @@ sub stackcenter {		# called by {cycler} timer
     my $first = $self->{topItem};  # could be method
     my $last = $self->{lastItem};  # internal to Lists.pm, no method
     my $key = "$cwd $first $last"; # view change detector
-    if ($self->{firstlast} ne $key) { # update the view cache
-	my @path;
+    if ($self->{firstlast} ne $key) { # update the in-view cache
+	my @path;		      # paths needing centers
 	for (my $i = $first; $i <= $last; $i++) {
 	    my $this = $self->item($i);
-	    ref $this or next;	# only paths are refs, pics are ints
+	    ref $this or next;
+	    $this->isa('LPDB::Schema::Result::Picture') and
+		$this->duration and push @path, $i and next;
 	    $this->isa('LPDB::Schema::Result::Path') or next;
 	    $this->picturecount > 2 or next;
 	    push @path, $i;
@@ -718,6 +726,7 @@ sub stackcenter {		# called by {cycler} timer
 	$self->{corder} = 0;
     }
     my $n = @{$self->{pathsnow}};
+    $n or return;
 
     my %idx;			# indexes to replace
     if ($self->popup->checked('csel')) {
@@ -727,8 +736,8 @@ sub stackcenter {		# called by {cycler} timer
 	    $idx{$cur} = 1
 		if $item->isa('LPDB::Schema::Result::Path');
 	    $idx{$cur} = 1
-		if $item->isa('LPDB::Schema::Result::Picture') and
-		$item->duration;
+		if $item->isa('LPDB::Schema::Result::Picture')
+		and $item->duration;
 	}
     }
     if ($n and $self->popup->checked('corder')) {
@@ -832,6 +841,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
 				$self->rop)
 	or warn "put_image failed: $@";
     if (!$pos and !$b) {       # overlay rectangle on focused pictures
+	$canvas->lineWidth(3);
         my ($x, $y, $w, $h);
         if ($self->popup->checked('cropimages')) { # show aspect rectangle
 	    $canvas->color(cl::LightRed); # cropped portion

@@ -155,10 +155,10 @@ lpgallery - remote-control (keyboard) driven local picture browser
 lpgallery [startup file]
 
 What would happen if all your pictures(*) were available in just 1
-local file and all their metadata in a second file?  Any or all
-pictures could be seen instantly and in any order.  This is that!
+local file and all their metadata in a second file?  Any pictures
+could be seen instantly and in any order.  This is that!
 
-(*) thumbnails only, full resolution remains available in the original
+(*) thumbnails only, full resolution is also available in the original
 separate local files.
 
 UNDER CONSTRUCTION - Picasa features don't yet exist!!!
@@ -177,19 +177,21 @@ your couch.  Currently this is read-only, it will never modify any
 images.  The database is updated once from the filesystem in the
 background at start up.
 
-=head2 Remote and Keyboard Controls
+=head2 Remote Control / Keyboard Keys
 
 B<Enter> selects a path or image while B<Escape> returns back.  Arrow
-keys navigate the grid as expected while B<j> and B<k> navigate to the
-previous or next gallery.  Home row navigation is also built around
-these at B<u/<o> = Up/Down and B<h/l> = Left/Right.
+keys navigate the grid as expected, also available on the home row at
+B<i/j/k/l>. Previous and Next gallery are immediately above left/right
+at B<u/o> and B<p> starts a slideshow.  Finally, the digit keys scroll
+long lists to that tenth of the list: 0 = top, 7 = 70% and so on.
 
 B<m> opens the menu which lists other keys that can be used such as
-B<q> for immediate quit.  B<a> and B<s> zoom in or out or change speed
-during a slide show.
+B<q> for immediate quit or home row B<a/s> to zoom in or out or change
+speed during a slide show.
 
-B<Rewind> and B<Seek> of media remotes control the zoom or speed like
-B<a/s>.  B<Prev/Next Track> find the next gallery like B<j/k>.
+B<Rewind/Seek> of media remotes control the zoom or speed like B<a/s>.
+B<Prev/Next Track> find the next gallery like B<u/o>.  B<HomePage>
+hits B<n> which toggles thumb crop or cycles information.
 
 =head2 Thumbnail Grid
 
@@ -203,7 +205,7 @@ as a stack of 3 grabs at 5%, 50% and 95% of the time.  This can be
 toggled with B<v>.  Either way the play time of the video is displayed
 above the video image.
 
-All images can optionally be cropped with the B<i> key to consume
+All images can optionally be cropped with the B<n> key to consume
 their whole square in which case lines are overlayed that indicate
 displayed and missing areas of the full image.  When cropped, portrait
 and ultra wide images get an indicating flag in the corner.
@@ -257,7 +259,7 @@ window and hit B<Enter> again to toggle back to auto zoom best fit.
 For video files B<Enter> instead plays the video, hit B<Escape> to
 return when finished.
 
-The B<i> key cycles through metadata "info" overlay levels.  This adds
+The B<n> key cycles through metadata "info" overlay levels.  This adds
 common picture and camera metadata to the corners and (for Picasa
 only) draws named rectangles around recognized faces.  Hit the B<d>
 key to see all known metadata.
@@ -270,8 +272,7 @@ In the Thumbnail Grid, the B<m> key brings up a Menu of options
 including sorting, filtering, and navigating to other locations of
 this picture in the tree.  In the Image Viewer, B<m> can start and
 stop a slide show, adjust information overlay or show all metadata of
-the image.  Refer to the menu to discover other keyboard shortcuts
-like B<z> and B<q> to zoom in and out respectively in either window.
+the image.  Refer to the menu to discover other keyboard shortcuts.
 
 =head2 FILTERING
 
@@ -317,10 +318,10 @@ directory.  This simply chooses which to display first.
 
 =head2 SLIDE SHOW
 
-The B<p> key can Play or Pause a slide show while B<a> and B<s> adjust
-its playback speed.  The slideshow is the pictures from the Thumbnail
-grid in order.  Therefore you can order the slideshow by the filtering
-and sorting options of the grid.  The defaults may work well while a
+The B<p> key can Play or Pause a slide show while B<a/s> adjust its
+playback speed.  The slideshow is the pictures from the Thumbnail grid
+in order.  Therefore you can order the slideshow by the filtering and
+sorting options of the grid.  The defaults may work well while a
 random show would need I<Ungrouped> galleries and I<Random> images.
 
 Arrow key navigation and info cycling is available while the slideshow
