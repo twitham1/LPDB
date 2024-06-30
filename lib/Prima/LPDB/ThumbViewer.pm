@@ -27,7 +27,6 @@ use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 use Prima::LPDB::PointerHider;	# could someday promote to Prima?
-use Prima::LPDB::HelpViewer;
 
 use vars qw(@ISA);
 @ISA = qw(Prima::LPDB::TileViewer);
@@ -42,13 +41,14 @@ sub profile_default
 	# hiliteBackColor	=> 0xF000FF, # neon magenta
 	# hiliteBackColor	=> cl::Magenta,
 	popupItems => [
-	    ['escape' => 'Escape back to Thumb Viewer', sub {}],
-	    ['navgal' => 'Navigate ~To Gallery' => [
-		 ['galprev', '~U = Previous Gallery', 'u', ord 'u', 'galprev'],
-		 ['galprev', '~O = Next Gallery',     'o', ord 'o', 'galnext'],
+	    ['escape' => '~Escape back to Thumb Viewer', sub {}],
+	    ['navto' => 'Navigate to this image in' => [
+		 # replaced by on_selectitem
+		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
-	    ['~AND Filters' => [
-		 ['clear'	=> 'Clear ~All Filters' => sub {
+	    [],
+	    ['AND Filters' => [
+		 ['clear'	=> 'Clear All Filters' => sub {
 		     map { $_[0]->popup->checked($_, 1) }
 		     qw/bothfiles bothshapes unlimited/;
 		     map { $_[0]->popup->checked($_, 0) }
@@ -56,91 +56,88 @@ sub profile_default
 		     $_[0]->goto($_[0]->current);
 		  }],
 		 [],
-		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
-		 ['pictures'	=> '~Still Pictures' => 'sorter'],
-		 [')videos'	=> 'Motion ~Videos'  => 'sorter'],
+		 ['*(bothfiles'	=> 'Both Files:'    => 'sorter'],
+		 ['pictures'	=> 'Still Pictures' => 'sorter'],
+		 [')videos'	=> 'Motion Videos'  => 'sorter'],
 		 [],
-		 ['*(bothshapes'=> '~Both Shapes:' => 'sorter'],
-		 ['portrait'	=> '~Portrait'	   => 'sorter'],
-		 [')landscape'	=> '~Landscape'	   => 'sorter'],
+		 ['*(bothshapes'=> 'Both Shapes:' => 'sorter'],
+		 ['portrait'	=> 'Portrait'	  => 'sorter'],
+		 [')landscape'	=> 'Landscape'	  => 'sorter'],
 		 [],
-		 ['@tags'	=> '~Tags'	=> 'sorter'],
-		 ['@captions'	=> '~Captions'	=> 'sorter'],
+		 ['@tags'	=> 'Tags'	=> 'sorter'],
+		 ['@captions'	=> 'Captions'	=> 'sorter'],
 		 [],
-		 ['*(unlimited'	=> '~Unlimited or latest:' => 'sorter'],
-		 ['year10'	=> '1~0 Years'	=> 'sorter'],
-		 ['year5'	=> '~5 Years'	=> 'sorter'],
-		 ['year2'	=> '~2 Years'	=> 'sorter'],
-		 ['year1'	=> '1 ~Year'	=> 'sorter'],
-		 ['quarter'	=> '1 ~Quarter'	=> 'sorter'],
-		 [')month'	=> '1 ~Month'	=> 'sorter'],
+		 ['*(unlimited'	=> 'Unlimited or latest:' => 'sorter'],
+		 ['year10'	=> '10 Years'	=> 'sorter'],
+		 ['year5'	=> '5 Years'	=> 'sorter'],
+		 ['year2'	=> '2 Years'	=> 'sorter'],
+		 ['year1'	=> '1 Year'	=> 'sorter'],
+		 ['quarter'	=> '1 Quarter'	=> 'sorter'],
+		 [')month'	=> '1 Month'	=> 'sorter'],
 	     ]],
-	    ['~Sort' => [
-		 ['~Paths' => [
-		      ['*(pname'=> '~Name (default)'	=> 'sorter'],
-		      ['pfirst'	=> '~Begin Time'	=> 'sorter'],
-		      ['pmid'	=> '~Middle Time'	=> 'sorter'],
-		      ['plast'	=> '~End Time'		=> 'sorter'],
-		      [')prnd'	=> '~Random'		=> 'sorter'],
+	    ['Sort' => [
+		 ['Paths' => [
+		      ['*(pname'=> 'Name (default)'	=> 'sorter'],
+		      ['pfirst'	=> 'Begin Time'		=> 'sorter'],
+		      ['pmid'	=> 'Middle Time'	=> 'sorter'],
+		      ['plast'	=> 'End Time'		=> 'sorter'],
+		      [')prnd'	=> 'Random'		=> 'sorter'],
 		      [],
-		      ['*(pasc'	=> '~Ascending (default)' => 'sorter'],
-		      [')pdsc'	=> '~Descending'	=> 'sorter'],
+		      ['*(pasc'	=> 'Ascending (default)' => 'sorter'],
+		      [')pdsc'	=> 'Descending'		=> 'sorter'],
 		  ]],
-		 ['~Gallery Groups' => [
-		      ['(gname'	=> '~Name'			=> 'sorter'],
-		      ['*gfirst' => '~Begin Time (default)'	=> 'sorter'],
-		      ['glast'	=> '~End Time'			=> 'sorter'],
-#['grnd'	=> '~Random'	=> 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
-		      [')gskip'	=> '~Ungrouped'			=> 'sorter'],
+		 ['Gallery Groups' => [
+		      ['(gname'	=> 'Name'			=> 'sorter'],
+		      ['*gfirst' => 'Begin Time (default)'	=> 'sorter'],
+		      ['glast'	=> 'End Time'			=> 'sorter'],
+#['grnd'	=> 'Random'	=> 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
+		      [')gskip'	=> 'Ungrouped'			=> 'sorter'],
 		      [],
-		      ['*(gasc'	=> '~Ascending (default)'	=> 'sorter'],
-		      [')gdsc'	=> '~Descending'		=> 'sorter'],
+		      ['*(gasc'	=> 'Ascending (default)'	=> 'sorter'],
+		      [')gdsc'	=> 'Descending'			=> 'sorter'],
 		  ]],
-		 ['~Images' => [
-		      ['(inone'	=> '~Fast (database order)'	=> 'sorter'],
-		      ['iname'	=> '~Name'			=> 'sorter'],
-		      ['*itime'	=> '~Time (default)'		=> 'sorter'],
-		      ['isize'	=> '~Size'			=> 'sorter'],
-		      [')irnd'	=> '~Random'			=> 'sorter'],
+		 ['Images' => [
+		      ['(inone'	=> 'Fast (database order)'	=> 'sorter'],
+		      ['iname'	=> 'Name'			=> 'sorter'],
+		      ['*itime'	=> 'Time (default)'		=> 'sorter'],
+		      ['isize'	=> 'Size'			=> 'sorter'],
+		      [')irnd'	=> 'Random'			=> 'sorter'],
 		      [],
-		      ['*(iasc'	=> '~Ascending (default)'	=> 'sorter'],
-		      [')idsc'	=> '~Descending'		=> 'sorter'],
+		      ['*(iasc'	=> 'Ascending (default)'	=> 'sorter'],
+		      [')idsc'	=> 'Descending'			=> 'sorter'],
 		  ]],
-		 ['~Mixed Folders' => [
-		      ['*(galsfirst'	=> '~Galleries First (default)'	=> 'sorter'],
-		      [')picsfirst'	=> '~Images First'	=> 'sorter'],
+		 ['Mixed Folders' => [
+		      ['*(galsfirst' => 'Galleries First (default)' => 'sorter'],
+		      [')picsfirst'  => 'Images First'		    => 'sorter'],
 		  ]],
 
 	     ]],
-	    ['~Random Stack Centers' => [
-		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
+	    ['Random Stack Centers' => [
+		 ['*@csel'	=> 'Selection (default)'	=> sub {}],
 		 [],
-		 ['(cnone'	=> '~No Others'			=> sub {}],
-		 ['corder'	=> 'In ~Order'			=> sub {}],
-		 ['*)crandom'	=> '~Random (default)'		=> sub {}],
+		 ['(cnone'	=> 'No Others'			=> sub {}],
+		 ['corder'	=> 'In Order'			=> sub {}],
+		 ['*)crandom'	=> 'Random (default)'		=> sub {}],
 		 [],
-		 ['(c250', '~4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
-		 ['c333' , '~3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
-		 ['*c500', '~2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
-		 ['c1000', '~1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
+		 ['(c250', '4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
+		 ['c333' , '3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
+		 ['*c500', '2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
+		 ['c1000', '1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
 		 ['c2000', '1 per 2 seconds', sub { $_[0]->{cycler}->timeout(2000)}],
 		 ['c3000', '1 per 3 seconds', sub { $_[0]->{cycler}->timeout(3000)}],
 		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
-	    ['navto' => '~Navigate to this image in...' => [
-		 # replaced by on_selectitem
-		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
-	     ]],
-	    [],
 	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
-	    ['@cropimages', 'Crop ~Images', 'n', ord 'n', sub { $_[0]->repaint }],
+	    ['@cropimages', 'Crop Images',  'n', ord 'n', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
-	    ['@buffered', 'Hide Screen ~Updates', sub { $_[0]->buffered($_[2]) }],
+	    ['@buffered', 'Hide Screen Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',      '~Zoom In',     's', ord 's', sub { $_[0]->bigger }],
-	    ['smaller',     'Zoom ~Out',    'a', ord 'a', sub { $_[0]->smaller }],
+	    ['smaller',     'Zoom Out',     'a', ord 'a', sub { $_[0]->smaller }],
+	    ['bigger',      'Zoom In',      's', ord 's', sub { $_[0]->bigger }],
 	    [],
+	    ['galprev', 'Previous Gallery', 'u', ord 'u', 'galprev'],
+	    ['galprev', 'Next Gallery',     'o', ord 'o', 'galnext'],
 	    ['help', '~Help', 'h', ord 'h', sub { $::application->open_help("file://$0") }],
 	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	]);

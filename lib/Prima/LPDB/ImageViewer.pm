@@ -39,24 +39,25 @@ sub profile_default
 	popupItems => [
 	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['(info0',	'~No Information Overlay',	'status'],
-	    ['info1',	'Progress ~Markers',		'status'],
-	    ['*info2',	'Brief ~Information', 'n', 0,	'status'],
-	    [')info3',	'~Verbose Information',		'status'],
+	    ['(info0',	'No Information Overlay',	'status'],
+	    ['info1',	'Progress Markers',		'status'],
+	    ['*info2',	'Brief I~nformation', 'n', 0,	'status'],
+	    [')info3',	'Verbose Information',		'status'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
-	    ['*@loop',     '~Loop Slide Show',                     'slideshow'],
-	    ['slower',     '~Slower Show',           's', ord 's', 'delayorzoom'],
-	    ['faster',     'F~aster Show',           'a', ord 'a', 'delayorzoom'],
-	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
+	    ['*@loop',     'Loop Slide Show',                      'slideshow'],
+	    ['slower',     'Slower Show',            'a', ord 'a', 'delayorzoom'],
+	    ['faster',     'Faster Show',            's', ord 's', 'delayorzoom'],
+	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
-	    ['@overlay', '~Overlay Images',  sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['@overlay', 'Overla~y Images',  'y', ord 'y', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',      '~Zoom In',    's', ord 's', 'delayorzoom'],
-	    ['smaller',     'Zoom ~Out',   'a', ord 'a', 'delayorzoom'],
-	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom'],
+	    ['smaller',    'Zoom Out',     'a', ord 'a', 'delayorzoom'],
+	    ['bigger',     'Zoom In',      's', ord 's', 'delayorzoom'],
+	    ['*@autozoom', 'Auto Zoom', 'Enter', kb::Enter, 'autozoom'],
+	    [],
 	    ['help', '~Help', 'h', ord 'h', 'help'],
 	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	],
@@ -517,8 +518,8 @@ sub delayorzoom {		# adjust slideshow speed or zoom image
     my($self, $name) = @_;
     $self->popup->checked('slideshow')
 	and return $self->delay($name);
-    $name =~ /faster/ and $self->smaller;
-    $name =~ /slower/ and $self->bigger;
+    $name =~ /faster/ and $self->bigger;
+    $name =~ /slower/ and $self->smaller;
 }
 my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {

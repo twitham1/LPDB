@@ -186,7 +186,7 @@ at B<u/o> and B<p> starts a slideshow.  Finally, the digit keys scroll
 long lists to that tenth of the list: 0 = top, 7 = 70% and so on.
 
 B<m> opens the menu which lists other keys that can be used such as
-B<q> for immediate quit or home row B<a/s> to zoom in or out or change
+B<q> for immediate quit or home row B<a/s> to zoom out/in or change
 speed during a slide show.
 
 B<Rewind/Seek> of media remotes control the zoom or speed like B<a/s>.
