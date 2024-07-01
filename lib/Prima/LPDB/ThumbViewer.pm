@@ -299,7 +299,7 @@ sub on_create {
     	warn "restoring last position $last";
     	$self->goto($last);
     }
-    Prima::StartupWindow::unimport;
+    Prima::Widget::StartupWindow::unimport;
 }
 
 sub icon {		    # my application icon: stack of 3 "images"
@@ -746,6 +746,8 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
+	$self->focused		# don't slow down slide shows
+	    or $idx == $self->{focusedItem} or next;
 	my $this = $self->item($idx) or next;
 	my $im;
 	if ($this->isa('LPDB::Schema::Result::Path')) {
@@ -763,7 +765,7 @@ sub stackcenter {		# called by {cycler} timer
 	$self->end_paint;
 	$idx == $self->{focusedItem} or next;
 	my $me;
-	if ($self->{viewer}
+	if ($self->{viewer}	# bigger random video center
 	    and Prima::Object::alive($self->{viewer})
 	    and $me = $self->{viewer}->IV
 	    and $me->focused

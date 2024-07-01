@@ -9,7 +9,7 @@ use lib "$Bin/../lib";
 use Prima 1.67;			# need native fullscreen
 use Prima::Application name => 'LPGallery',
     skin => 'classic'; # scroll bars hard to see in 1.69 default skin flat
-use Prima::StartupWindow;
+use Prima::Widget::StartupWindow;
 use Prima::LPDB::ThumbViewer;
 use LPDB;
 
