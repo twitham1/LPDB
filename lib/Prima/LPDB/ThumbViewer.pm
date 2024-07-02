@@ -245,7 +245,7 @@ sub init {
 		 name => 'NE',
 		 pack => { side => 'right' },
 		 text => 'Enter = select / Escape = back',
-		 hint => 'Q = Zoom Out',
+		 hint => 'A = Zoom Out',
 		 onMouseClick => sub { $self->hitkey(ord 'a') },
 	);
     $top->insert('Prima::Label',
@@ -271,7 +271,7 @@ sub init {
 		 name => 'SE',
 		 pack => { side => 'right' },
 		 text => 'end time or image statistics',
-		 hint => 'Z = Zoom In',
+		 hint => 'S = Zoom In',
 		 onMouseClick => sub { $self->hitkey(ord 's') },
 	);
     $bot->insert('Prima::Label',
@@ -292,12 +292,14 @@ sub init {
 
 sub on_create {
     my($self) = @_;
-    if (my $code = $self->lpdb->conf('thumbviewer')) {
-	&{$code}($self);
-    }
     if (my $last = $self->bookmark('LAST')) { # restore last location
     	warn "restoring last position $last";
     	$self->goto($last);
+    }
+    if (my $code = $self->lpdb->conf('thumbviewer')) {
+	$self->smaller(-1);	# get current size
+	&{$code}($self);
+	$self->smaller(-1);	# repaint all
     }
     Prima::Widget::StartupWindow::unimport;
 }

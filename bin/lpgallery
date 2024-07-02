@@ -28,11 +28,13 @@ our $conf = {
 
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
-$conf->{ext} = \@ext;
 # But how to define video set???  These are types I have so far:
-push @ext, qw/mp4 mov avi mpg asf wmv dv/;
-warn "autosupport: @ext";
-# exit;
+my @vid = qw/mp4 mov avi mpg asf wmv dv/;
+warn "autosupport: @ext
+videos: @vid\n";
+push @ext, @vid;
+$conf->{ext} = \@ext;
+#exit;
 
 # configuration files: last option setting wins
 for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
