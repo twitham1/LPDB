@@ -66,14 +66,14 @@ my $child;
 my $ppid = $$;
 if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
+    $SIG{USR1} = sub {
+	warn "$$: signal USR1 received, DB updated!";
+	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
+    };
     $conf->{guisqltrace} and $conf->{sqltrace} = 1;
     $conf->{child} = $child;
     sleep($create ? 10 : 2);
     $lpdb = new LPDB($conf);
-    $SIG{USR1} = sub {
-	warn "$$: signal USR1 received, DB updated!";
-	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
-    }
 } else {			# child updates DB, creating if needed
     $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
     if ($conf->{noupdate}) {
@@ -136,9 +136,9 @@ $lv = $w->insert(
     pack => { expand => 1, fill => 'both' },
     );
 
-$::application->yield;
-$w->repaint;
-$w->update_view;
+#$::application->yield;
+$lv->repaint;
+$lv->update_view;
 
 run Prima;
 
