@@ -437,7 +437,8 @@ sub item {	    # return the path or picture object at given index
     $this or warn "index $index not found" and return;
     if ('ARRAY' eq ref $this) {	# [ file_id, dir_number ]
 	return $gallery ? $this->[1]
-	    : $self->vfs->picture($this->[0]);
+	    : $self->vfs ? $self->vfs->picture($this->[0])
+	    : undef;
     }
     elsif ($this->isa('LPDB::Schema::Result::Path')) {
 	return $gallery ? -1 : $this;
@@ -748,6 +749,7 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
+	$::application->yield;
 	$self->focused		# don't slow down slide shows
 	    or $idx == $self->{focusedItem} or next;
 	my $this = $self->item($idx) or next;
@@ -963,9 +965,16 @@ sub bookmark {			# key / value store for GUI bookmarks
 sub on_close {
     my($self) = @_;
     $self or return;
+    # use Data::Dumper;
+    # print Dumper $self->popup->get_items('', 0);
     my $last = $self->current;
 #    warn "$$ saving $last";
     $self->bookmark('LAST', $last);
+    $self->{cycler}->stop;
+    $self->{lpdb}->{tschema}->txn_commit;
+    delete $self->{vfs};
+    delete $self->{thumb};
+    $self->lpdb->disconnect;	# flush out the WAL
 #    warn "trying to refocus";
     $self->owner->select; # restore focus to original window, else no focus!
     $self->owner->focus;
