@@ -121,7 +121,9 @@ by C<get> when needed so calling it should not be necessary.
 
 my $tmpfile;			# tmp .jpg file for video thumbnails
 BEGIN {				# this probably fails on Windows!!!
-    $tmpfile = "/tmp/.lpdb.$$.png"
+    $tmpfile = "/tmp/.lpdb.$$.png";
+    -w "/run/user/$>" and	# RAM preferred over SSD or platter
+	$tmpfile =  "/run/user/$>/.lpdb.$$.png";
 }				# see $tmp below
 END {
     unlink $tmpfile if -f $tmpfile;
