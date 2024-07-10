@@ -182,20 +182,21 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
 	# TODO: move to a new frame progress object
 	my $s = 6;		# size of line
+	my $min = $s * 3;	# minimum length
 	$self->lineWidth($s);
 	$self->color(cl::LightGreen);
 	$self->lineEnd(le::Round);
 	$s /= 2;		# now position from edge
 	my $each = $w / $y;
 	my($b, $e) = ($each * ($x - 1), $each * $x);
-	$e > $b + $s or $e = $b + $s; # minimum indicator length
+	$e > $b + $min or $e = $b + $min; # minimum indicator length
 	$self->polyline([$b, $h - $s, $e, $h - $s]);
 	$self->polyline([$b, $s, $e, $s]);
 	my($x, $y) = $th->xofy($th->focusedItem);
 	if ($y > 1) {
 	    $each = $h / $y;
 	    my($b, $e) = ($each * ($x - 1), $each * $x);
-	    $e > $b + $s or $e = $b + $s;
+	    $e > $b + $min or $e = $b + $min;
 	    $self->polyline([$s, $h - $b, $s, $h - $e]);
 	    $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
@@ -441,7 +442,8 @@ sub info {			# update text overlay, per info level
 			    $im->width, $im->height,
 			    $im->width * $im->height / 1000000,
 			    $im->bytes / 1024)
-		    : sprintf(' %.0f%% ', $self->zoom * 100));
+		    : sprintf(' %.0f%% %.2f', $self->zoom * 100,
+			      $im->width / $im->height));
     $self->NW->show;
     $quick and return; # only zoom has changed, all else remains same:
     my $cap = $i == 3 ? $im->basename : '';
