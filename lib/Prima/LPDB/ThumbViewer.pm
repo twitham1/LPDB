@@ -754,11 +754,12 @@ sub stackcenter {		# called by {cycler} timer
 	    or $idx == $self->{focusedItem} or next;
 	my $this = $self->item($idx) or next;
 	my $im;
+	my $dur = 0;
 	if ($this->isa('LPDB::Schema::Result::Path')) {
 	    my($pic) = $this->random;
 	    $pic or next;
 	    $im = $self->{thumb}->get($pic->file_id);
-	} elsif (my $dur = $this->duration) {
+	} elsif ($dur = $this->duration) {
 	    $im = $self->{thumb}->put($this->file_id, -1);
 	}
 	$im or next;
@@ -769,7 +770,7 @@ sub stackcenter {		# called by {cycler} timer
 	$self->end_paint;
 	$idx == $self->{focusedItem} or next;
 	my $me;
-	if ($self->{viewer}	# bigger random video center
+	if ($dur and $self->{viewer} # bigger random video center
 	    and Prima::Object::alive($self->{viewer})
 	    and $me = $self->{viewer}->IV
 	    and $me->focused
