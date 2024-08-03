@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS Directories (
 CREATE INDEX IF NOT EXISTS dir_index ON Directories (directory);
 CREATE INDEX IF NOT EXISTS dir_begin_index ON Directories (begin);
 CREATE INDEX IF NOT EXISTS dir_end_index ON Directories (end);
-INSERT OR REPLACE INTO Directories (directory, parent_id) VALUES ('/', 0);
+INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0);
 
 ---------------------------------------- Virtual File System
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS Paths (
    parent_id	INTEGER
    );
 CREATE INDEX IF NOT EXISTS path_index ON Paths (path);
-INSERT OR REPLACE INTO Paths (path, parent_id) VALUES ('/', 0);
+INSERT OR REPLACE INTO Paths (path_id, path, parent_id) VALUES (1, '/', 0);
 
 ---------------------------------------- PICTURE PATH many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -211,3 +211,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (name);
 CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
 INSERT OR REPLACE INTO Contacts (contact_id, name, email) VALUES
    (0, '', '');
+
+---------------------------------------- KEYVALUE
+INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
+   ('NameValue', 'Name / Value data store');
+
+INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
+   ('NameValue', 'name',	'Name of the key'),
+   ('NameValue', 'value',	'Value of the key');
+
+CREATE TABLE IF NOT EXISTS NameValue (
+   name_id	INTEGER PRIMARY KEY NOT NULL,
+   name		TEXT UNIQUE NOT NULL,
+   value	TEXT
+   );
+
+CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);

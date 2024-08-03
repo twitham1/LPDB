@@ -81,14 +81,19 @@ sub smaller {
     my $wide = $self->width;
     my $old = $self->itemWidth;
     $c ||= $self->{active_columns} + 1; # maximize in one more column
-    $c > 3 or $c = 4;
     my @i = $self->indents;	# border / scrollbar indents
-    my $new = int(($self->width - $i[0] - $i[2]) / $c);
-    $new > 100 or $new = 100;
+    # warn "------------------------wide = $wide, @i";
+    $i[2] ||= 20;		# assume scroll bar might be needed
+    my $new = int(($self->width - $i[0] - $i[2]) / ($c > 3 ? $c : 4));
+    $c == -1 and $new = $old;
+    $new > 180 or $new = 180;
     $self->itemWidth(int $new);
     $self->itemHeight(int $self->itemHeight * $new / $old);
     $self->font->height($new/12);
-    $self->notify('Size', $self->size, $self->size);
+    my $tmp = $self->focusedItem; # keep item in view
+    $self->focusedItem(-1);
+    $self->focusedItem($tmp);
+    $self->update_view;
 }
 
 =item bigger
@@ -108,7 +113,10 @@ sub bigger {
     $self->itemWidth(int $new);
     $self->itemHeight(int $self->itemHeight * $new / $old);
     $self->font->height($new/12);
-    $self->notify('Size', $self->size, $self->size);
+    my $tmp = $self->focusedItem; # keep item in view
+    $self->focusedItem(-1);
+    $self->focusedItem($tmp);
+    $self->update_view;
 }
 
 1;
@@ -126,7 +134,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

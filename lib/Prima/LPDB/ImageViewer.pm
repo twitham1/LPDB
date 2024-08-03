@@ -39,25 +39,27 @@ sub profile_default
 	popupItems => [
 	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
-	    ['(info0',	'~No Information Overlay',	'status'],
-	    ['info1',	'Progress ~Markers',		'status'],
-	    ['*info2',	'Brief ~Information', 'i', 0,	'status'],
-	    [')info3',	'~Verbose Information',		'status'],
+	    ['(info0',	'No Information Overlay',	'status'],
+	    ['info1',	'Progress Markers',		'status'],
+	    ['*info2',	'Brief I~nformation', 'n', 0,	'status'],
+	    [')info3',	'Verbose Information',		'status'],
 	    [],
 	    ['@slideshow', '~Play/Pause Slide Show', 'p', ord 'p', 'slideshow'],
-	    ['*@loop',     '~Loop Slide Show',       'l', ord 'l', 'slideshow'],
-	    ['faster',     'F~aster Show',           'a', ord 'a', 'delay'],
-	    ['slower',     '~Slower Show',           's', ord 's', 'delay'],
-	    ['@autoplay',  'A~uto Play Videos',      'v', ord 'v', 'slideshow'],
+	    ['*@loop',     'Loop Slide Show',                      'slideshow'],
+	    ['slower',     'Slower Show',            'a', ord 'a', 'delayorzoom'],
+	    ['faster',     'Faster Show',            's', ord 's', 'delayorzoom'],
+	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
-	    ['@overlay', '~Overlay Images',  'o', ord 'o', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['@overlay', 'Overla~y Images',  'y', ord 'y', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
 	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',     '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
-	    ['smaller',    'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
-	    ['*@autozoom', 'Au~to Zoom', 'Enter', kb::Enter, 'autozoom' ],
-	    ['help', '~Help', 'h', ord('h'), 'help'],
+	    ['smaller',    'Zoom Out',     'a', ord 'a', 'delayorzoom'],
+	    ['bigger',     'Zoom In',      's', ord 's', 'delayorzoom'],
+	    ['*@autozoom', 'Auto Zoom', 'Enter', kb::Enter, 'autozoom'],
+	    [],
+	    ['help', '~Help', 'h', ord 'h', 'help'],
+	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	],
 	);
     @$def{keys %prf} = values %prf;
@@ -73,7 +75,11 @@ sub init {
     $self->{thumbviewer} = $profile{thumbviewer}; # object to return focus to
 
     $self->{exif} = new Image::ExifTool; # for collecting picture metadata
-    $self->{exif}->Options(FastScan => 1); # , DateFormat => $conf->{datefmt});
+    $self->{exif}->Options(FastScan => 1,
+			   QuickTimeUTC => 1);
+    # QuickTimeUTC might lose on cameras that don't know the time
+    # zone and use local time against the spec.  But smart phone
+    # cameras know the time zone so they are using UTC time.
 
     # my $pad = $self->{pad} = sv::XScrollbar; # too small
     # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
@@ -110,8 +116,8 @@ sub viewimage
     if (my $dur = $picture->hms and # cid 2 is high resolution:
 	$i = $self->{thumbviewer}->{thumb}->get($picture->file_id, 2)) {
 	$self->image($i);
-	$self->popup->checked('autoplay') or
-	    $self->message(">> Enter to play $dur >>");
+	# $self->popup->checked('autoplay') or
+	#     $self->say(">> Enter to play $dur >>");
     } elsif ($i = Prima::Image->load($filename)) {
 	if (my $rot = $picture->rotation) {
 	    $i->rotate(-1 * $rot);
@@ -159,6 +165,7 @@ sub viewimage
 
 sub on_paint { # update metadata label overlays, later in front of earlier
     my($self, $canvas) = @_;
+    $self->{canvas} ||= $canvas; # for middle image rotator (TV::stackcenter)
 
     # PS: I've read somewhere that ist::Quadratic produces best
     # visual results for the scaled-down images, while ist::Sinc
@@ -175,20 +182,21 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
 	# TODO: move to a new frame progress object
 	my $s = 6;		# size of line
+	my $min = $s * 3;	# minimum length
 	$self->lineWidth($s);
 	$self->color(cl::LightGreen);
 	$self->lineEnd(le::Round);
 	$s /= 2;		# now position from edge
 	my $each = $w / $y;
 	my($b, $e) = ($each * ($x - 1), $each * $x);
-	$e > $b + $s or $e = $b + $s; # minimum indicator length
+	$e > $b + $min or $e = $b + $min; # minimum indicator length
 	$self->polyline([$b, $h - $s, $e, $h - $s]);
 	$self->polyline([$b, $s, $e, $s]);
 	my($x, $y) = $th->xofy($th->focusedItem);
 	if ($y > 1) {
 	    $each = $h / $y;
 	    my($b, $e) = ($each * ($x - 1), $each * $x);
-	    $e > $b + $s or $e = $b + $s;
+	    $e > $b + $min or $e = $b + $min;
 	    $self->polyline([$s, $h - $b, $s, $h - $e]);
 	    $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
@@ -201,6 +209,7 @@ sub on_close {
     my $owner = $_[0]->{thumbviewer};
     $owner or return;
     $owner->owner->select;
+    $owner->owner->focus;
 }
 
 sub autozoom {			# Enter == zoom picture or play video
@@ -208,9 +217,12 @@ sub autozoom {			# Enter == zoom picture or play video
     my $pic;
     if ($pic = $self->picture and $pic->duration) { # video
 	my $file = $pic->pathtofile or return;
-	my @cmd = qw(ffplay -fs -loglevel warning);
+	my @cmd = qw(ffplay -fs -loglevel error);
 	$self->popup->checked('autoplay') and push @cmd, '-autoexit';
-	system(@cmd, $file) == 0 or warn "@cmd $file failed";
+	unless (system(@cmd, $file) == 0) {
+	    warn my $msg = "@cmd $file failed";
+	    message($msg, mb::OK);
+	}
 	$self->owner->select;	# try not to lose focus
 	return;
     }
@@ -238,7 +250,7 @@ sub autozoom {			# Enter == zoom picture or play video
 	my($w, $h) = $self->size;
 	my($x, $y) = $self->deltas;
 	my $z = $self->zoom;
-	$z * $factor < 2.5 or return;
+	$z * $factor < 5 or return;
 	$self->zoom($z * $factor);
 	$self->deltas(($x + $w/2) * $factor - $w/2,
 		      ($y + $h/2) * $factor - $h/2);
@@ -273,7 +285,7 @@ sub on_keydown
 	$owner->owner->select;
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' or $code == 13) { # popup menu
+    if ($code == ord 'm') {	# popup menu
 	my @sz = $self->size;
 	if ($self->popup->checked('slideshow')) {
 	    $self->popup->checked('slideshow', 0);
@@ -282,28 +294,17 @@ sub on_keydown
 	$self->popup->popup(50, $sz[1] - 50); # near top left
 	return;
     }
-    if ($code == 9) {		# ctrl-i = info cycle, in menu
-	$self->key_down(ord 'i');
-	return;
-    } elsif ($code == ord 'i') {
+    if ($code == ord 'n') {
 	$self->infocycle;
 	return;
-    } elsif ($code == 6) {	# ctrl-shift-f = faster remote button
-	$self->key_down(ord 'a');
-	return;
-    } elsif ($code == 2) {	# ctrl-shift-b = slower remote button
-	$self->key_down(ord 's');
-	return;
-    }	
-    # if ($key == kb::F11) {
-    # 	warn "f11 hit";
-    # 	$self->fullscreen(-1);
-    # }
+    }
 
     return if $self->{stretch};
 
-    my $c = $code & 0xFF;
+    my $c = $code & 0xFF; # must match navgal and keymap in ThumbViewer.pm:
     return unless $c >= ord '0' and $c <= ord '9'
+	or $c >= ord 'i' and $c <= ord 'l'
+	or $c == ord 'u' or $c == ord 'o'
 	or grep { $key == $_ } (
 	kb::Left, kb::Right, kb::Down, kb::Up,
     );
@@ -326,9 +327,9 @@ sub on_keydown
 	return;
     }
     $self->right if $key == kb::Right;
-    $self->left	if $key == kb::Left;
-    $self->down	if $key == kb::Down;
-    $self->up	if $key == kb::Up;
+    $self->left	 if $key == kb::Left;
+    $self->down	 if $key == kb::Down;
+    $self->up	 if $key == kb::Up;
 }
 sub right{my @d=$_[0]->deltas; $_[0]->deltas($d[0] + $_[0]->width/5, $d[1])}
 sub left {my @d=$_[0]->deltas; $_[0]->deltas($d[0] - $_[0]->width/5, $d[1])}
@@ -354,9 +355,9 @@ sub on_mousewheel {
 sub on_mouseclick {		# click/touch zones
     my($self, $button, $mod, $x, $y) = @_;
     my($w, $h) = $self->size;
-    my @key = reverse([kb::Escape,	kb::Up,		ord 'q'],
+    my @key = reverse([kb::Escape,	kb::Up,		ord 'a'],
 		      [kb::Left,	kb::Enter,	kb::Right],
-		      [ord 'm',		kb::Down,	ord 'z']);
+		      [ord 'm',		kb::Down,	ord 's']);
     $button == mb::Middle
 	and $self->key_down(0, kb::Escape);
     $button == mb::Left or return;
@@ -372,9 +373,9 @@ sub help {			# click/touch zone documentation
     $self->backColor(cl::Black);
     $self->lineWidth(3);
     my @desc = (
-	"Escape\nback to Grid", "Up\nPrevious Row", "Q\nZoom Out",
+	"Escape\nback to Grid", "Up\nPrevious Row", "A\nZoom Out",
 	"Left\nPrevious Picture", "Enter\nToggle Zoom", "Right\nNext Picture",
-	"M\nMenu Options", "Down\nNext Row", "Z\nZoom In");
+	"M\nMenu Options", "Down\nNext Row", "S\nZoom In");
     for my $y ($h * 2 / 3, $h / 3, 0) {
 	for my $x (0, $w / 3, $w * 2 / 3) {
 	    my $txt = shift @desc; $txt =~ s/(\w+)/<$1>/;
@@ -434,12 +435,15 @@ sub info {			# update text overlay, per info level
     my $X = $th->count;
     my($w, $h) = $self->size;
     my $im = $self->picture or return;
-    $self->NW->text($i == 3 ?
-		    sprintf('%.0f%% of %dx%d=%.2f',
+    $self->NW->text($i > 2 ?
+		    sprintf(' %.0f%%  %.2f  %dx%d  %.1fMP  %.0fKB ',
 			    $self->zoom * 100,
+			    $im->width / $im->height,
 			    $im->width, $im->height,
-			    $im->width / $im->height)
-		    : sprintf('%.0f%%', $self->zoom * 100));
+			    $im->width * $im->height / 1000000,
+			    $im->bytes / 1024)
+		    : sprintf(' %.0f%% %.2f', $self->zoom * 100,
+			      $im->width / $im->height));
     $self->NW->show;
     $quick and return; # only zoom has changed, all else remains same:
     my $cap = $i == 3 ? $im->basename : '';
@@ -447,16 +451,15 @@ sub info {			# update text overlay, per info level
     $self->N->text($cap);
     $self->N->top($h - $self->{pad}); # hack!!! since growMode doesn't handle size changing
     ($i > 1 and $cap) ? $self->N->show : $self->N->hide;
+    my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     $self->NE->text($i > 2 ?
-		    sprintf '%.1fMP %.0fKB, %.0f%% %d / %d',
-		    $im->width * $im->height / 1000000,
-		    $im->bytes / 1024,
+		    sprintf ' %d / %d  %d / %d  %.0f%%  %d / %d ',
+		    $y, $Y, $th->gallery($x - 1), $th->gallery(-1),
 		    $x / $X * 100, $x, $X
-		    : sprintf '%.0f%% %d / %d',
+		    : sprintf ' %.0f%% %d / %d ',
 		    $x / $X * 100, $x, $X);
     $self->NE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
     $self->NE->show;
-    my($y, $Y) = $th->xofy($th->focusedItem); # gallery progress, vertical
     my @info;
     if ($i == 3) {
 	my $info = $self->{exif}->ImageInfo($im->pathtofile);
@@ -481,9 +484,10 @@ sub info {			# update text overlay, per info level
 	$self->SE->transparent(0);	     # 1 flashes too much
 	$self->SE->show;
     } elsif ($i == 2) {
-	my $tmp = $th->gallery(-1) > 1 ?
-	    $th->gallery($x - 1) . ' / ' . $th->gallery(-1) . ',' : '';
-	$self->SE->text(($im->hms || '') . " $tmp $y / $Y ");
+	my $tmp = $im->hms || '';
+	$tmp = sprintf ' %s%d / %d  %d / %d ', $tmp ? ">> Enter to play $tmp >>  " : '',
+	    $y, $Y, $th->gallery($x - 1), $th->gallery(-1);
+	$self->SE->text($tmp);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
 	$self->SE->transparent(0);
 	$self->SE->show;
@@ -491,16 +495,15 @@ sub info {			# update text overlay, per info level
 	$self->SE->hide;
     }
     $self->S->show;
-    $i == 3 ? $self->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			     $th->gallery($x - 1), $th->gallery(-1),
-			     $im->dir->directory, $y, $Y)
+    $i == 3 ? $self->S->text(sprintf ' %s ', $im->dir->directory)
 	: $self->S->hide;
-    $self->SW->text(scalar localtime $im->time);
+    my $t = scalar localtime $im->time;
+    $self->SW->text(" $t ");
     $self->SW->show;
 }
 
 # show temporary message in center of the screen
-sub message {
+sub say {
     my($self, $message, $seconds) = @_;
     $self->CENTER->text($message);
     $self->CENTER->show;	# hidden by ->status above after:
@@ -512,6 +515,13 @@ sub _hms {			# sec -> hh:mm:ss
     my($sec) = @_;
     return sprintf '%02d:%02d:%02d',
 	$sec / 3600, $sec % 3600 / 60, $sec % 60
+}
+sub delayorzoom {		# adjust slideshow speed or zoom image
+    my($self, $name) = @_;
+    $self->popup->checked('slideshow')
+	and return $self->delay($name);
+    $name =~ /faster/ and $self->bigger;
+    $name =~ /slower/ and $self->smaller;
 }
 my @delay =qw/0 0.125 0.25 0.5 1 2 3 4 5 7 10 15 20 30 45 60 90 120/;
 sub delay {
@@ -562,7 +572,7 @@ sub slideshow {
 	($self->popup->checked('loop') ? 'ON' : 'OFF');
 
     if ($self->popup->checked('slideshow') and $self->autoZoom) {
-	$self->message(">> ~PLAY @ $sec seconds >>$t", 3);
+	$self->say(">> ~PLAY @ $sec seconds >>$t", 3);
 	$self->{timer}->timeout($sec * 1000);
 	$self->{timer}->start;
 	system(qw/xset s off/);	# hack!!! disable screensaver
@@ -572,7 +582,7 @@ sub slideshow {
 	}
 	$self->{dpms} and system(qw/xset -dpms/);
     } else {
-	$self->message("[[ ~PAUSE @ $sec seconds ]]$t", 3);
+	$self->say("[[ ~PAUSE @ $sec seconds ]]$t", 3);
 	$self->{timer}->stop;
 	system(qw/xset s default/); # hack!!! reenable screensaver
 	$self->{dpms} and system(qw/xset +dpms/);
@@ -768,7 +778,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

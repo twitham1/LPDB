@@ -10,6 +10,7 @@ use strict;
 use warnings;
 use File::Find;
 use Date::Parse;
+use Time::Local;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
@@ -68,7 +69,7 @@ sub update {
 	my @ext = join '|', @{$conf->{ext}};
 	my $regex = "\\.(@ext)\$";
 	warn $regex;
-	$conf->{all} = $regex;
+	$conf->{regex} = $regex;
     }
     # warn "self=$self, conf=$conf, reject=$conf->{reject}";
     # warn "reject: ", $self->conf('reject');
@@ -77,7 +78,11 @@ sub update {
     }
     unless ($exiftool) {
 	$exiftool = new Image::ExifTool;
-	$exiftool->Options(FastScan => 1);
+	$exiftool->Options(FastScan => 1,
+			   QuickTimeUTC => 1);
+	# QuickTimeUTC might lose on cameras that don't know the time
+	# zone and use local time against the spec.  But smart phone
+	# cameras know the time zone so they are using UTC time.
     }
     status "update @dirs\n";
     $schema->txn_begin;
@@ -156,7 +161,7 @@ sub _wanted {
 	$done = time;
     }
     if (-f $_) {
-	return unless $file =~ /$conf->{all}/i;
+	return unless $file =~ /$conf->{regex}/i;
 	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
@@ -178,7 +183,7 @@ sub _wanted {
 	    if (!/\.gif$/i or	# ignore duration of 1 frame gif
 		($info->{FrameCount} and $info->{FrameCount} > 1)) {
 		$row->duration($dur =~ /(\S+) s/ ? $1
-			       : $dur =~ /(\d+):(\d\d):(\d\d)$/
+			       : $dur =~ /(\d+):(\d\d):(\d\d)/
 			       ? $1 * 3600 + $2 * 60 + $3
 			       : $dur); # should never happen
 	    }
@@ -192,6 +197,11 @@ sub _wanted {
 	$time =~ s/: /:0/g;	# fix corrupt: 2008:04:23 19:21: 4
 	$time = str2time $time;
 	$time ||= $modified;	# only if no exif of original time
+	my @t = localtime $time;
+	if ($t[5] < 66) { # hack!!! fix negative time from QuickTimeUTC
+	    $t[5] += 66;  # year += 66
+	    $time = timelocal(@t);
+	}
 
 	$row->time($time);
 	$row->modified($modified);

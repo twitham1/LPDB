@@ -22,6 +22,7 @@ use LPDB::Thumbnail;
 use Prima::FrameSet;
 use Prima::Label;
 use Prima::MsgBox;
+use Prima::EventHook;		# for remote control key aliases
 use Prima::LPDB::TileViewer;	# could someday promote to Prima?
 use Prima::LPDB::ImageViewer;
 use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
@@ -35,13 +36,19 @@ sub profile_default
 {
     my $def = $_[ 0]-> SUPER::profile_default;
     my %prf = (
+	# hiliteBackColor	=> 0x74EE15, # neon green
+	# hiliteBackColor	=> 0xFFE700, # neon yellow
+	# hiliteBackColor	=> 0xF000FF, # neon magenta
+	# hiliteBackColor	=> cl::Magenta,
 	popupItems => [
-	    ['navto' => '~Navigate to this image in...' => [
+	    ['escape' => '~Escape back to Thumb Viewer', sub {}],
+	    ['navto' => 'Navigate to this image in' => [
 		 # replaced by on_selectitem
 		 ['/[Folders]/' => '/[Folders]/' => 'goto'],
 	     ]],
-	    ['~AND Filters' => [
-		 ['clear'	=> 'Clear ~All Filters' => sub {
+	    [],
+	    ['AND Filters' => [
+		 ['clear'	=> 'Clear All Filters' => sub {
 		     map { $_[0]->popup->checked($_, 1) }
 		     qw/bothfiles bothshapes unlimited/;
 		     map { $_[0]->popup->checked($_, 0) }
@@ -49,92 +56,140 @@ sub profile_default
 		     $_[0]->goto($_[0]->current);
 		  }],
 		 [],
-		 ['*(bothfiles'	=> 'Both ~Files:'    => 'sorter'],
-		 ['pictures'	=> '~Still Pictures' => 'sorter'],
-		 [')videos'	=> 'Motion ~Videos'  => 'sorter'],
+		 ['*(bothfiles'	=> 'Both Files:'    => 'sorter'],
+		 ['pictures'	=> 'Still Pictures' => 'sorter'],
+		 [')videos'	=> 'Motion Videos'  => 'sorter'],
 		 [],
-		 ['*(bothshapes'=> '~Both Shapes:' => 'sorter'],
-		 ['portrait'	=> '~Portrait'	   => 'sorter'],
-		 [')landscape'	=> '~Landscape'	   => 'sorter'],
+		 ['*(bothshapes'=> 'Both Shapes:' => 'sorter'],
+		 ['portrait'	=> 'Portrait'	  => 'sorter'],
+		 [')landscape'	=> 'Landscape'	  => 'sorter'],
 		 [],
-		 ['@tags'	=> '~Tags'	=> 'sorter'],
-		 ['@captions'	=> '~Captions'	=> 'sorter'],
+		 ['@tags'	=> 'Tags'	=> 'sorter'],
+		 ['@captions'	=> 'Captions'	=> 'sorter'],
 		 [],
-		 ['*(unlimited'	=> '~Unlimited or latest:' => 'sorter'],
-		 ['year10'	=> '1~0 Years'	=> 'sorter'],
-		 ['year5'	=> '~5 Years'	=> 'sorter'],
-		 ['year2'	=> '~2 Years'	=> 'sorter'],
-		 ['year1'	=> '1 ~Year'	=> 'sorter'],
-		 ['quarter'	=> '1 ~Quarter'	=> 'sorter'],
-		 [')month'	=> '1 ~Month'	=> 'sorter'],
+		 ['*(unlimited'	=> 'Unlimited or latest:' => 'sorter'],
+		 ['year10'	=> '10 Years'	=> 'sorter'],
+		 ['year5'	=> '5 Years'	=> 'sorter'],
+		 ['year2'	=> '2 Years'	=> 'sorter'],
+		 ['year1'	=> '1 Year'	=> 'sorter'],
+		 ['quarter'	=> '1 Quarter'	=> 'sorter'],
+		 [')month'	=> '1 Month'	=> 'sorter'],
 	     ]],
-	    ['~Sort' => [
-		 ['~Paths' => [
-		      ['*(pname'=> '~Name (default)'	=> 'sorter'],
-		      ['pfirst'	=> '~Begin Time'	=> 'sorter'],
-		      ['pmid'	=> '~Middle Time'	=> 'sorter'],
-		      ['plast'	=> '~End Time'		=> 'sorter'],
-		      [')prnd'	=> '~Random'		=> 'sorter'],
+	    ['Sort' => [
+		 ['Paths' => [
+		      ['*(pname'=> 'Name (default)'	=> 'sorter'],
+		      ['pfirst'	=> 'Begin Time'		=> 'sorter'],
+		      ['pmid'	=> 'Middle Time'	=> 'sorter'],
+		      ['plast'	=> 'End Time'		=> 'sorter'],
+		      [')prnd'	=> 'Random'		=> 'sorter'],
 		      [],
-		      ['*(pasc'	=> '~Ascending (default)' => 'sorter'],
-		      [')pdsc'	=> '~Descending'	=> 'sorter'],
+		      ['*(pasc'	=> 'Ascending (default)' => 'sorter'],
+		      [')pdsc'	=> 'Descending'		=> 'sorter'],
 		  ]],
-		 ['~Gallery Groups' => [
-		      ['(gname'	=> '~Name'			=> 'sorter'],
-		      ['*gfirst' => '~Begin Time (default)'	=> 'sorter'],
-		      ['glast'	=> '~End Time'			=> 'sorter'],
-#['grnd'	=> '~Random'	=> 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
-		      [')gskip'	=> '~Ungrouped'			=> 'sorter'],
+		 ['Gallery Groups' => [
+		      ['(gname'	=> 'Name'			=> 'sorter'],
+		      ['*gfirst' => 'Begin Time (default)'	=> 'sorter'],
+		      ['glast'	=> 'End Time'			=> 'sorter'],
+#['grnd'	=> 'Random'	=> 'sorter'], # !!! currently doesn't work, as it breaks the groups, same as skip:
+		      [')gskip'	=> 'Ungrouped'			=> 'sorter'],
 		      [],
-		      ['*(gasc'	=> '~Ascending (default)'	=> 'sorter'],
-		      [')gdsc'	=> '~Descending'		=> 'sorter'],
+		      ['*(gasc'	=> 'Ascending (default)'	=> 'sorter'],
+		      [')gdsc'	=> 'Descending'			=> 'sorter'],
 		  ]],
-		 ['~Images' => [
-		      ['(inone'	=> '~Fast (database order)'	=> 'sorter'],
-		      ['iname'	=> '~Name'			=> 'sorter'],
-		      ['*itime'	=> '~Time (default)'		=> 'sorter'],
-		      ['isize'	=> '~Size'			=> 'sorter'],
-		      [')irnd'	=> '~Random'			=> 'sorter'],
+		 ['Images' => [
+		      ['(inone'	=> 'Fast (database order)'	=> 'sorter'],
+		      ['iname'	=> 'Name'			=> 'sorter'],
+		      ['*itime'	=> 'Time (default)'		=> 'sorter'],
+		      ['isize'	=> 'Size'			=> 'sorter'],
+		      [')irnd'	=> 'Random'			=> 'sorter'],
 		      [],
-		      ['*(iasc'	=> '~Ascending (default)'	=> 'sorter'],
-		      [')idsc'	=> '~Descending'		=> 'sorter'],
+		      ['*(iasc'	=> 'Ascending (default)'	=> 'sorter'],
+		      [')idsc'	=> 'Descending'			=> 'sorter'],
 		  ]],
-		 ['~Mixed Folders' => [
-		      ['*(galsfirst'	=> '~Galleries First (default)'	=> 'sorter'],
-		      [')picsfirst'	=> '~Images First'	=> 'sorter'],
+		 ['Mixed Folders' => [
+		      ['*(galsfirst' => 'Galleries First (default)' => 'sorter'],
+		      [')picsfirst'  => 'Images First'		    => 'sorter'],
 		  ]],
 
 	     ]],
-	    ['~Random Stack Centers' => [
-		 ['*@csel'	=> '~Selection (default)'	=> sub {}],
+	    ['Random Stack Centers' => [
+		 ['*@csel'	=> 'Selection (default)'	=> sub {}],
 		 [],
-		 ['(cnone'	=> '~No Others'			=> sub {}],
-		 ['corder'	=> 'In ~Order'			=> sub {}],
-		 ['*)crandom'	=> '~Random (default)'		=> sub {}],
+		 ['(cnone'	=> 'No Others'			=> sub {}],
+		 ['corder'	=> 'In Order'			=> sub {}],
+		 ['*)crandom'	=> 'Random (default)'		=> sub {}],
 		 [],
-		 ['(c250', '~4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
-		 ['c333' , '~3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
-		 ['*c500', '~2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
-		 ['c1000', '~1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
+		 ['(c250', '4 per second',   sub { $_[0]->{cycler}->timeout(250)}],
+		 ['c333' , '3 per second',   sub { $_[0]->{cycler}->timeout(333)}],
+		 ['*c500', '2 per second (default)', sub { $_[0]->{cycler}->timeout(500)}],
+		 ['c1000', '1 per second',   sub { $_[0]->{cycler}->timeout(1000)}],
 		 ['c2000', '1 per 2 seconds', sub { $_[0]->{cycler}->timeout(2000)}],
 		 ['c3000', '1 per 3 seconds', sub { $_[0]->{cycler}->timeout(3000)}],
 		 [')c4000','1 per 4 seconds', sub { $_[0]->{cycler}->timeout(4000)}],
 		 ]],
-	    [],
-	    ['*@croppaths', 'Crop ~Paths',  'p', ord 'p', sub { $_[0]->repaint }],
-	    ['@cropimages', 'Crop ~Images', 'i', ord 'i', sub { $_[0]->repaint }],
+	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
+	    ['@cropimages', 'Crop Images',  'n', ord 'n', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
-	    ['@buffered', 'Hide Screen ~Updates','u', ord 'u', sub { $_[0]->buffered($_[2]) }],
+	    ['@buffered', 'Hide Screen Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],
 	    ['fullscreen',  '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
-	    ['bigger',      '~Zoom In',     'z', ord 'z', sub { $_[0]->bigger }],
-	    ['smaller',     'Zoom ~Out',    'q', ord 'q', sub { $_[0]->smaller }],
+	    ['smaller',     'Zoom Out',     'a', ord 'a', sub { $_[0]->smaller }],
+	    ['bigger',      'Zoom In',      's', ord 's', sub { $_[0]->bigger }],
 	    [],
-	    ['help', '~Help', 'h', ord('h'),  sub { $::application->open_help("file://$0") }],
-	    ['quit', '~Quit', 'Ctrl+Q', '^q', sub { $::application->close }],
+	    ['galprev', 'Previous Gallery', 'u', ord 'u', 'galprev'],
+	    ['galprev', 'Next Gallery',     'o', ord 'o', 'galnext'],
+	    ['help', '~Help', 'h', ord 'h', sub { $::application->open_help("file://$0") }],
+	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	]);
     @$def{keys %prf} = values %prf;
     return $def;
+}
+{				# key aliases that push other keys
+    my %keymap = (
+	ord 'i'		=> [0, kb::Up], # home row arrows around u/o prev/next
+	ord 'j'		=> [0, kb::Left],
+        ord 'k'		=> [0, kb::Down],
+        ord 'l'		=> [0, kb::Right],
+	kb::F11		=> [ord 'f'], # fullscreen toggle
+	kb::Menu	=> [ord 'm'], # modern media control keys
+	kb::BrowserHome	=> [ord 'n'], # info
+	kb::BrowserBack	=> [0, kb::Escape],
+	kb::MediaPlay	=> [ord 'p'],
+	kb::MediaPrevTrack => [ord 'u'], # prev gal
+	kb::MediaNextTrack => [ord 'o'], # next gal
+	ord('B') - 64	=> [ord 'a'], # Ctrl-B = Back (ARC-1100)
+	kb::AudioRewind	=> [ord 'a'],
+	ord('F') - 64	=> [ord 's'], # Ctrl-F = Forward
+	kb::AudioForward => [ord 's'],
+	ord('T') - 64	=> [ord 'g'], # Ctrl-T = Crop (yellow)
+	kb::Return	=> -1,	      # no-op, different than:
+	ord('M') - 64	=> [ord 'm'], # Ctrl-M = Menu (blue)
+	ord('I') - 64	=> [ord 'n'], # Ctrl-I = Info (green)
+	# ord 'E' - 64	=> [ord 'm'], # Ctrl-E = ???? (red)
+	);
+    sub hook {
+	my ( $my_param, $object, $event, @params) = @_;
+	# warn "Object $object received event $event @params\n";
+	if ($event eq 'KeyDown') {
+	    my ($code, $key, $mod) = @params;
+	    if (my $k = ($keymap{$key} || $keymap{$code} || 0)) {
+		$k > 0 or return 1;
+		# warn "hitting @$k";
+		$object->key_down(@$k);
+		return 0;
+	    }
+	}
+	return 1;
+    }
+    sub keyaliases {
+	Prima::EventHook::install( \&hook,
+			       param    => {},
+			       object   => $::application,
+			       # event    => [qw(KeyDown Menu Popup)],
+			       event    => [qw(KeyDown)],
+			       children => 1
+	    );
+    }
 }
 sub lpdb { $_[0]->{lpdb} }
 sub vfs { $_[0]->{vfs} }
@@ -143,7 +198,6 @@ sub init {
     my $self = shift;
     my(%hash) = @_;
     my %profile = $self->SUPER::init(@_);
-
     $self->{lpdb} = $hash{lpdb} or die "lpdb object required";
     $self->{vfs} = new LPDB::VFS($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
@@ -191,8 +245,8 @@ sub init {
 		 name => 'NE',
 		 pack => { side => 'right' },
 		 text => 'Enter = select / Escape = back',
-		 hint => 'Q = Zoom Out',
-		 onMouseClick => sub { $self->hitkey(ord 'q') },
+		 hint => 'A = Zoom Out',
+		 onMouseClick => sub { $self->hitkey(ord 'a') },
 	);
     $top->insert('Prima::Label',
 		 name => 'N',
@@ -217,13 +271,13 @@ sub init {
 		 name => 'SE',
 		 pack => { side => 'right' },
 		 text => 'end time or image statistics',
-		 hint => 'Z = Zoom In',
-		 onMouseClick => sub { $self->hitkey(ord 'z') },
+		 hint => 'S = Zoom In',
+		 onMouseClick => sub { $self->hitkey(ord 's') },
 	);
     $bot->insert('Prima::Label',
 		 name => 'S',
 		 pack => { side => 'bottom' },
-		 text => 'summary',
+		 text => 'file location',
 		 hint => 'Scroll Down',
 		 onMouseClick => sub { $self->hitkey(kb::Down) },
 	);
@@ -231,10 +285,23 @@ sub init {
     $self->items($self->children('/'));
     $self->focusedItem(0);
     $self->repaint;
-    # $self->selected(1);
-    # $self->focused(1);
     $self->select;
+    $self->keyaliases;
     return %profile;
+}
+
+sub on_create {
+    my($self) = @_;
+    if (my $last = $self->bookmark('LAST')) { # restore last location
+    	warn "restoring last position $last";
+    	$self->goto($last);
+    }
+    if (my $code = $self->lpdb->conf('thumbviewer')) {
+	$self->smaller(-1);	# get current size
+	&{$code}($self);
+	$self->smaller(-1);	# repaint all
+    }
+    Prima::Widget::StartupWindow::unimport;
 }
 
 sub icon {		    # my application icon: stack of 3 "images"
@@ -335,8 +402,10 @@ sub children {			# return children of given text path
     (my $string = Dumper($parent, \@sort, $filter)) =~ s/\n//g;
     $string =~ s/ +//g;
 
+    # my($path, $file, $dur) = $self->vfs->pathpics($parent, \@sort, \@$filter);
     my($path, $file, $dur);	# cache lookups for faster redos
-    if ($self->{cache}{$string}) {
+    if ($self->lpdb->conf('noupdate') # but no cache when updating
+	&& $self->{cache}{$string}) {
 	warn "hit! on $string";
     } else {
 	warn "miss! on $string";
@@ -368,7 +437,8 @@ sub item {	    # return the path or picture object at given index
     $this or warn "index $index not found" and return;
     if ('ARRAY' eq ref $this) {	# [ file_id, dir_number ]
 	return $gallery ? $this->[1]
-	    : $self->vfs->picture($this->[0]);
+	    : $self->vfs ? $self->vfs->picture($this->[0])
+	    : undef;
     }
     elsif ($this->isa('LPDB::Schema::Result::Path')) {
 	return $gallery ? -1 : $this;
@@ -415,7 +485,7 @@ sub goto {			# goto path//file or path/path
     $self->items($self->children($path)); # this blocks on the DB
     $self->profile("in DB");
     $self->focusedItem(-1);
-    # $self->repaint;
+    #$self->repaint;
     $self->focusedItem(0);
     my $n = $self->count;
     unless ($n) {
@@ -465,12 +535,15 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
-    my $progress = "$p% $x / $y";
-    @{$self->{filter}} and $progress = "[ $progress ]";
-    $owner->NORTH->NE->text($progress);
+    $owner->NORTH->NW->backColor($self->lpdb->conf('noupdate')
+				 ? cl::Back : $self->hiliteBackColor);
+    my $progress = "$p%  $x / $y";
+    $owner->NORTH->NE->backColor(@{$self->{filter}}
+				 ? $self->hiliteBackColor : cl::Back);
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$this->path =~ m{(.*/)(.+/?)};
 	$owner->NORTH->N->text($2);
+	$owner->NORTH->NE->text(" $progress ");
 	$self->{filter} and $this->{filter} = $self->{filter};
 	my @p = $this->stack;
 	my $span = $p[2] ? $p[2]->time - $p[0]->time : 1;
@@ -483,8 +556,10 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	    : '1 minute';
 	my $n = $this->picturecount;
 	my $p = $n > 1 ? 's' : '';
-	$owner->SOUTH->S->text("$n image$p in $len" .
-			       (@{$self->{filter}} ? ' (filtered)' : ''));
+	$owner->SOUTH->S->text(" $n image$p in $len " .
+			       (@{$self->{filter}} ? '(filtered) ' : ''));
+	$owner->SOUTH->S->backColor(@{$self->{filter}}
+				    ? $self->hiliteBackColor : cl::Back);
 	$owner->SOUTH->SE->text($p[2] ? scalar localtime $p[2]->time
 				: '  ');
 	$owner->SOUTH->SW->text($p[0] ? scalar localtime $p[0]->time
@@ -492,10 +567,11 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text($this->basename);
-	$owner->SOUTH->S->text(sprintf ' %d / %d - %s - %d / %d ',
-			       $self->gallery($idx), $self->gallery(-1),
-			       $this->dir->directory, $x, $y);
-	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB',
+	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,
+				$self->gallery($idx), $self->gallery(-1),
+				$progress);
+	$owner->SOUTH->S->text($this->dir->directory);
+	$owner->SOUTH->SE->text(sprintf ' %.2f %dx%d %.1fMP %.0fKB ',
 				$this->width / $this->height,
 				$this->width , $this->height,
 				$this->width * $this->height / 1000000,
@@ -535,6 +611,25 @@ sub xofy {	      # find pic position in current gallery directory
     return $x, $y;
 }
 
+sub galprev {
+    my($self) = @_;
+    my $idx = $self->focusedItem;
+    my($x, $y) = $self->xofy($idx);
+    $idx -= $x;			# last image of prev gal
+    ($x, $y) = $self->xofy($idx);
+    $idx -= ($y - 1);		# first image of prev gal
+    $idx < 0 and $idx = 0;
+    $self->focusedItem($idx);
+}
+sub galnext {
+    my($self) = @_;
+    my($idx, $end) = ($self->focusedItem, $self->count);
+    my($x, $y) = $self->xofy($idx);
+    $idx += 1 + ($y - $x);	# first image of next gal
+    $idx > $end and $idx = $end;
+    $self->focusedItem($idx);
+}
+
 sub cwd {
     my($self, $cwd) = @_;
     $cwd and $self->{cwd} = $cwd;
@@ -570,7 +665,7 @@ sub on_keydown			# code == -1 for remote navigation
     my ($self, $code, $key, $mod) = @_;
     #    warn "keydown  @_";
     my $idx = $self->focusedItem;
-    if ($key == kb::Enter && $idx >= 0) {
+    if (($key == kb::Enter || $code == ord 'p') && $idx >= 0) {
 	my $this = $self->item($idx);
 	# warn $self->focusedItem, " is entered\n";
 	if ($this->isa('LPDB::Schema::Result::Path')) {
@@ -578,24 +673,19 @@ sub on_keydown			# code == -1 for remote navigation
 	} elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	    # show picture in other window and raise it unless remote
 	    $self->viewer($code == -1 ? 1 : 0)->IV->viewimage($this);
+	    if ($code == ord 'p') { # play show from here
+		$self->viewer->IV->popup->checked('slideshow', 1);
+		$self->viewer->IV->slideshow;
+	    }
 	}
 	return;
-    } elsif ($key == kb::Escape) {
+    } elsif ($key == kb::Escape) { # back up to parent
 	$self->goto($self->cwd);
 	return;
     }
-    if ($code == ord 'm' or $code == ord '?' # popup menu
-	or $code == 13) {	# ctrl-m is blue remote button
+    if ($code == ord 'm') {	# popup menu
 	my @sz = $self->size;
 	$self->popup->popup(50, $sz[1] - 50); # near top left
-	return;
-    }
-    if ($code == 5) {		# ctrl-e is red remote button
-	$self->key_down(ord 'i'); # image crops
-	return;
-    }
-    if ($code == 20) {		# ctrl-t is yellow remote button
-	$self->key_down(ord 'p'); # path crops
 	return;
     }
     $self->SUPER::on_keydown($code, $key, $mod);
@@ -603,7 +693,7 @@ sub on_keydown			# code == -1 for remote navigation
 sub on_drawitem
 {
     my $self = shift;
-    my $this = $self->item($_[1]);
+    my $this = $self->item($_[1]) or return;
     if ($this->isa('LPDB::Schema::Result::Path')) {
 	$self->draw_path(@_);
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
@@ -619,11 +709,13 @@ sub stackcenter {		# called by {cycler} timer
     my $first = $self->{topItem};  # could be method
     my $last = $self->{lastItem};  # internal to Lists.pm, no method
     my $key = "$cwd $first $last"; # view change detector
-    if ($self->{firstlast} ne $key) { # update the view cache
-	my @path;
+    if ($self->{firstlast} ne $key) { # update the in-view cache
+	my @path;		      # paths needing centers
 	for (my $i = $first; $i <= $last; $i++) {
 	    my $this = $self->item($i);
-	    ref $this or next;	# only paths are refs, pics are ints
+	    ref $this or next;
+	    $this->isa('LPDB::Schema::Result::Picture') and
+		$this->duration and push @path, $i and next;
 	    $this->isa('LPDB::Schema::Result::Path') or next;
 	    $this->picturecount > 2 or next;
 	    push @path, $i;
@@ -635,32 +727,61 @@ sub stackcenter {		# called by {cycler} timer
     }
     my $n = @{$self->{pathsnow}};
     $n or return;
+
     my %idx;			# indexes to replace
     if ($self->popup->checked('csel')) {
 	my $cur = $self->{focusedItem};
-	$idx{$cur} = 1 if $cur > -1
-	    and $self->item($cur)->isa('LPDB::Schema::Result::Path');
+	if ($cur > -1) {
+	    my $item = $self->item($cur);
+	    $idx{$cur} = 1
+		if $item->isa('LPDB::Schema::Result::Path');
+	    $idx{$cur} = 1
+		if $item->isa('LPDB::Schema::Result::Picture')
+		and $item->duration;
+	}
     }
-    if ($self->popup->checked('corder')) {
+    if ($n and $self->popup->checked('corder')) {
 	$idx{$self->{pathsnow}[$self->{corder}++]} = 1;
 	$self->{corder} = 0
 	    if $self->{corder} >= $n;
-    } elsif ($self->popup->checked('crandom')) {
+    } elsif ($n and $self->popup->checked('crandom')) {
 	$idx{$self->{pathsnow}[int rand $n]} = 1;
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
+	$::application->yield;
+	$self->focused		# don't slow down slide shows
+	    or $idx == $self->{focusedItem} or next;
 	my $this = $self->item($idx) or next;
-	$this->isa('LPDB::Schema::Result::Path') or next;
-	my($pic) = $this->random;
-	$pic or next;
-	my $im = $self->{thumb}->get($pic->file_id);
+	my $im;
+	my $dur = 0;
+	if ($this->isa('LPDB::Schema::Result::Path')) {
+	    my($pic) = $this->random;
+	    $pic or next;
+	    $im = $self->{thumb}->get($pic->file_id);
+	} elsif ($dur = $this->duration) {
+	    $im = $self->{thumb}->put($this->file_id, -1);
+	}
 	$im or next;
 	$self->begin_paint;
 	$self->_draw_thumb($im, 2, $canvas,
 			   $idx, $self->item2rect($idx, @s),
 			   $idx == $self->{focusedItem});
 	$self->end_paint;
+	$idx == $self->{focusedItem} or next;
+	my $me;
+	if ($dur and $self->{viewer} # bigger random video center
+	    and Prima::Object::alive($self->{viewer})
+	    and $me = $self->{viewer}->IV
+	    and $me->focused
+	    and my $canvas = $me->{canvas}) {
+	    my($W, $H) = $me->size;
+	    my($w, $h) = $im->size;
+	    $me->begin_paint;
+	    $self->_draw_thumb($im, 2, $canvas, 1,
+			       $W/2-$w*2, $H/2-$h*2, $W/2+$w*2, $H/2+$h*2);
+	    $me->end_paint;
+	}
     }
 }
 
@@ -670,7 +791,7 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
     $im or return;
     my $image = $pos < 1; # negative is video stack, 1,2,3 is path stack
     $pos = abs $pos;
-    $self->{canvas} ||= $canvas; # for middle image rotator
+    $self->{canvas} ||= $canvas; # for middle image rotator (stackcenter)
     my $back = $self->gallery($idx) || 0;
     my $bk = $sel ? $self->hiliteBackColor
 	: $back == -1 ? cl::Blue # picture collection background
@@ -719,11 +840,12 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
 	: $pos == 1 ? ($x1 + $b, $y2 - $b - $dh) # North West
 	: $pos == 2 ? (($x1 + $x2)/2 - $dw/2, ($y1 + $y2)/2 - $dh/2) # center
 	: $pos == 3 ? ($x2 - $b - $dw, $y1 + $b) # South East
-	: ($x1, $y1));		# should never happen 
+	: ($x1, $y1));		# should never happen
     $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
 				$self->rop)
 	or warn "put_image failed: $@";
     if (!$pos and !$b) {       # overlay rectangle on focused pictures
+	$canvas->lineWidth(3);
         my ($x, $y, $w, $h);
         if ($self->popup->checked('cropimages')) { # show aspect rectangle
 	    $canvas->color(cl::LightRed); # cropped portion
@@ -807,7 +929,7 @@ sub draw_picture {
     }
     if ($dur) {
 	$canvas->draw_text(">> $dur >>",  @border,
-			   dt::Center|dt::VCenter|dt::Default);
+			   dt::Center|dt::Top|dt::Default);
     }
     if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);
@@ -821,6 +943,48 @@ sub draw_picture {
 			   dt::Center|dt::Bottom|dt::Default); # dt::VCenter
     $canvas->rect_focus( $x1, $y1, $x2, $y2 ) if $foc;
 }
+
+sub bookmark {			# key / value store for GUI bookmarks
+    my($self, $name, $value) = @_;
+    defined $name or return;
+    my $schema = $self->{lpdb}->{tschema};
+    my $row;
+    if (defined $value) {
+	$row = $schema->resultset('BookMark')->find_or_create(
+	    { name => $name });
+	$row->value($value);
+	$row->update;
+	$schema->txn_commit;
+	$schema->txn_begin;
+    }
+    $row or $row = $schema->resultset('BookMark')->find(
+	{ name => $name });
+#    warn "$name $value $row";
+    return $row ? $row->value : undef;
+}
+
+sub on_close {
+    my($self) = @_;
+    $self or return;
+    # use Data::Dumper;
+    # print Dumper $self->popup->get_items('', 0);
+    my $last = $self->current;
+#    warn "$$ saving $last";
+    $self->bookmark('LAST', $last);
+    $self->{cycler}->stop;
+    $self->{lpdb}->{tschema}->txn_commit;
+    delete $self->{vfs};
+    delete $self->{thumb};
+    $self->lpdb->disconnect;	# flush out the WAL
+#    warn "trying to refocus";
+    $self->owner->select; # restore focus to original window, else no focus!
+    $self->owner->focus;
+}
+
+# sub on_destroy {
+#     warn "$$ ENDING";
+#     &on_close;
+# }
 
 # TODO, move this to ImageViewer or ImageWindow or somewhere?
 
@@ -862,7 +1026,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
 
 =head1 SEE ALSO
 
-L<lpgallery>, L<Prima::LPDB::TileViewer>, L<Prima::LPBD::ImageViewer>,
+L<lpgallery>, L<Prima::LPDB::TileViewer>, L<Prima::LPDB::ImageViewer>,
 L<LPDB>
 
 
@@ -872,7 +1036,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2022 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

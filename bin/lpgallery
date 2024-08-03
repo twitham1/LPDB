@@ -9,6 +9,7 @@ use lib "$Bin/../lib";
 use Prima 1.67;			# need native fullscreen
 use Prima::Application name => 'LPGallery',
     skin => 'classic'; # scroll bars hard to see in 1.69 default skin flat
+use Prima::Widget::StartupWindow;
 use Prima::LPDB::ThumbViewer;
 use LPDB;
 
@@ -27,10 +28,13 @@ our $conf = {
 
 my @ext;			# all image formats we could support:
 map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
+# But how to define video set???  These are types I have so far:
+my @vid = qw/mp4 mov avi mpg asf wmv dv/;
+warn "autosupport: @ext
+videos: @vid\n";
+push @ext, @vid;
 $conf->{ext} = \@ext;
-push @ext, qw/mp4 mov avi mpg asf wmv/;	# how to define video set???
-warn "autosupport: @ext";
-# exit;
+#exit;
 
 # configuration files: last option setting wins
 for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
@@ -59,24 +63,31 @@ if ($create) {
 
 my $lpdb;			# LPDB object, a local picture database
 my $child;
+my $ppid = $$;
 if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
+    $SIG{USR1} = sub {
+	warn "$$: signal USR1 received, DB updated!";
+	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
+    };
     $conf->{guisqltrace} and $conf->{sqltrace} = 1;
-    sleep 10 if $create;
+    $conf->{child} = $child;
+    sleep($create ? 10 : 2);
     $lpdb = new LPDB($conf);
 } else {			# child updates DB, creating if needed
     $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
     if ($conf->{noupdate}) {
 	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
-	exit 0;
+    } else {
+	unlink $conf->{dbfile} if $create;
+	$lpdb = new LPDB($conf);
+	$lpdb->create;		# or update schema via *.sql
+	$lpdb->update('.');
+	$lpdb->cleanup;
+	$lpdb->disconnect;
+	warn "$0: $$ done updating $conf->{dbfile}\n";
+	kill 'USR1', $ppid;	# tell GUI I'm done
     }
-    unlink $conf->{dbfile} if $create;
-    $lpdb = new LPDB($conf);
-    $lpdb->create if $create;
-#    $lpdb->create;
-    $lpdb->update('.');
-    $lpdb->cleanup;
-    warn "$0: $$ done updating $conf->{dbfile}\n";
     exit;
 }
 END {
@@ -95,13 +106,16 @@ $::application->icon(Prima::LPDB::ThumbViewer::icon);
 
 $w = Prima::LPDB::Fullscreen->create(
     mainWindow => 1, # promote myself to MainWindow per Prima::Window:
-    onDestroy  => sub { $::application-> close },
+    onDestroy  => sub { $::application->close },
     name => 'LPG',
     text => 'Local Picture Gallery',
     packPropagate => 0,
     size => [1600, 900],
     designScale => [16, 32],	# should it be in ThumbViewer?
     );
+$::application->yield;
+# $w->repaint;
+# $w->update_view;
 
 # designScale from faq.pod:
 # perl -MPrima -MPrima::Application -le '$_=$::application->font; print $_->width, q( ), $_->height';
@@ -112,30 +126,19 @@ $w = Prima::LPDB::Fullscreen->create(
 # Prima.Back: black
 # Prima.HiliteBackColor: gray33
 
-sub myclose { $w->deselect; $::application->close } # segfaults!??!!!
-
 # print sort map {"$_->{name}\n"} @{$::application-> fonts}; # see available fonts!!!
 
 $lv = $w->insert(
     'Prima::LPDB::ThumbViewer',
     lpdb => $lpdb,		# LPDB connection required in advance
     name => 'TV',
-    # onClick => sub {
-    # 	print $_[0]-> focusedItem, " is clicked\n";
-    # },
     size => [320, 320],
-    # growMode => gm::GrowAll,
     pack => { expand => 1, fill => 'both' },
     );
 
-$lv->smaller(6);		# resize thumbs to fill the window
-$lv->focusedItem(0);
-$w->repaint;
-
 #$::application->yield;
-if ($conf->{thumbviewer}) {	# optional startup configuration
-    &{$conf->{thumbviewer}}($lv);
-}
+$lv->repaint;
+$lv->update_view;
 
 run Prima;
 
@@ -153,13 +156,20 @@ lpgallery - remote-control (keyboard) driven local picture browser
 
 lpgallery [startup file]
 
+What would happen if all your pictures(*) were available in just 1
+local file and their metadata in a second file?  Any pictures could be
+seen instantly and in any order.  This is that!
+
+(*) thumbnails only, full resolution remains in the original separate
+local files.
+
 UNDER CONSTRUCTION - Picasa features don't yet exist!!!
 
 =head1 DESCRIPTION
 
 B<lpgallery> presents local pictures (optionally managed by Picasa) in
-a keyboard (or remote) controlled browser, similar to MythGallery of
-MythTV.  The main window navigates a "virtual filesytem" thumbnail
+a keyboard (or better, a remote) controlled browser, like MythGallery
+of MythTV.  The main window navigates a "virtual filesytem" thumbnail
 tree of multiple organized paths to galleries of the images.  A second
 window presents any one image at a time, optionally as an automatic
 slide show.  Videos can be manually or automatically played as well.
@@ -169,24 +179,38 @@ your couch.  Currently this is read-only, it will never modify any
 images.  The database is updated once from the filesystem in the
 background at start up.
 
+=head2 Remote Control / Keyboard Keys
+
+B<Enter> selects a path or image while B<Escape> returns back.  Arrow
+keys navigate the grid as expected, also available on the home row at
+B<i/j/k/l>. Previous and Next gallery are immediately above left/right
+at B<u/o> and B<p> starts a slideshow.  Finally, the digit keys scroll
+long lists to that tenth of the list: 0 = first, 7 = 70% and so on.
+
+B<m> opens the menu which lists other keys that can be used such as
+B<q> for immediate quit or home row B<a/s> to zoom out/in or change
+speed during a slide show.
+
+B<Rewind/Seek> of media remotes control the zoom or speed like B<a/s>.
+B<Prev/Next Track> find the next gallery like B<u/o>.  B<HomePage>
+hits B<n> which toggles thumb crop or cycles information.
+
 =head2 Thumbnail Grid
 
-The main window is a grid of thumnail images.  Picture collections are
-represented by a stack of three images: the oldest, center (or random)
-and youngest picture in the path below that point in the tree.  Arrow
-keys move around the grid while the B<Enter> key moves into a lower
-path or presents a single picture.  The B<Escape> key moves back up to
-the parent path.  Metadata about the selected path is displayed above
-and below the grid.
+The main window is a grid of thumnail images.  Pictures below this
+path in the tree are represented by a stack of three images: the
+oldest, center (or random) and youngest.  Metadata about the selected
+path is displayed above and below the grid.
 
 Any videos are shown as a frame grab from the center of the video or
 as a stack of 3 grabs at 5%, 50% and 95% of the time.  This can be
 toggled with B<v>.  Either way the play time of the video is displayed
-in the center of the video image.
+above the video image.
 
-All images can optionally be cropped to consume their whole square in
-which case lines are overlayed that indicate displayed and missing
-areas of the full image.
+All images can optionally be cropped with the B<n> key to consume
+their whole square in which case lines are overlayed that indicate
+displayed and missing areas of the full image.  When cropped, portrait
+and ultra wide images get an indicating flag in the corner.
 
 The top level virtual paths of the grid are:
 
@@ -231,13 +255,14 @@ pictures marked with stars as favorites (Picasa only not implemented)
 
 A second window opens when hitting B<Enter> on an image from the grid.
 This displays one picture at maximum size for the window.  Arrow keys
-will now navigate both windows.  The B<Enter> key will zoom to
-original size.  Scroll with the arrow keys for images larger than the
-window and hit B<Enter> again to toggle back to auto zoom best fit.
-For video files B<Enter> instead plays the video, hit B<Escape> to
-return when finished.
+will now navigate both windows as will the B<u/i/o/j/k/l>.
 
-The B<i> key cycles through metadata "info" overlay levels.  This adds
+The B<Enter> key will zoom to original size.  Scroll with the arrow
+keys for images larger than the window and hit B<Enter> again to
+toggle back to auto zoom best fit.  For video files B<Enter> instead
+plays the video, hit B<Escape> to return when finished.
+
+The B<n> key cycles through metadata "info" overlay levels.  This adds
 common picture and camera metadata to the corners and (for Picasa
 only) draws named rectangles around recognized faces.  Hit the B<d>
 key to see all known metadata.
@@ -250,8 +275,7 @@ In the Thumbnail Grid, the B<m> key brings up a Menu of options
 including sorting, filtering, and navigating to other locations of
 this picture in the tree.  In the Image Viewer, B<m> can start and
 stop a slide show, adjust information overlay or show all metadata of
-the image.  Refer to the menu to discover other keyboard shortcuts
-like B<z> and B<q> to zoom in and out respectively in either window.
+the image.  Refer to the menu to discover other keyboard shortcuts.
 
 =head2 FILTERING
 
@@ -297,21 +321,19 @@ directory.  This simply chooses which to display first.
 
 =head2 SLIDE SHOW
 
-The B<p> key on the Image Viewer can Play or Pause a slide show and
-the menu can adjust its playback speed.  The slideshow is the pictures
-from the Thumbnail grid in order.  Therefore you can order the
-slideshow by the filtering and sorting options of the grid.  The
-defaults may work well while a random show would need I<Ungrouped>
-galleries and I<Random> images.
+The B<p> key can Play or Pause a slide show while B<a/s> adjust its
+playback speed.  The slideshow is the pictures from the Thumbnail grid
+in order.  Therefore you can order the slideshow by the filtering and
+sorting options of the grid.  The defaults may work well while a
+random show would need I<Ungrouped> galleries and I<Random> images.
 
 Arrow key navigation and info cycling is available while the slideshow
 plays.  Menu or escape back to the grid automatically pauses the show,
-then you can B<Enter> and B<p> to continue playback from any point on
-the grid.
+then you can B<p> to continue playback from any point on the grid.
 
-Videos are previewed with a frame from the center of the time.
-B<Enter> will play the video (B<Escape> to return) or you can hit B<v>
-to toggle video autoplay.
+Videos are previewed with random frames from the video.  B<Enter> will
+play the video (B<Escape> to return) or you can hit B<v> to toggle
+video autoplay.
 
 =head1 TODO
 
@@ -335,7 +357,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2023 Timothy D Witham.
+Copyright 2013-2024 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

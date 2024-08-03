@@ -107,7 +107,7 @@ sub closest_screen {
     return [0, 0, $::application->size]; # shouldn't get here
 }
 
-# NOTES on going fullscreen:
+# NOTES on going fullscreen, possibly obsolete by 2024:
 
 # In X11 we can only guarantee fullscreen by creating a
 # non-WM-manageable widget.  This is portable, but we cannot bring
@@ -145,10 +145,16 @@ sub fullscreen		     # 0 = normal, 1 = fullscreen, -1 = toggle
 	and $fs = ! $self->windowState & ws::Fullscreen;
     if ($fs) {
 	$self->SUPER::fullscreen;
-	$self->bring_to_front;	# should this be here? or configurable?
+#	$self->bring_to_front;	# should this be here? or configurable?
     } else {
 	$self->restore;
     }
+    $::application->yield;
+    # $self->repaint;
+    # $self->update_view;
+    # why is size wrong, reporting prior size?  How to fix? !!!
+    # warn join "---", $fs, $self->size, $self->width, $self->height, $self->frameSize;
+    # $self->notify('Size', $self->size, $self->size);
     return $self->windowState & ws::Fullscreen ? 1 : 0;
 }
 
@@ -166,7 +172,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2022 Timothy D Witham.
+Copyright 2022 - 2023 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

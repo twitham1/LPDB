@@ -28,10 +28,8 @@ use Time::HiRes qw(gettimeofday tv_interval); # for profiling
 use Data::Dumper;
 
 my $conf = {		       # override any keys in first arg to new
-    reject	=> 'PATTERN OF FILES TO REJECT',
+    reject	=> '\.import', # pattern of files/dirs to reject
     keep	=> '(?i)\.(jpe?g|png|mp4|mov)$',
-    # datefmt	=> '%Y-%m-%d.%H:%M:%S', # must be sortable order
-#    datefmt	=> undef,		# undef == EXIF format
     update	=> sub {},  # callback after each directory is scanned
     debug	=> 0,	    # diagnostics to STDERR
     filter	=> {},	    # filters
@@ -64,8 +62,10 @@ sub new {
 			     sqlite_unicode => 1,
 			   })
 	or die $DBI::errstr;
-    # Default is no enforcement, and must be set per connection.
+    # Default is no enforcement, and must be set per connection:
     $dbh->do('PRAGMA foreign_keys = ON;');
+    # WAL lets writers not block readers and is faster at writing:
+    $dbh->do('PRAGMA journal_mode = WAL;'); # or DELETE or TRUNCATE
     $self->{dbh} = $dbh;
 
     $conf->{thumbfile} or
@@ -76,6 +76,8 @@ sub new {
     			      on_connect_call => 'use_foreign_keys',
     			    })
     	or die $DBI::errstr;
+    # WAL lets writers not block readers and is faster at writing:
+    $tdbh->do('PRAGMA journal_mode = WAL;'); # or DELETE or TRUNCATE
     $self->{tdbh} = $tdbh;
 
     $self->{mtime} = 0;	# modify time of dbfile, for detecting updates
@@ -104,7 +106,9 @@ sub disconnect {
     # my $dbh = $self->dbh;
     # print all currently cached prepared statements
 #    print "cache>>>$_<<<\n" for keys %{$dbh->{CachedKids}};
+    $self->dbh->do('PRAGMA optimize;');
     $self->dbh->disconnect;
+    $self->tdbh->do('PRAGMA optimize;');
     $self->tdbh->disconnect;
 }
 
@@ -119,6 +123,22 @@ sub tschema {
     $self->{tschema} or $self->{tschema} = LPDB::Schema->connect(
 	sub { $self->tdbh });
     return $self->{tschema};
+}
+
+sub namevalue {			# key / value store
+    my($self, $name, $value) = @_;
+    defined $name or return;
+    my $schema = $self->schema;
+    my $row;
+    if (defined $value) {
+	$row = $schema->resultset('NameValue')->find_or_create(
+	    { name => $name });
+	$row->value($value);
+	$row->update;
+    }
+    $row or $row = $schema->resultset('NameValue')->find(
+	{ name => $name });
+    return $row ? $row->value : undef;
 }
 
 # ------------------------------------------------------------

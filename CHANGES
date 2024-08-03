@@ -2,6 +2,22 @@ FUTURE (v1.0.0)
 
 	Full Picasa support, not yet implemented
 
+2024-08-03 (v0.5.0)
+
+	See galleries by alternating background colors
+
+	Show position in gallery and position in galleries
+
+	Preview random frames from videos
+
+	Improved home row keyboard navigation, see Help
+
+	Support common remote control media keys
+
+	Switch database to WAL mode for better performance
+
+	Several bug fixes and performance improvements
+
 2022-??-?? (v0.4.1)
 
 	Faster navigation into long list
