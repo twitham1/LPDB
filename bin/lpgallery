@@ -157,11 +157,11 @@ lpgallery - remote-control (keyboard) driven local picture browser
 lpgallery [startup file]
 
 What would happen if all your pictures(*) were available in just 1
-local file and all their metadata in a second file?  Any pictures
-could be seen instantly and in any order.  This is that!
+local file and their metadata in a second file?  Any pictures could be
+seen instantly and in any order.  This is that!
 
-(*) thumbnails only, full resolution is also available in the original
-separate local files.
+(*) thumbnails only, full resolution remains in the original separate
+local files.
 
 UNDER CONSTRUCTION - Picasa features don't yet exist!!!
 
@@ -185,7 +185,7 @@ B<Enter> selects a path or image while B<Escape> returns back.  Arrow
 keys navigate the grid as expected, also available on the home row at
 B<i/j/k/l>. Previous and Next gallery are immediately above left/right
 at B<u/o> and B<p> starts a slideshow.  Finally, the digit keys scroll
-long lists to that tenth of the list: 0 = top, 7 = 70% and so on.
+long lists to that tenth of the list: 0 = first, 7 = 70% and so on.
 
 B<m> opens the menu which lists other keys that can be used such as
 B<q> for immediate quit or home row B<a/s> to zoom out/in or change
@@ -255,11 +255,12 @@ pictures marked with stars as favorites (Picasa only not implemented)
 
 A second window opens when hitting B<Enter> on an image from the grid.
 This displays one picture at maximum size for the window.  Arrow keys
-will now navigate both windows.  The B<Enter> key will zoom to
-original size.  Scroll with the arrow keys for images larger than the
-window and hit B<Enter> again to toggle back to auto zoom best fit.
-For video files B<Enter> instead plays the video, hit B<Escape> to
-return when finished.
+will now navigate both windows as will the B<u/i/o/j/k/l>.
+
+The B<Enter> key will zoom to original size.  Scroll with the arrow
+keys for images larger than the window and hit B<Enter> again to
+toggle back to auto zoom best fit.  For video files B<Enter> instead
+plays the video, hit B<Escape> to return when finished.
 
 The B<n> key cycles through metadata "info" overlay levels.  This adds
 common picture and camera metadata to the corners and (for Picasa
