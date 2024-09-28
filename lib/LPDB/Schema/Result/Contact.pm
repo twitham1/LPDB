@@ -29,6 +29,13 @@ __PACKAGE__->table("Contacts");
   is_auto_increment: 1
   is_nullable: 0
 
+=head2 hexid
+
+  data_type: 'text'
+  is_nullable: 1
+
+Hexadecimal Picasa Identifier
+
 =head2 name
 
   data_type: 'text'
@@ -50,16 +57,27 @@ Optional email address
 
 Optional time of birth
 
+=head2 death
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Optional time of death
+
 =cut
 
 __PACKAGE__->add_columns(
   "contact_id",
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
+  "hexid",
+  { data_type => "text", is_nullable => 1 },
   "name",
   { data_type => "text", is_nullable => 0 },
   "email",
   { data_type => "text", is_nullable => 1 },
   "birth",
+  { data_type => "integer", is_nullable => 1 },
+  "death",
   { data_type => "integer", is_nullable => 1 },
 );
 
@@ -76,6 +94,18 @@ __PACKAGE__->add_columns(
 __PACKAGE__->set_primary_key("contact_id");
 
 =head1 UNIQUE CONSTRAINTS
+
+=head2 C<hexid_unique>
+
+=over 4
+
+=item * L</hexid>
+
+=back
+
+=cut
+
+__PACKAGE__->add_unique_constraint("hexid_unique", ["hexid"]);
 
 =head2 C<name_unique>
 
@@ -107,8 +137,8 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-06-25 18:46:37
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:LJaQl9AoR195WOq/7I2gyA
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-28 00:18:42
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:+LjqoqWCSS3KZ7J741t74A
 
 
 # You can replace this text with custom code or comments, and it will

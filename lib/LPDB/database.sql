@@ -196,17 +196,22 @@ INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
    ('Contacts', 'Known people in pictures');
 
 INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
+   ('Contacts', 'hexid',	'Hexadecimal Picasa Identifier'),
    ('Contacts', 'name',		'Name of the person, required'),
-   ('Contacts', 'email',        'Optional email address'),
-   ('Contacts', 'birth',        'Optional time of birth');
+   ('Contacts', 'email',	'Optional email address'),
+   ('Contacts', 'birth',	'Optional time of birth'),
+   ('Contacts', 'death',	'Optional time of death');
 
 CREATE TABLE IF NOT EXISTS Contacts (
    contact_id	INTEGER PRIMARY KEY NOT NULL,
+   hexid	TEXT UNIQUE,
    name		TEXT UNIQUE NOT NULL,
    email	TEXT,
-   birth	INTEGER
+   birth	INTEGER,
+   death	INTEGER
    );
 
+CREATE INDEX IF NOT EXISTS contact_hexid_index ON Contacts (hexid);
 CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (name);
 CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
 INSERT OR REPLACE INTO Contacts (contact_id, name, email) VALUES

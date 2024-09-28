@@ -55,7 +55,22 @@ sub ini_updatedb {
 	    }
 	} elsif ($k =~ /^Contacts2/) {
 	    for my $id (keys %{$this}) {
-		print "$k\t{$id}{$this->{$id}}\n";
+		my($name, $email) = split ';', $this->{$id};
+		my $obj = $schema->resultset('Contact')->find_or_new(
+		    { hexid => $id } );
+		if ($obj->in_storage) { # last one wins?
+		    my $tmp = $obj->email;
+		    $obj->email($email);
+		    $tmp eq $email or warn "$dir: $tmp -> $email";
+		    $tmp = $obj->name;
+		    $obj->name($name);
+		    $tmp eq $name or warn "$dir: $tmp -> $name";
+		} else {
+		    $obj->hexid($id);
+		    $obj->name($name);
+		    $obj->email($email);
+		    $obj->insert;
+		}
 	    }
 	} elsif ($k =~ /^\.album:(\w+)$/) {
 	    print qq'{album}{$1} = 1;\n';
