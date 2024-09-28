@@ -15,13 +15,14 @@ use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
 use LPDB::VFS;
-#use LPDB::Picasa;		# !!!TODO
+use LPDB::Picasa;		# grok .picasa.ini files
 use base 'Exporter::Tiny';
 our @EXPORT = qw(update create cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
 my $vfs;	  # LPDB::VFS database methods
+my @ini;	  # .picasa.ini files to read after pictures
 our $conf;
 my $done = time;		# time of last commit
 my $tty = -t STDERR;
@@ -82,7 +83,7 @@ sub update {
 			   QuickTimeUTC => 1);
 	# QuickTimeUTC might lose on cameras that don't know the time
 	# zone and use local time against the spec.  But smart phone
-	# cameras know the time zone so they are using UTC time.
+	# cameras know the time zone so they use correct UTC time.
     }
     status "update @dirs\n";
     $schema->txn_begin;
@@ -91,6 +92,14 @@ sub update {
 	    wanted => \&_wanted,
 #	    postprocess => $conf->{update},
 	  }, @dirs);
+    $schema->txn_commit;
+    $schema->txn_begin;
+    for my $ini (@ini) {
+	my $tmp = ini_read($ini);
+	use Data::Dumper;	# remove this!!! and this:
+	print "\n$ini=", Dumper $tmp;
+	LPDB::Picasa::ini_updatedb($self, $tmp);
+    }
     $schema->txn_commit;
 }
 
@@ -140,11 +149,7 @@ sub _wanted {
     #    $dir = '' if $dir eq '.';
     status "checking $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini') {
-	# my $tmp = LPDB::Picasa::readini($_);
-	# use Data::Dumper;
-	# print Dumper $tmp;
-	# &_understand($db, _readfile($_));
-	# $db->{dirs}{$dir}{'<<updated>>'} = $modified;
+	push @ini, "$dir$file";	# update later after all pictures
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:
 	     $file eq 'Originals' or
