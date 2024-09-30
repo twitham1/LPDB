@@ -47,8 +47,8 @@ sub ini_updatedb {
     my $dir = $ini->{dir};
     $dir =~ m@/$@ or return;
     my $schema = $self->schema;
-    my $id = $self->_savedirs($dir); # hack!!! cached dir id
-    print "in $dir = $id is following:\n";
+    my $did = LPDB::Filesystem::_savedirs($dir); # hack!!! cached dir id
+    print "in $dir = $did is following:\n";
     for my $k (keys %$ini) {
 	my $this = $ini->{$k};
 	if ($k eq 'dir') {
@@ -91,17 +91,46 @@ p		    $obj->name($name);
 	    # 	 'token' => '4b5914837de8a11f7029631a2c9280f9',
 	    # 	 'date' => '2018-06-07T09:27:35-05:00'
 	    #  ))
-	} elsif (my $row = $schema->resultset('Picture')->find(
-		     { dir_id => $id,
+	} elsif (my $pic = $schema->resultset('Picture')->find(
+		     { dir_id => $did,
 		       basename => $k })) { # image
-	    # for my $id (keys %{$this}) {
-	    # 	print "$k\t{$id}{$this->{$id}}\n";
-	    # }
-	    # print "\tsetting star in $dir/$k\n";
-	    $row->stars($this->{star} && $this->{star} eq 'yes' ? 1 : 0);
-	    $row->is_changed
-		? $row->update
-		: $row->discard_changes;
+	    for (split ';', $this->{faces} || '') {
+		my($rect, $hex) = split ',';
+		my $contact = $schema->resultset('Contact')->find(
+		    { hexid => $hex }) or next;
+		my $cid = $contact->contact_id;
+		my $face = $schema->resultset('Face')->find_or_create(
+		    { dir_id => $did,
+		      file_id => $pic->file_id,
+		      contact_id => $cid},
+		    );
+		my($w, $n, $e, $s) = ini_rect($rect);
+		my $rot = $pic->rotation;
+		my @pos;
+		if ($rot == 0) { # most common: no change
+		    @pos = ($w, $n, $e, $s);
+		} elsif ($rot == 90) {
+		    @pos = (1 - $s, $w, 1 - $n, $e);
+		} elsif ($rot == 180) {
+		    @pos = (1 - $e, 1 - $s, 1 - $w, 1 - $n);
+		} elsif ($rot == 270) {
+		    @pos = ($n, 1 - $e, $s, 1 - $w);
+		} else {	# assume no change
+		    @pos = ($w, $n, $e, $s);
+		}
+		print "$did/$cid $rect -> $w, $n, $e, $s\n\t@pos ($rot)\n";
+		$face->left(shift @pos);
+		$face->top(shift @pos);
+		$face->right(shift @pos);
+		$face->bottom(shift @pos);
+		$face->is_changed
+		    ? $face->update
+		    : $face->discard_changes;
+	    }
+	    $pic->stars(($this->{star} and $this->{star} eq 'yes') ? 1 : 0);
+	    $pic->is_changed
+		? $pic->update
+		: $pic->discard_changes;
 	} elsif (-f "$dir$k") {	# should not fail to find in previous!!!
 	    print "WHY IS $dir$k not in DB?!!!!!!!!!!!!!\n";
 	    for my $id (keys %{$this}) {
@@ -111,6 +140,18 @@ p		    $obj->name($name);
 	    print "[$k] no such file, ignored\n";
 	}
     }
+}
+
+# return NW, SE coordinates encoded in $rect
+sub ini_rect {
+    my($rect) = @_;
+    my @out;
+    return () unless $rect =~ s/rect64\((\w+)\)/0000000000000000$1/;
+    $rect =~ s/.*(\w{16})$/$1/;
+    while ($rect =~ s/(....)//) {
+	push @out, hex($1) / 65536;
+    }
+    return @out;
 }
 
 1;				# LPDB::Picasa.pm

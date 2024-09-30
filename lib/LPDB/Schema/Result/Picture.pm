@@ -180,6 +180,21 @@ __PACKAGE__->belongs_to(
   },
 );
 
+=head2 faces
+
+Type: has_many
+
+Related object: L<LPDB::Schema::Result::Face>
+
+=cut
+
+__PACKAGE__->has_many(
+  "faces",
+  "LPDB::Schema::Result::Face",
+  { "foreign.file_id" => "self.file_id" },
+  { cascade_copy => 0, cascade_delete => 0 },
+);
+
 =head2 picture_albums
 
 Type: has_many
@@ -271,8 +286,8 @@ Composing rels: L</picture_tags> -> tag
 __PACKAGE__->many_to_many("tags", "picture_tags", "tag");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-06-25 18:46:37
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:IjZVGL4ozHfXfuEdQ2Vu0A
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-30 00:49:08
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:EyRutGZel7p6AxWadKNB8A
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

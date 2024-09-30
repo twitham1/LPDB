@@ -121,6 +121,21 @@ __PACKAGE__->add_unique_constraint("name_unique", ["name"]);
 
 =head1 RELATIONS
 
+=head2 faces
+
+Type: has_many
+
+Related object: L<LPDB::Schema::Result::Face>
+
+=cut
+
+__PACKAGE__->has_many(
+  "faces",
+  "LPDB::Schema::Result::Face",
+  { "foreign.contact_id" => "self.contact_id" },
+  { cascade_copy => 0, cascade_delete => 0 },
+);
+
 =head2 thumbs
 
 Type: has_many
@@ -137,8 +152,8 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-28 00:18:42
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:+LjqoqWCSS3KZ7J741t74A
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-29 22:41:55
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:ds3tU1QJ53G41vm85LPnjQ
 
 
 # You can replace this text with custom code or comments, and it will

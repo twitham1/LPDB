@@ -52,7 +52,7 @@ sub profile_default
 		     map { $_[0]->popup->checked($_, 1) }
 		     qw/bothfiles bothshapes unlimited/;
 		     map { $_[0]->popup->checked($_, 0) }
-		     qw/tags captions/;
+		     qw/stars tags captions/;
 		     $_[0]->goto($_[0]->current);
 		  }],
 		 [],
@@ -64,6 +64,7 @@ sub profile_default
 		 ['portrait'	=> 'Portrait'	  => 'sorter'],
 		 [')landscape'	=> 'Landscape'	  => 'sorter'],
 		 [],
+		 ['@stars'	=> 'Stars'	=> 'sorter'],
 		 ['@tags'	=> 'Tags'	=> 'sorter'],
 		 ['@captions'	=> 'Captions'	=> 'sorter'],
 		 [],
@@ -375,6 +376,8 @@ sub children {			# return children of given text path
     }
     my $filter = $self->{filter} = []; # menu filter options to database where
 
+    $m->checked('stars') and push @$filter,
+	stars => { '>', 0 };
     $m->checked('tags') and push @$filter,
 	tag_id => { '!=', undef };
     $m->checked('captions') and push @$filter,
@@ -566,7 +569,8 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 				: 'Check ~Menu -> AND Filters!');
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx);
-	$owner->NORTH->N->text($this->basename);
+	my $stars = $this->stars ? '*' x $this->stars : '';
+	$owner->NORTH->N->text($stars . ' ' . $this->basename . ' ');
 	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,
 				$self->gallery($idx), $self->gallery(-1),
 				$progress);
@@ -920,16 +924,20 @@ sub draw_picture {
     $b += 10;			# now text border
     my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
     $canvas->textOpaque(1);
+    if (($pic->stars || 0) > 0) {
+	$canvas->draw_text('*' x $pic->stars, @border,
+			   dt::Left|dt::Top|dt::Default);
+    }
+    if ($dur) {
+	$canvas->draw_text(">> $dur >>",  @border,
+			   dt::Center|dt::Top|dt::Default);
+    }
     if ($self->popup->checked('cropimages')) { # wide / portrait flags
 	my $str = $pic->width > 1.8 * $pic->height ? '==='
 	    : $pic->width < $pic->height ? '||' : '';
 	$str and
 	    $canvas->draw_text($str, @border,
 			       dt::Right|dt::Top|dt::Default);
-    }
-    if ($dur) {
-	$canvas->draw_text(">> $dur >>",  @border,
-			   dt::Center|dt::Top|dt::Default);
     }
     if ($sel and !$pic->caption) { # help see selection by showing text
     	my $str = strftime('  %b %d %Y  ', localtime $pic->time);

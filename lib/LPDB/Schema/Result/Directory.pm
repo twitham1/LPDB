@@ -41,7 +41,7 @@ Physical path to a collection of pictures
   data_type: 'integer'
   is_nullable: 1
 
-ID of parent directory, 0 for / root
+ID of parent directory, 1 for / root
 
 =head2 begin
 
@@ -100,6 +100,21 @@ __PACKAGE__->add_unique_constraint("directory_unique", ["directory"]);
 
 =head1 RELATIONS
 
+=head2 faces
+
+Type: has_many
+
+Related object: L<LPDB::Schema::Result::Face>
+
+=cut
+
+__PACKAGE__->has_many(
+  "faces",
+  "LPDB::Schema::Result::Face",
+  { "foreign.dir_id" => "self.dir_id" },
+  { cascade_copy => 0, cascade_delete => 0 },
+);
+
 =head2 pictures
 
 Type: has_many
@@ -116,8 +131,8 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-19 15:25:37
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:B4K4NSzD2QwJbrDxx7+P2g
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-30 00:49:08
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:3MB47I87ozFeNpbWvEeW8Q
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
 1;

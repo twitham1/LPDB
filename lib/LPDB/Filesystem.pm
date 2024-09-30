@@ -98,7 +98,7 @@ sub update {
 	my $tmp = ini_read($ini);
 	use Data::Dumper;	# remove this!!! and this:
 	print "\n$ini=", Dumper $tmp;
-	LPDB::Picasa::ini_updatedb($self, $tmp);
+	ini_updatedb($self, $tmp);
     }
     $schema->txn_commit;
 }
@@ -246,7 +246,6 @@ sub _wanted {
 
 	# 	$this->{face}	= $db->faces($dir, $file, $this->{rot}); # picasa data for this pic
 	# 	$this->{album}	= $db->albums($dir, $file);
-	# 	$this->{stars}	= $db->star($dir, $file);
 	# 	$this->{uploads} = $db->uploads($dir, $file);
 	# 	$this->{faces}	= keys %{$this->{face}} ? 1 : 0; # boolean attributes
 	# 	$this->{albums}	= keys %{$this->{album}} ? 1 : 0;
