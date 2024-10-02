@@ -38,8 +38,6 @@ CREATE TABLE IF NOT EXISTS Directories (
 CREATE INDEX IF NOT EXISTS dir_index ON Directories (directory);
 CREATE INDEX IF NOT EXISTS dir_begin_index ON Directories (begin);
 CREATE INDEX IF NOT EXISTS dir_end_index ON Directories (end);
-INSERT OR REPLACE INTO Directories (dir_id, directory) VALUES (0, '//');
-INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0);
 
 ---------------------------------------- PICTURES
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -83,7 +81,6 @@ CREATE INDEX IF NOT EXISTS basename_index ON Pictures (basename);
 CREATE INDEX IF NOT EXISTS caption_index ON Pictures (caption);
 CREATE INDEX IF NOT EXISTS time_index ON Pictures (time);
 CREATE INDEX IF NOT EXISTS bytes_index ON Pictures (bytes);
-INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename) VALUES (0, 0, 'ALL');
 
 ---------------------------------------- Virtual File System
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -213,8 +210,6 @@ CREATE TABLE IF NOT EXISTS Contacts (
 CREATE INDEX IF NOT EXISTS contact_hexid_index ON Contacts (hexid);
 CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (name);
 CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
-INSERT OR REPLACE INTO Contacts (contact_id, name, email) VALUES
-   (0, '', '');
 
 ---------------------------------------- FACES many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -265,3 +260,8 @@ CREATE TABLE IF NOT EXISTS NameValue (
    );
 
 CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
+
+INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
+INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0);
+INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename)	VALUES (0, 0, 'ALL');
+INSERT OR REPLACE INTO Contacts (contact_id, name, email)	VALUES (0, '', '');

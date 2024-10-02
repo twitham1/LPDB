@@ -75,7 +75,7 @@ sub ini_updatedb {
 		    $tmp eq $name or warn "$dir: $tmp -> $name";
 		} else {
 		    $obj->hexid($id);
-p		    $obj->name($name);
+		    $obj->name($name);
 		    $obj->email($email);
 		    $obj->insert;
 		}

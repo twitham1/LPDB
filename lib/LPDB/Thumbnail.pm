@@ -139,6 +139,7 @@ sub put {	       # cid -1 is random video center not saved to DB
     	{file_id => $id,
 	contact_id => $cid},
 	{columns => [qw/basename dir_id width height rotation duration/]});
+    $picture or warn "$id/$cid not found" and return;
     my $path = $picture->pathtofile;
     my($row, $modified);
     if ($cid > -1) {		# not random video center

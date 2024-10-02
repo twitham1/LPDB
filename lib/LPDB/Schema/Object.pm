@@ -25,6 +25,14 @@ sub hms {			# formatted video duration
 	: $dur > 1 ? "$dur seconds" : "$dur second";
 }
 
+sub faces {
+    my($self) = @_;
+    my $schema = $self->result_source->schema;
+    return $schema->resultset('Face')->search(
+	{ dir_id => $self->dir->dir_id,
+	  file_id => $self->file_id} );
+}
+
 # sub thumbnail {
 #     my($self) = @_;
 #     return 

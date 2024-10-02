@@ -735,8 +735,8 @@ sub stackcenter {		# called by {cycler} timer
     my %idx;			# indexes to replace
     if ($self->popup->checked('csel')) {
 	my $cur = $self->{focusedItem};
-	if ($cur > -1) {
-	    my $item = $self->item($cur);
+	if ($cur > -1 and
+	    my $item = $self->item($cur)) {
 	    $idx{$cur} = 1
 		if $item->isa('LPDB::Schema::Result::Path');
 	    $idx{$cur} = 1
@@ -880,6 +880,7 @@ sub draw_path {
     for my $pic ($path->stack) {
 	my $where = shift @where;
 	$pic or next;
+	$self->{thumb} or last;
 	my $im = $self->{thumb}->get($pic->file_id);
 	$im or next;
 	$first or $first = $pic;

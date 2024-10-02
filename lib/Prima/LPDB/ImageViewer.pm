@@ -163,6 +163,22 @@ sub viewimage
     }
 }
 
+sub faces {			# on_paint tells us where the image is
+    my($self, $im, $x, $y, $sx, $sy, $w, $h, $sw, $sh) = @_;
+    $self->autoZoom or return;
+    my $pic = $self->picture or return;
+    my $canvas = $self->{canvas} or return;
+    $canvas->color(0xffff00);	# yellow
+    # $canvas->color(0xff00ff);	# magenta
+    # $canvas->color(0x00ffff);	# cyan
+    $canvas->lineWidth(1);
+    for my $face ($pic->faces) {
+	$canvas->rectangle($x + $w * $face->left, $y + $h * (1 - $face->top),
+			   $x + $w* $face->right, $y + $h * (1 - $face->bottom));
+    }
+    $canvas->color(cl::Fore);
+}
+
 sub on_paint { # update metadata label overlays, later in front of earlier
     my($self, $canvas) = @_;
     $self->{canvas} ||= $canvas; # for middle image rotator (TV::stackcenter)
@@ -174,7 +190,7 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     # $self->{scaling} = ist::Box; # fastest, but square pixels
 
 #    warn "painting $self: ", $self->picture->pathtofile;
-    $self->SUPERon_paint(@_);	# hack!!! see below!!!
+    $self->faces($self->SUPERon_paint(@_)); # hack!!! see below!!!
     my $th = $self->{thumbviewer};
     my $x = $th->focusedItem + 1;
     my $y = $th->count;
@@ -700,6 +716,8 @@ PAINT:
 	$canvas-> clear( $atx, $aty, $atx + $imXz, $aty + $imYz)
 	    if $self-> {icon} and ! $self->{overlay};
 
+	my @ret;		# tell caller where we put it!
+
 	if ( $self-> {scaling} != ist::Box && ( $imXz != $imX || $imYz != $imY ) ) {
 		my (
 			$xFrom, $yFrom,
@@ -745,23 +763,25 @@ PAINT:
 		my $i = $self->{image}->extract( $xDest, $yDest, $imX, $imY );
 		$i->scaling( $self->{scaling} );
 		$i->size( $imXz, $imYz );
-		return $canvas-> put_image_indirect(
-			$i,
-			$atx, $aty,
-			$xFrom, $yFrom,
-			$xDestLen, $yDestLen,
-			$xLen, $yLen,
-			rop::CopyPut
-		);
+		$canvas-> put_image_indirect(
+		    @ret = ($i,
+			    $atx, $aty,
+			    $xFrom, $yFrom,
+			    $xDestLen, $yDestLen,
+			    $xLen, $yLen,
+			    rop::CopyPut)
+		    ) or warn $@;
+		return @ret;
 	}
 
-	return $canvas-> put_image_indirect(
-		$self-> {image},
-		$atx, $aty,
-		$xDest, $yDest,
-		$imXz, $imYz, $imX, $imY,
-		rop::CopyPut
-	);
+	$canvas-> put_image_indirect(
+	    @ret = ($self-> {image},
+		    $atx, $aty,
+		    $xDest, $yDest,
+		    $imXz, $imYz, $imX, $imY,
+		    rop::CopyPut)
+	    ) or warn $@;
+	return @ret;
 }
 
 1;
