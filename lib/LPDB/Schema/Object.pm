@@ -29,8 +29,10 @@ sub faces {
     my($self) = @_;
     my $schema = $self->result_source->schema;
     return $schema->resultset('Face')->search(
-	{ dir_id => $self->dir->dir_id,
-	  file_id => $self->file_id},);
+	[ { dir_id => $self->dir->dir_id,
+	    file_id => $self->file_id}, # 1 picture, or:
+	  { dir_id => $self->dir->dir_id,
+	    file_id => 0 } ]);	# all pictures of dir
 	# { prefetch => { contact =>  }}); # [qw/name email/ ] } });
 	  # columns => [ qw/contact_id left top right bottom/ ],
 	  # collapse => 1 });

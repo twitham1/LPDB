@@ -172,11 +172,17 @@ sub faces {			# on_paint tells us where the image is
     # $self->color(0x00ffff);	# cyan
     $self->lineWidth(1);
     $self->font({size => 15});
-    for my $face ($pic->faces) {
-	my @r;
-	$self->rectangle(
-	    @r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
-		  $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
+    my @r;			# face rectangle
+    for my $face (sort { $a->contact->name cmp $b->contact->name } $pic->faces) {
+	if ($face->left) {	# identified face
+	    $self->rectangle(
+		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
+		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
+	} else {		# unknown position
+	    $r[0] = $x + 10;
+	    $r[1] ||= $y + $h - 75; # list names down the side
+	    $r[1] -= 25;
+	}
 	my $contact = $face->contact;
 	$self->text_out($contact->name || '', @r[0,1]); # above box
 	# $self->text_out('42/86/103', @r[0,3]); # , dt::Right|dt::Bottom|dt::Default);

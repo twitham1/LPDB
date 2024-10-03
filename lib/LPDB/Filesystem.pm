@@ -94,13 +94,37 @@ sub update {
 	  }, @dirs);
     $schema->txn_commit;
     $schema->txn_begin;
+    my @names;
     for my $ini (@ini) {
+	if ($ini =~ /.names.txt$/) { # not Picasa, but rather:
+	    push @names, $ini;	     # contacts of whole directory
+	    next;		     # add them last
+	}
 	my $tmp = ini_read($ini);
 	use Data::Dumper;	# remove this!!! and this:
 	print "\n$ini=", Dumper $tmp;
 	ini_updatedb($self, $tmp);
     }
+    map { &contacts($schema, $_) } @names;
     $schema->txn_commit;
+}
+
+# contacts in all pictures of a directory is special file_id 0
+sub contacts {			# lines from .names.txt
+    my($schema, $file) = @_;
+    my($dir) = ($file =~ m{(.*/)});
+    if (open my $fh, $file) {
+	while (my $name = <$fh>) {
+	    chomp $name;
+	    s/\s+$//;
+	    my $rsc = $schema->resultset('Contact')->find_or_create(
+		{ name => $name });
+	    $schema->resultset('Face')->find_or_create(
+		{ contact_id	=> $rsc->contact_id,
+		  dir_id	=> _savedirs($dir),
+		  file_id	=> 0});
+	}
+    }
 }
 
 # add a directory and its parents to the Directories table (see also
@@ -148,7 +172,8 @@ sub _wanted {
     $dir =~ s@\./@@;
     #    $dir = '' if $dir eq '.';
     status "checking $modified $_";
-    if ($file eq '.picasa.ini' or $file eq 'Picasa.ini') {
+    if ($file eq '.picasa.ini' or $file eq 'Picasa.ini' or
+	$file eq '.names.txt') {
 	push @ini, "$dir$file";	# update later after all pictures
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:
@@ -293,6 +318,7 @@ sub cleanup {
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
     while (my $pic = $rs->next) {
+	$pic->file_id or next;	# skip special 0 which is all files of dir
 	my $file = $pic->pathtofile or next;
 	my $modified = (stat $file)[9]; # remove changed thumbnails
 	if (my $thumbs = $ts->search({ file_id => $pic->file_id, $modified
