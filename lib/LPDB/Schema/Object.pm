@@ -30,7 +30,10 @@ sub faces {
     my $schema = $self->result_source->schema;
     return $schema->resultset('Face')->search(
 	{ dir_id => $self->dir->dir_id,
-	  file_id => $self->file_id} );
+	  file_id => $self->file_id},);
+	# { prefetch => { contact =>  }}); # [qw/name email/ ] } });
+	  # columns => [ qw/contact_id left top right bottom/ ],
+	  # collapse => 1 });
 }
 
 # sub thumbnail {

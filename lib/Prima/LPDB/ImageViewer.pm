@@ -167,16 +167,21 @@ sub faces {			# on_paint tells us where the image is
     my($self, $im, $x, $y, $sx, $sy, $w, $h, $sw, $sh) = @_;
     $self->autoZoom or return;
     my $pic = $self->picture or return;
-    my $canvas = $self->{canvas} or return;
-    $canvas->color(0xffff00);	# yellow
-    # $canvas->color(0xff00ff);	# magenta
-    # $canvas->color(0x00ffff);	# cyan
-    $canvas->lineWidth(1);
+    $self->color(0xffff00);	# yellow
+    # $self->color(0xff00ff);	# magenta
+    # $self->color(0x00ffff);	# cyan
+    $self->lineWidth(1);
+    $self->font({size => 15});
     for my $face ($pic->faces) {
-	$canvas->rectangle($x + $w * $face->left, $y + $h * (1 - $face->top),
-			   $x + $w* $face->right, $y + $h * (1 - $face->bottom));
+	my @r;
+	$self->rectangle(
+	    @r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
+		  $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
+	my $contact = $face->contact;
+	$self->text_out($contact->name || '', @r[0,1]); # above box
+	# $self->text_out('42/86/103', @r[0,3]); # , dt::Right|dt::Bottom|dt::Default);
     }
-    $canvas->color(cl::Fore);
+    $self->color(cl::Fore);
 }
 
 sub on_paint { # update metadata label overlays, later in front of earlier
