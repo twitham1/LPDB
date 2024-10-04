@@ -503,11 +503,10 @@ sub goto {			# goto path//file or path/path
 	$id ||= 0;
 	warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
 	for (my $i = 0; $i < $n; $i++) { # select myself in parent
-	    if ($id) {
-		if ($self->{items}[$i][0] == $id) { # quickly find image index
-		    $self->focusedItem($i);
-		    last;
-		}
+	    if ($id and ref($self->{items}[$i]) eq "ARRAY"
+		and $self->{items}[$i][0] == $id) { # quickly find image index
+		$self->focusedItem($i);
+		last;
 	    } elsif ($self->item($i)->pathtofile eq $file) { # or matching path
 		$self->focusedItem($i);
 		last;

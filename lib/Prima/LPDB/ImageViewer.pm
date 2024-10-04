@@ -39,6 +39,8 @@ sub profile_default
 	popupItems => [
 	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
+	    ['*@contacts', '~Contact Faces', 'c', ord 'c', sub { $_[0]->repaint }],
+	    [],
 	    ['(info0',	'No Information Overlay',	'status'],
 	    ['info1',	'Progress Markers',		'status'],
 	    ['*info2',	'Brief I~nformation', 'n', 0,	'status'],
@@ -50,14 +52,13 @@ sub profile_default
 	    ['faster',     'Faster Show',            's', ord 's', 'delayorzoom'],
 	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
-	    ['@overlay', 'Overla~y Images',  'y', ord 'y', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
-	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
-	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
 	    ['smaller',    'Zoom Out',     'a', ord 'a', 'delayorzoom'],
 	    ['bigger',     'Zoom In',      's', ord 's', 'delayorzoom'],
 	    ['*@autozoom', 'Auto Zoom', 'Enter', kb::Enter, 'autozoom'],
 	    [],
+	    ['@overlay', 'Overla~y Images',  'y', ord 'y', sub { $_[0]->{overlay} = $_[2]; $_[0]->repaint }],
+	    ['exiftool', 'Meta~Data Window', 'd', ord 'd', 'metadata'],
 	    ['help', '~Help', 'h', ord 'h', 'help'],
 	    ['quit', '~Quit', 'q', ord 'q', sub { $::application->close }],
 	],
@@ -163,29 +164,53 @@ sub viewimage
     }
 }
 
+sub age {			# format given seconds as age
+    my($self, $time) = @_;
+    my $age;
+    my $days = $time / (24 * 3600);
+    if ($days < 92) {	 # 31 + 31 + 30 will always get to third month
+	$age = sprintf "%dd", $days;
+    } elsif ($days < 366 * 3) { # show months below age 3 years
+	$age = sprintf "%dm", int($days * 12 / 365.25);
+    } else {
+	$age = sprintf "%d", int($days / 365.25);
+    }
+}
+
+sub ages {			# format age/[death]/now
+    my($self, $time, $birth, $death) = @_;
+    my $out = $self->age($time - $birth) . '/';
+    $death and $out .= $self->age($death - $birth) . '/';
+    $out .= $self->age(time - $birth);
+    return $out;
+}
+
 sub faces {			# on_paint tells us where the image is
     my($self, $im, $x, $y, $sx, $sy, $w, $h, $sw, $sh) = @_;
+    $self->popup->checked('contacts') or return;
     $self->autoZoom or return;
     my $pic = $self->picture or return;
-    $self->color(0xffff00);	# yellow
-    # $self->color(0xff00ff);	# magenta
-    # $self->color(0x00ffff);	# cyan
+    $self->color(0xffff00);	# brightest yellow
     $self->lineWidth(1);
     $self->font({size => 15});
     my @r;			# face rectangle
     for my $face (sort { $a->contact->name cmp $b->contact->name } $pic->faces) {
+	my $contact = $face->contact or next;
+	$contact->name or next;
+	my $age = $self->ages($pic->time, $contact->birth, $contact->death);
 	if ($face->left) {	# identified face
 	    $self->rectangle(
 		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
 		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
+	    $r[0] += 5;
+	    $self->text_out($contact->name, @r[0,1]); # above box
+	    $self->text_out($age,	    @r[0,3]); # in box
 	} else {		# unknown position
 	    $r[0] = $x + 10;
 	    $r[1] ||= $y + $h - 75; # list names down the side
 	    $r[1] -= 25;
+	    $self->text_out($contact->name . "  ($age)", @r[0,1]);
 	}
-	my $contact = $face->contact;
-	$self->text_out($contact->name || '', @r[0,1]); # above box
-	# $self->text_out('42/86/103', @r[0,3]); # , dt::Right|dt::Bottom|dt::Default);
     }
     $self->color(cl::Fore);
 }
