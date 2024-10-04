@@ -48,7 +48,6 @@ sub ini_updatedb {
     $dir =~ m@/$@ or return;
     my $schema = $self->schema;
     my $did = LPDB::Filesystem::_savedirs($dir); # hack!!! cached dir id
-    print "in $dir = $did is following:\n";
     for my $k (keys %$ini) {
 	my $this = $ini->{$k};
 	if ($k eq 'dir') {
@@ -118,7 +117,6 @@ sub ini_updatedb {
 		} else {	# assume no change
 		    @pos = ($w, $n, $e, $s);
 		}
-		print "$did/$cid $rect -> $w, $n, $e, $s\n\t@pos ($rot)\n";
 		$face->left(shift @pos);
 		$face->top(shift @pos);
 		$face->right(shift @pos);
@@ -132,12 +130,12 @@ sub ini_updatedb {
 		? $pic->update
 		: $pic->discard_changes;
 	} elsif (-f "$dir$k") {	# should not fail to find in previous!!!
-	    print "WHY IS $dir$k not in DB?!!!!!!!!!!!!!\n";
+	    warn "WHY IS $dir$k not in DB?!!!!!!!!!!!!!";
 	    for my $id (keys %{$this}) {
-		print "$k\t{$id}{$this->{$id}}\n";
+		warn "$k\t{$id}{$this->{$id}}\n";
 	    }
 	} else {
-	    print "[$k] no such file, ignored\n";
+	    warn "[$k] no such file in $dir, ignored\n";
 	}
     }
 }

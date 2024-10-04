@@ -96,34 +96,57 @@ sub update {
     $schema->txn_begin;
     my @names;
     for my $ini (@ini) {
-	if ($ini =~ /.names.txt$/) { # not Picasa, but rather:
+	if ($ini =~ /.(birthday|names).txt$/) { # not Picasa, but rather:
 	    push @names, $ini;	     # contacts of whole directory
 	    next;		     # add them last
 	}
 	my $tmp = ini_read($ini);
-	use Data::Dumper;	# remove this!!! and this:
-	print "\n$ini=", Dumper $tmp;
+	# use Data::Dumper;	# remove this!!! and this:
+	# print "\n$ini=", Dumper $tmp;
 	ini_updatedb($self, $tmp);
     }
-    map { &contacts($schema, $_) } @names;
+    map { &contacts($schema, $_) } grep /names/, @names;
+    map { &birthday($schema, $_) } grep /birthday/, @names;
     $schema->txn_commit;
+}
+
+# birthdays of contacts (optional death) tab-delimited:
+# YYYY/MM/DD	name	YYYYMMDD
+sub birthday {			# (any Date::Parse format works)
+    my($schema, $file) = @_;
+    open my $fh, $file or return;
+    while (my $line = <$fh>) {
+	chomp $line;
+	my($birth, $name, $death) = split /\t+/, $line;
+	$birth and $name or next;
+	$birth = str2time($birth) or
+	    warn "unparseable time in $file: $line";
+	$death and ($death = str2time $death or
+		    warn "unparseable time in $file: $line");
+	my $rsc = $schema->resultset('Contact')->find_or_create(
+	    { name => $name });
+	$birth and $rsc->birth($birth);
+	$death and $rsc->death($death);
+	$rsc->is_changed
+	    ? $rsc->update
+	    : $rsc->discard_changes;
+    }
 }
 
 # contacts in all pictures of a directory is special file_id 0
 sub contacts {			# lines from .names.txt
     my($schema, $file) = @_;
     my($dir) = ($file =~ m{(.*/)});
-    if (open my $fh, $file) {
-	while (my $name = <$fh>) {
-	    chomp $name;
-	    s/\s+$//;
-	    my $rsc = $schema->resultset('Contact')->find_or_create(
-		{ name => $name });
-	    $schema->resultset('Face')->find_or_create(
-		{ contact_id	=> $rsc->contact_id,
-		  dir_id	=> _savedirs($dir),
-		  file_id	=> 0});
-	}
+    open my $fh, $file or return;
+    while (my $name = <$fh>) {
+	chomp $name;
+	s/\s+$//;
+	my $rsc = $schema->resultset('Contact')->find_or_create(
+	    { name => $name });
+	$schema->resultset('Face')->find_or_create(
+	    { contact_id	=> $rsc->contact_id,
+	      dir_id	=> _savedirs($dir),
+	      file_id	=> 0});
     }
 }
 
@@ -173,7 +196,7 @@ sub _wanted {
     #    $dir = '' if $dir eq '.';
     status "checking $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini' or
-	$file eq '.names.txt') {
+	$file eq '.names.txt' or $file eq '.birthday.txt') {
 	push @ini, "$dir$file";	# update later after all pictures
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:
