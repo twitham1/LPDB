@@ -125,7 +125,7 @@ sub pathpics {		     # return paths and pictures in given path
     if (my $pics = $self->{schema}->resultset('Picture')->search(
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
-	      prefetch => [ 'picture_paths', 'dir', 'picture_tags'],
+	      prefetch => [ qw/picture_paths dir picture_tags faces/],
 	      columns => [ qw/file_id dir_id duration/ ],
 	      # required to tell DBIC to collapse has_many relationships
 	      collapse => 1,

@@ -52,7 +52,7 @@ sub profile_default
 		     map { $_[0]->popup->checked($_, 1) }
 		     qw/bothfiles bothshapes unlimited/;
 		     map { $_[0]->popup->checked($_, 0) }
-		     qw/stars tags captions/;
+		     qw/captions contacts stars tags/;
 		     $_[0]->goto($_[0]->current);
 		  }],
 		 [],
@@ -64,9 +64,10 @@ sub profile_default
 		 ['portrait'	=> 'Portrait'	  => 'sorter'],
 		 [')landscape'	=> 'Landscape'	  => 'sorter'],
 		 [],
+		 ['@captions'	=> 'Captions'	=> 'sorter'],
+		 ['@contacts'	=> 'Contacts / Faces' => 'sorter'],
 		 ['@stars'	=> 'Stars'	=> 'sorter'],
 		 ['@tags'	=> 'Tags'	=> 'sorter'],
-		 ['@captions'	=> 'Captions'	=> 'sorter'],
 		 [],
 		 ['*(unlimited'	=> 'Unlimited or latest:' => 'sorter'],
 		 ['year10'	=> '10 Years'	=> 'sorter'],
@@ -376,12 +377,14 @@ sub children {			# return children of given text path
     }
     my $filter = $self->{filter} = []; # menu filter options to database where
 
+    $m->checked('captions') and push @$filter,
+	caption => { '!=', undef };
+    $m->checked('contacts') and push @$filter,
+	contact_id => { '!=', undef };
     $m->checked('stars') and push @$filter,
 	stars => { '>', 0 };
     $m->checked('tags') and push @$filter,
 	tag_id => { '!=', undef };
-    $m->checked('captions') and push @$filter,
-	caption => { '!=', undef };
 
     $m->checked('portrait') and push @$filter,
 	width => { '<', \'height' }; # string ref for literal SQL
@@ -493,7 +496,7 @@ sub goto {			# goto path//file or path/path
     my $n = $self->count;
     unless ($n) {
 	$self->owner->NORTH->N
-	    ->text('No Results, check ~Menu -> AND Filters or hit Escape!');
+	    ->text('No Results, check "~Menu -> AND Filters" or hit Escape!');
 	$self->owner->NORTH->NW->text('');
 	$self->owner->NORTH->NE->text('');
     }

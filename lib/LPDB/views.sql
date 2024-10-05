@@ -5,19 +5,23 @@
 DROP VIEW IF EXISTS PathView;
 
 CREATE VIEW PathView AS
-   SELECT
+   SELECT DISTINCT
       Paths.*,
       Pictures.*,
       (Pictures.width * Pictures.height) AS pixels,
       (Directories.directory || Pictures.basename) AS filename,
-      Tags.*
+      Tags.*,
+      Contacts.*
    FROM
       Paths
-   LEFT JOIN PicturePath ON Paths.path_id = PicturePath.path_id
-   LEFT JOIN Pictures ON Pictures.file_id = PicturePath.file_id
-   LEFT JOIN Directories ON Pictures.dir_id = Directories.dir_id
-   LEFT JOIN PictureTag ON Pictures.file_id = PictureTag.file_id
-   LEFT JOIN Tags ON Tags.tag_id = PictureTag.tag_id;
+   LEFT JOIN PicturePath	USING ( path_id )
+   LEFT JOIN Pictures		USING ( file_id )
+   LEFT JOIN Directories	USING ( dir_id )
+   LEFT JOIN PictureTag		USING ( file_id )
+   LEFT JOIN Tags		USING ( tag_id )
+   LEFT JOIN Faces ON Faces.file_id = Pictures.file_id OR
+	     Faces.dir_id = Directories.dir_id AND Faces.file_id = 0
+   LEFT JOIN Contacts		USING ( contact_id );
    -- TODO: add joins to picasa metadata here
 
 -- experimental stats in 1 view

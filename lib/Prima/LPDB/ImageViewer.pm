@@ -198,7 +198,7 @@ sub faces {			# on_paint tells us where the image is
 	my $contact = $face->contact or next;
 	$contact->name or next;
 	my $age = $self->ages($pic->time, $contact->birth, $contact->death);
-	if ($face->left) {	# identified face
+	if ($face->right or $face->left) { # identified face
 	    $self->rectangle(
 		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
 		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
