@@ -1,10 +1,10 @@
-package LPDB::Picasa;
-
 =head1 NAME
 
 LPDB::Picasa - understand .picasa.ini files for LPDB
 
 =cut
+
+package LPDB::Picasa;
 
 use strict;
 use warnings;
@@ -153,3 +153,47 @@ sub ini_rect {
 }
 
 1;				# LPDB::Picasa.pm
+
+__END__
+
+=head1 DESCRIPTION
+
+What is Picasa?  Why Picasa?
+
+Picasa was Windows software for managing pictures locally, living from
+2002 - 2016.  Google deprecated it to focus on their single photos
+platform Google Photos.  But Picasa continues to run well in Wine on
+Linux and offers several features for local photo management:
+
+* 100% offline and local - no internet needed and no cloud used
+
+* local automated face detection
+
+* organize and filter photos in several ways: by time, people, albums,
+stars, tags and so on
+
+* edit pictures or add captions, tags, text
+
+The last version of Picasa for Windows / Wine was 3.9.141.259
+
+This module reads and understands the .picasa.ini files written by
+Picasa and loads them into L<LPDB> for use with L<lpgallery>.  While
+currently read-only, options to write .picasa.ini files may be added
+in the future.
+
+=head1 SEE ALSO
+
+L<LPDB>, L<lpgallery>, L<Prima>
+
+=head1 AUTHOR
+
+Timothy D Witham <twitham@sbcglobal.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2024 Timothy D Witham.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

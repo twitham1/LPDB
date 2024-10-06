@@ -1,21 +1,26 @@
-# ABSTRACT: LPDB = Local Picture metadata in sqlite
-
-package LPDB;
-
 =head1 NAME
 
 LPDB - Local Picture metadata in sqlite
 
 =head1 SYNOPSIS
 
-use LPDB;
+  use LPDB;
+  my $lpdb = new LPDB( { } );	# key = value configuration hash
+  $lpdb->create;		# or update schema
+  $lpdb->update('.');		# add new files to database
+  $lpdb->disconnect;		# all done
 
 =head1 DESCRIPTION
 
-B<LPDB> stores local picture metadata in a sqlite database.  Methods
-are provided for storage and retrieval.
+B<LPDB> stores local picture metadata in a local sqlite database whose
+tables are described below.  Its primary application is L<lpgallery>,
+a keyboard driven picture browser.  This module provides access to the
+database object while deferring storage and retrieval to
+L<LPDB::Filesystem>.
 
 =cut
+
+package LPDB;
 
 use strict;
 use warnings;
@@ -244,19 +249,6 @@ sub dbstats {
     return $data;
 }
 
-# # tags of 1 picture
-# sub tags {
-#     my $self = shift;
-#     my $file = shift;
-#     my $schema = $self->schema;
-#     my $rs = $schema->resultset('Picture')->search(
-# 	{ filename => $file },
-# 	{ columns => ['file_id']});
-#     my $single = $rs->single;
-#     my @tags = $single->tags;
-#     return map { $_->tag } @tags;
-# }
-
 # return value of named stat, 0=sum,1=mean, 0=file,1=dir
 sub stat {
     my $self = shift;
@@ -375,138 +367,9 @@ sub filter {
     	$rest and $child{$rest}++; # entries in this directory
     }
     # DB too slow, use cache in perl instead...
-    # my $paths = $schema->resultset('Path')->search();
-    # my $lp = length $path;
-    # while (my $one = $paths->next) {
-    # 	my $str = $one->path;
-    # 	next unless 0 == index($str, $path); # match
-    # 	my $rest = substr $str, $lp;
-    # 	$rest =~ s!/.*!/!;
-    # 	$rest and $child{$rest}++; # entries in this directory
-    # }
     my $elapsed0 = tv_interval($t00);
     warn "virtual $path took $elapsed0\n" if $conf->{debug};
     $data->{children} = [ sort keys %child ];
-
-    # {
-    # 	my $caps = $rs->search({ caption => {'!=', undef} });
-    # 	#	$data->{captioned} = $caps->count;
-    # 	if ((my $n = $caps->count) > 1) {
-    # 	    $data->{caption} = $n;
-    # 	} else {
-    # 	    $caps = $caps->search(undef,
-    # 				  { group_by => 'caption',
-    # 				    order_by => 'caption' });
-    # 	    $caps = $caps->get_column('caption');
-    # 	    my @caps = $caps->all;
-    # 	    if (@caps > 1) {	# should not happen
-    # 		$data->{caption} = 1 * @caps;
-    # 	    } else {		# should always be exactly 1
-    # 		$data->{caption} = $caps[0] || 0;
-    # 	    }
-    # 	}
-    # }
-    # {
-    # 	my $tags = $rs->search({ tag => { '!=', undef }});
-    # 	$data->{tags} = $data->{tagged} = $tags->count;
-    # 	# hack!!! {tags} is for picasagallery
-
-    # 	# $tags = $tags->search(undef,
-    # 	# 		      { group_by => 'tag',
-    # 	# 			order_by => 'tag' });
-    # 	# $tags = $tags->get_column('tag');
-    # 	# my @tags = $tags->all;
-    # 	# $data->{tag} = \@tags;
-    # }
-
-    #    print Dumper $data;
-    
-#     my $begin = $conf->{filter}{age} ? strftime $conf->{datefmt},
-#     localtime time - $conf->{filter}{age} : 0;
-#     if (!$sort or !$self->{done} or $self->{done} and !$done) {
-# 	@$sort = sort keys %{$self->{root}};
-# 	$self->{done} and $done = 1;
-# #	warn "SORTED ", scalar @$sort, " paths, done = $self->{done}, $done\n";
-#     }
-#     for my $str (@$sort) { # for each picture file
-# 	next unless 0 == index($str, $path); # match
-# 	next unless my $filename = $self->{root}{$str}; # filename -> path id
-
-#	next unless my $this = $self->{pics}{$filename}; # metadata
-
-# 	unless ($opt eq 'nofilter') {
-# 	    warn "filtering $str for filter ", Dumper $conf->{filter}
-# 	    if $conf->{debug} > 1;
-# 	    next if $conf->{filter}{Stars}	and !$this->{stars};
-# 	    next if $conf->{filter}{Uploads}	and !$this->{uploads};
-# 	    next if $conf->{filter}{Faces}	and !$this->{faces};
-# 	    next if $conf->{filter}{Albums}	and !$this->{albums};
-# 	    next if $conf->{filter}{Captions}	and !$this->{caption};
-# 	    next if $conf->{filter}{Tags}	and !$this->{tags};
-# 	    next if $conf->{filter}{age} and $this->{time} lt $begin;
-# 	}
-
-# 	if ($opt eq 'slideshow') {
-# 	    push @ss, $str;
-# 	    next;
-# 	}
-
-# 	warn "looking at ($path) in ($str)\n" if $conf->{debug} > 1;
-# 	if ($opt eq 'nofilter') { # average mtime for directory thumbnails
-# 	    next if $done{$filename}++;
-# 	    $data->{mtime} += $this->{updated};
-# 	} elsif ($str eq $path) { # filename: copy metadata
-# 	    map { $data->{$_} = $this->{$_} } keys %$this;
-# 	} else {		# directory: sum metadata
-# 	    my $rest = substr $str, length $path;
-# 	    $rest =~ s!/.*!/!;
-# 	    $rest and $child{$rest}++; # entries in this directory
-# 	    next if $done{$filename}++;
-# 	    warn "$path: $str ($rest)\n" if $conf->{debug} > 1;
-# 	    for my $num
-# 		(qw/bytes stars uploads faces albums tags width height/) {
-# 		    $data->{$num} += $this->{$num};
-# 	    }
-# 	    map { $face{$_}++ }  keys %{$this->{face}};
-# 	    map { $album{$_}++ } keys %{$this->{album}};
-# 	    map { $tag{$_}++ }   keys %{$this->{tag}};
-# 	    $data->{caption} += $this->{caption} ? 1 : 0;
-# 	}
-# 	push @files, $filename;
-# 	$data->{files}++;
-
-# 	$data->{time} = $this->{time} and
-# 	    $data->{first} = $filename unless
-# 	    $data->{time} && $data->{time} le $this->{time};
-
-# 	$data->{endtime} = $this->{time} and
-# 	    $data->{last} = $filename unless
-# 	    $data->{endtime} && $data->{endtime} gt $this->{time};
-
-# 	next if $opt eq 'nofilter';
-# 	$data->{pixels} += $this->{width} * $this->{height};
-#     }
-#     $data->{physical} = $files[$data->{files} / 2]; # middle picture
-#     if ($data->{files} > 2) {			    # not first or last
-#     	$data->{physical} = $files[$data->{files} / 2 - 1]
-#     	    if $data->{physical} eq $data->{first} or
-#     	    $data->{physical} eq $data->{last};
-#     	$data->{physical} = $files[$data->{files} / 2 + 1]
-#     	    if $data->{physical} eq $data->{first} or 
-#     	    $data->{physical} eq $data->{last};
-#     }
-#     if ($opt eq 'nofilter') {
-# 	$data->{mtime} and $data->{mtime} =
-# 	    int($data->{mtime} / $data->{files});
-# 	return $data;
-#     }
-#     $opt eq 'slideshow' and return @ss;
-
-#     $data->{children} = [sort keys %child]; # maybe sort later? sort by option?
-#     $data->{face}  or $data->{face}  = \%face;
-#     $data->{album} or $data->{album} = \%album;
-#     $data->{tag}   or $data->{tag}   = \%tag;
-#     warn "filtered $path: ", Dumper $data if $conf->{debug} > 2;
 
     my $elapsed = tv_interval($t0);
     warn "filter $path took $elapsed\n" if $conf->{debug};
@@ -599,3 +462,68 @@ sub filtermove {
 }
 
 1;				# LPDB.pm
+
+__END__
+
+=head1 DATABASE FILES and their TABLES
+
+Picture metadata is stored in one file (C<.lpdb.db> by default) and
+picture thumbnails in another (C<.lpdb-thumb.db>).  These filenames
+are configurable at creation.  These files can be viewed by C<sqlite3>
+or any compatible programming language.  LPDB accesses the database
+via L<DBIx::Class> which also maintains the schema documentation
+linked below.
+
+The tables are defined by SQL in C<lib/LPDB/*.sql>.  Any times stored
+are in seconds since the unix epoch of 1970.  The table content and
+purpose are as follows:
+
+=over
+
+=item Directories, see L<LPDB::Schema::Result::Directory>
+
+Each directory that holds one or more pictures on disk is remembered.
+By default, L<lpgallery> keeps pictures organized in these
+B<"galleries"> of pictures.  Each entry has a base name and a parent
+reference that can recreate the physical file tree.  Also recorded is
+the begin and end time of the pictures of the directory.
+
+=item Pictures, see L<LPDB::Schema::Result::Picture>
+
+Each row represents a single picture or video file.  Some metadata
+from the file is recorded here such as image size and time.  Duration
+is NULL for pictures or seconds of runtime for videos.
+
+=item Paths, see L<LPDB::Schema::Result::Path>
+
+Paths enables L<LPDB::VFS>, a virtual file system of alterative useful
+ways to navigate the data based on metadata like time, people,
+captions, tags, stars and so on.  This is similar to B<Directories>
+above except with virtual paths.
+
+=item PicturePath, see L<LPDB::Schema::Result::PicturePath>
+
+This joins many B<Pictures> to many B<Paths>, placing images in
+several logical places in the tree based on their metadata.
+
+
+!!!!!!!!!!!!!!TODO!!!!!!!!!!!!!!
+
+=back
+
+=head1 SEE ALSO
+
+L<LPDB::Filesystem>, L<lpgallery>, L<DBIx::Class>
+
+=head1 AUTHOR
+
+Timothy D Witham <twitham@sbcglobal.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2024 Timothy D Witham.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

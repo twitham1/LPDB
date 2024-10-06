@@ -1,10 +1,10 @@
-package LPDB::Filesystem;
-
 =head1 NAME
 
 LPDB::Filesystem - update sqlite from local picture metadata
 
 =cut
+
+package LPDB::Filesystem;
 
 use strict;
 use warnings;
@@ -17,7 +17,7 @@ use LPDB::Schema;
 use LPDB::VFS;
 use LPDB::Picasa;		# grok .picasa.ini files
 use base 'Exporter::Tiny';
-our @EXPORT = qw(update create cleanup);
+our @EXPORT = qw(create update cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
@@ -383,3 +383,22 @@ sub duplicates {
 }
 
 1;				# LPDB::Filesystem.pm
+
+__END__
+
+=head1 SEE ALSO
+
+L<LPDB>, L<LPDB::Picasa>, L<lpgallery>
+
+=head1 AUTHOR
+
+Timothy D Witham <twitham@sbcglobal.net>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2024 Timothy D Witham.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

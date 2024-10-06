@@ -144,6 +144,8 @@ run Prima;
 
 exit 0;
 
+# below is the USER MANUAL that appears in Menu -> Help
+
 __END__
 
 =pod
@@ -163,7 +165,7 @@ seen instantly and in any order.  This is that!
 (*) thumbnails only, full resolution remains in the original separate
 local files.
 
-UNDER CONSTRUCTION - Picasa features don't yet exist!!!
+UNDER CONSTRUCTION - Picasa features are incomplete
 
 =head1 DESCRIPTION
 
@@ -188,8 +190,8 @@ at B<u/o> and B<p> starts a slideshow.  Finally, the digit keys scroll
 long lists to that tenth of the list: 0 = first, 7 = 70% and so on.
 
 B<m> opens the menu which lists other keys that can be used such as
-B<q> for immediate quit or home row B<a/s> to zoom out/in or change
-speed during a slide show.
+B<q> for immediate save and quit or home row B<a/s> to zoom out/in or
+change speed during a slide show.
 
 B<Rewind/Seek> of media remotes control the zoom or speed like B<a/s>.
 B<Prev/Next Track> find the next gallery like B<u/o>.  B<HomePage>
@@ -275,14 +277,15 @@ In the Thumbnail Grid, the B<m> key brings up a Menu of options
 including sorting, filtering, and navigating to other locations of
 this picture in the tree.  In the Image Viewer, B<m> can start and
 stop a slide show, adjust information overlay or show all metadata of
-the image.  Refer to the menu to discover other keyboard shortcuts.
+the image.  Refer to the menu to discover the full set of keyboard
+shortcuts.
 
 =head2 FILTERING
 
 The grid menu provides options to select only pictures with certain
 attributes or only those from a recent timeframe.  Filtering can cause
-nodes in the tree to go blank where no pictures match.  Simply uncheck
-the filters to restore access to all pictures.
+nodes in the tree to go blank where no pictures match.  Simply "Clear
+All Filters" to restore access to all pictures.
 
 =head2 SORTING
 
@@ -323,9 +326,10 @@ directory.  This simply chooses which to display first.
 
 The B<p> key can Play or Pause a slide show while B<a/s> adjust its
 playback speed.  The slideshow is the pictures from the Thumbnail grid
-in order.  Therefore you can order the slideshow by the filtering and
-sorting options of the grid.  The defaults may work well while a
-random show would need I<Ungrouped> galleries and I<Random> images.
+in order.  Therefore you can arrange the slideshow by the filtering
+and sorting options of the grid.  The defaults may work well for a
+chronological show while a random show would need I<Ungrouped>
+galleries and I<Random> images.
 
 Arrow key navigation and info cycling is available while the slideshow
 plays.  Menu or escape back to the grid automatically pauses the show,
@@ -341,7 +345,7 @@ Add [Duplicates]/{alone,hard links,soft links}/
 
 Add [Places]/place names/ via GPS lat/lon (see Geo::LatLon2Place)
 
-Add all Picasa features (stars, albums, faces, [uploads])
+Add more Picasa features (albums, [uploads])
 
 Add configuration options and documentation
 
@@ -349,7 +353,7 @@ Maybe add simple image edit options to the menu
 
 =head1 SEE ALSO
 
-L<LPDB>, L<picasagallery>, L<Prima>
+L<LPDB>, L<LPDB::Picasa>, L<Prima>
 
 =head1 AUTHOR
 
