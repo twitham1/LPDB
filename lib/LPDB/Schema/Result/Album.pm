@@ -29,7 +29,7 @@ __PACKAGE__->table("Albums");
   is_auto_increment: 1
   is_nullable: 0
 
-=head2 name
+=head2 album
 
   data_type: 'text'
   is_nullable: 0
@@ -62,7 +62,7 @@ Description (optional)
 __PACKAGE__->add_columns(
   "album_id",
   { data_type => "integer", is_auto_increment => 1, is_nullable => 0 },
-  "name",
+  "album",
   { data_type => "text", is_nullable => 0 },
   "date",
   { data_type => "integer", is_nullable => 1 },
@@ -86,17 +86,17 @@ __PACKAGE__->set_primary_key("album_id");
 
 =head1 UNIQUE CONSTRAINTS
 
-=head2 C<name_unique>
+=head2 C<album_unique>
 
 =over 4
 
-=item * L</name>
+=item * L</album>
 
 =back
 
 =cut
 
-__PACKAGE__->add_unique_constraint("name_unique", ["name"]);
+__PACKAGE__->add_unique_constraint("album_unique", ["album"]);
 
 =head1 RELATIONS
 
@@ -126,8 +126,8 @@ Composing rels: L</picture_albums> -> file
 __PACKAGE__->many_to_many("files", "picture_albums", "file");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 00:56:51
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:KGMmuBHRE19Wha8rZSeaTA
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-07 00:57:51
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:Wd5xVJNHJ9nlC4Dnz6+JCA
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

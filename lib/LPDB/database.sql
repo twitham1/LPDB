@@ -152,20 +152,20 @@ INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
    ('Albums', 'Logical collections of pictures');
 
 INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
-   ('Albums', 'name',        'Name of the Photo Album'),
+   ('Albums', 'album',       'Name of the Photo Album'),
    ('Albums', 'date',        'Date of the Photo Album'),
    ('Albums', 'place',       'Place Taken (optional)'),
    ('Albums', 'description', 'Description (optional)');
 
 CREATE TABLE IF NOT EXISTS Albums (
    album_id	INTEGER PRIMARY KEY NOT NULL,
-   name		TEXT UNIQUE NOT NULL,
-   date		INTEGER,	-- YYMMDD, or epoch, or DateTime?
+   album	TEXT UNIQUE NOT NULL,
+   date		INTEGER,
    place	TEXT,
    description	TEXT
    );
 
-CREATE UNIQUE INDEX IF NOT EXISTS album_name_index ON Albums (name);
+CREATE UNIQUE INDEX IF NOT EXISTS album_name_index ON Albums (album);
 CREATE INDEX IF NOT EXISTS album_place_index ON Albums (place);
 CREATE INDEX IF NOT EXISTS album_description_index ON Albums (description);
 
@@ -193,7 +193,7 @@ INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
 
 INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
    ('Contacts', 'hexid',	'Hexadecimal Picasa Identifier'),
-   ('Contacts', 'name',		'Name of the person, required'),
+   ('Contacts', 'contact',	'Name of the person, required'),
    ('Contacts', 'email',	'Optional email address'),
    ('Contacts', 'birth',	'Optional time of birth'),
    ('Contacts', 'death',	'Optional time of death');
@@ -201,14 +201,14 @@ INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) V
 CREATE TABLE IF NOT EXISTS Contacts (
    contact_id	INTEGER PRIMARY KEY NOT NULL,
    hexid	TEXT UNIQUE,
-   name		TEXT UNIQUE NOT NULL,
+   contact	TEXT UNIQUE NOT NULL,
    email	TEXT,
    birth	INTEGER,
    death	INTEGER
    );
 
 CREATE INDEX IF NOT EXISTS contact_hexid_index ON Contacts (hexid);
-CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (name);
+CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (contact);
 CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
 
 ---------------------------------------- FACES many2many
@@ -264,4 +264,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
 INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
 INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0);
 INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename)	VALUES (0, 0, 'ALL');
-INSERT OR REPLACE INTO Contacts (contact_id, name, email)	VALUES (0, '', '');
+INSERT OR REPLACE INTO Contacts (contact_id, contact, email)	VALUES (0, '', '');

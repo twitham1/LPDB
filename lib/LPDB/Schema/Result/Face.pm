@@ -35,7 +35,7 @@ __PACKAGE__->table("Faces");
   is_foreign_key: 1
   is_nullable: 0
 
-0 means all pictures of the directory, with no left/top/right/bottom
+0 means all pictures of the directory, with null left/top/right/bottom
 
 =head2 contact_id
 
@@ -154,8 +154,8 @@ __PACKAGE__->belongs_to(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-09-30 00:49:08
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:5bMew+NEKPaa9Q1BUaC6bQ
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-07 00:57:51
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:heuCn1vm8xbDcasfPJu6QA
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

@@ -4,4 +4,5 @@
 
 -- table columns changed, was not used < 0.6, will be recreated
 DROP TABLE IF EXISTS Contacts;
+DROP TABLE IF EXISTS Faces;
 DROP TABLE IF EXISTS Albums;

@@ -69,12 +69,12 @@ sub ini_updatedb {
 		    my $tmp = $obj->email;
 		    $obj->email($email);
 		    $tmp eq $email or warn "$dir: $tmp -> $email";
-		    $tmp = $obj->name;
-		    $obj->name($name);
+		    $tmp = $obj->contact;
+		    $obj->contact($name);
 		    $tmp eq $name or warn "$dir: $tmp -> $name";
 		} else {
 		    $obj->hexid($id);
-		    $obj->name($name);
+		    $obj->contact($name);
 		    $obj->email($email);
 		    $obj->insert;
 		}
@@ -99,7 +99,7 @@ sub ini_updatedb {
 		    { hexid => $hex }) or next;
 		my $cid = $contact->contact_id;
 		my $face = $schema->resultset('Face')->find_or_create(
-		    { dir_id => $did,
+		    { dir_id => 0,
 		      file_id => $pic->file_id,
 		      contact_id => $cid},
 		    );

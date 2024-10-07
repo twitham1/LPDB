@@ -5,7 +5,7 @@
 DROP VIEW IF EXISTS PathView;
 
 CREATE VIEW PathView AS
-   SELECT DISTINCT
+   SELECT
       Paths.*,
       Pictures.*,
       (Pictures.width * Pictures.height) AS pixels,
@@ -19,8 +19,9 @@ CREATE VIEW PathView AS
    LEFT JOIN Directories	USING ( dir_id )
    LEFT JOIN PictureTag		USING ( file_id )
    LEFT JOIN Tags		USING ( tag_id )
-   LEFT JOIN Faces ON Faces.file_id = Pictures.file_id OR
-	     Faces.dir_id = Directories.dir_id AND Faces.file_id = 0
+   LEFT JOIN Faces ON Faces.file_id = Pictures.file_id AND Faces.dir_id = 0 OR
+		      Faces.dir_id = Directories.dir_id AND Faces.file_id = 0
+   LEFT JOIN Faces		USING ( file_id, dir_id )
    LEFT JOIN Contacts		USING ( contact_id );
    -- TODO: add joins to picasa metadata here
 

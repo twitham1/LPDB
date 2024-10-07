@@ -86,13 +86,16 @@ sub update {
 	# cameras know the time zone so they use correct UTC time.
     }
     status "update @dirs\n";
+
     $schema->txn_begin;
+    @ini = ();
     find ({ no_chdir => 1,
 	    preprocess => sub { sort @_ },
 	    wanted => \&_wanted,
 #	    postprocess => $conf->{update},
 	  }, @dirs);
     $schema->txn_commit;
+
     $schema->txn_begin;
     my @names;
     for my $ini (@ini) {
@@ -107,6 +110,22 @@ sub update {
     }
     map { &contacts($schema,  $_) } grep /names/,     @names;
     map { &birthdays($schema, $_) } grep /birthdays/, @names;
+    $schema->txn_commit;
+
+    $schema->txn_begin;
+    my $pics = $schema->resultset('PathView')->search(
+	{contact_id => { '!=' => undef } },
+	{ group_by => [ 'file_id', 'contact_id' ] });
+    while (my $pic = $pics->next) {
+	my $name = $pic->contact or next;
+	$vfs->savepathfile("/[People]/$name/", $pic->file_id);
+#	my $time = $pic->time or next;
+	# $vfs->savepathfile("/[People]/$name/All Time/", $pic->file_id);
+	# $vfs->savepathfile(strftime("/[People]/$name/Years/%Y/",
+	# 			    localtime $time), $pic->file_id);
+	# $vfs->savepathfile(strftime("/[People]/$name/Months/%Y-%m-%b/",
+	# 			    localtime $time), $pic->file_id);
+    }
     $schema->txn_commit;
 }
 
@@ -123,17 +142,17 @@ sub birthdays {			# (any Date::Parse format works)
 	    warn "unparseable time in $file: $line";
 	$death and ($death = str2time $death or
 		    warn "unparseable time in $file: $line");
-	my $rsc = $schema->resultset('Contact')->find_or_create(
-	    { name => $name });
-	$birth and $rsc->birth($birth);
-	$death and $rsc->death($death);
-	$rsc->is_changed
-	    ? $rsc->update
-	    : $rsc->discard_changes;
+	my $row = $schema->resultset('Contact')->find_or_create(
+	    { contact => $name });
+	$birth and $row->birth($birth);
+	$death and $row->death($death);
+	$row->is_changed
+	    ? $row->update
+	    : $row->discard_changes;
     }
 }
 
-# contacts in all pictures of a directory is special file_id 0
+# file_id = 0 means contact is in all pictures of a directory
 sub contacts {			# lines from .names.txt
     my($schema, $file) = @_;
     my($dir) = ($file =~ m{(.*/)});
@@ -141,12 +160,12 @@ sub contacts {			# lines from .names.txt
     while (my $name = <$fh>) {
 	chomp $name;
 	s/\s+$//;
-	my $rsc = $schema->resultset('Contact')->find_or_create(
-	    { name => $name });
+	my $row = $schema->resultset('Contact')->find_or_create(
+	    { contact => $name });
 	$schema->resultset('Face')->find_or_create(
-	    { contact_id	=> $rsc->contact_id,
-	      dir_id	=> _savedirs($dir),
-	      file_id	=> 0});
+	    { contact_id	=> $row->contact_id,
+	      dir_id		=> _savedirs($dir),
+	      file_id		=> 0});
     }
 }
 
