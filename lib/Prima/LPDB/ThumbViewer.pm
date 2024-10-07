@@ -981,8 +981,8 @@ sub on_close {
     # print Dumper $self->popup->get_items('', 0);
     my $last = $self->current;
 #    warn "$$ saving $last";
-    $self->bookmark('LAST', $last);
     $self->{cycler}->stop;
+    $self->bookmark('LAST', $last);
     $self->{lpdb}->{tschema}->txn_commit;
     delete $self->{vfs};
     delete $self->{thumb};

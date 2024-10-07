@@ -7,7 +7,7 @@ LPDB - Local Picture metadata in sqlite
   use LPDB;
   my $lpdb = new LPDB( { } );	# key = value configuration hash
   $lpdb->create;		# or update schema
-  $lpdb->update('.');		# add new files to database
+  $lpdb->update('.');		# update database from files and metadata
   $lpdb->disconnect;		# all done
 
 =head1 DESCRIPTION
@@ -482,29 +482,67 @@ purpose are as follows:
 
 =item Directories, see L<LPDB::Schema::Result::Directory>
 
-Each directory that holds one or more pictures on disk is remembered.
-By default, L<lpgallery> keeps pictures organized in these
-B<"galleries"> of pictures.  Each entry has a base name and a parent
-reference that can recreate the physical file tree.  Also recorded is
-the begin and end time of the pictures of the directory.
+Each directory that holds one or more pictures on disk is recorded.
+By default, L<lpgallery> keeps pictures grouped together in these
+B<"galleries"> of pictures, even when viewing a larger list by other
+metadata.  Each entry has a base name and a parent reference to record
+the whole physical directory tree.  Also recorded is the begin and end
+time of the pictures of the directory.
+
+If all pictures are stored in only one directory, then there is just
+one gallery.  It might be better to organize photos into separate
+directories per day or month or per place or event.  Photographers may
+have a directory per location or per client.
 
 =item Pictures, see L<LPDB::Schema::Result::Picture>
 
 Each row represents a single picture or video file.  Some metadata
 from the file is recorded here such as image size and time.  Duration
-is NULL for pictures or seconds of runtime for videos.
+is seconds of runtime for videos or NULL for still images.
 
 =item Paths, see L<LPDB::Schema::Result::Path>
 
 Paths enables L<LPDB::VFS>, a virtual file system of alterative useful
 ways to navigate the data based on metadata like time, people,
 captions, tags, stars and so on.  This is similar to B<Directories>
-above except with virtual paths.
+above except that these paths don't exist on disk.  Pictures can be in
+many virtual paths, see the next table.
 
 =item PicturePath, see L<LPDB::Schema::Result::PicturePath>
 
 This joins many B<Pictures> to many B<Paths>, placing images in
-several logical places in the tree based on their metadata.
+several logical places in the tree based on their metadata.  All
+pictures will be listed in the original location on disk and in the
+timelines.  Other locations depend on metadata of the picture.
+
+
+=item Contacts, see L<LPDB::Schema::Result::Contact>
+
+Picasa or F<.names.txt> people in B<Pictures> are stored here.  They
+can optionally have birthdays from F<.birthdays.txt>, see
+L<lpgallery>.
+
+=item Faces, see L<LPDB::Schema::Result::Face>
+
+This joins many B<Contcts> to B<Pictures>.  Face rectangles from
+Picasa are also stored.  A file_id of 0 instead comes from
+F<.names.txt> as the name applies to all files of the dir_id.
+
+=item Tags, see L<LPDB::Schema::Result::Tag>
+
+Words of EXIF keywords or subject are stored
+
+=item PicturePath, see L<LPDB::Schema::Result::PicturePath>
+
+This joins many B<Tags> to many B<Pictures>
+
+=item Albums, see L<LPDB::Schema::Result::Album>
+
+Words of EXIF keywords or subject are stored
+
+=item PicturePath, see L<LPDB::Schema::Result::PicturePath>
+
+This joins many B<Albums> to many B<Pictures>
 
 
 !!!!!!!!!!!!!!TODO!!!!!!!!!!!!!!

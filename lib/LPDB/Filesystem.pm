@@ -96,7 +96,7 @@ sub update {
     $schema->txn_begin;
     my @names;
     for my $ini (@ini) {
-	if ($ini =~ /.(birthday|names).txt$/) { # not Picasa, but rather:
+	if ($ini =~ /.(birthdays|names).txt$/) { # not Picasa, but rather:
 	    push @names, $ini;	     # contacts of whole directory
 	    next;		     # add them last
 	}
@@ -105,14 +105,14 @@ sub update {
 	# print "\n$ini=", Dumper $tmp;
 	ini_updatedb($self, $tmp);
     }
-    map { &contacts($schema, $_) } grep /names/, @names;
-    map { &birthday($schema, $_) } grep /birthday/, @names;
+    map { &contacts($schema,  $_) } grep /names/,     @names;
+    map { &birthdays($schema, $_) } grep /birthdays/, @names;
     $schema->txn_commit;
 }
 
 # birthdays of contacts (optional death) tab-delimited:
 # YYYY/MM/DD	name	YYYYMMDD
-sub birthday {			# (any Date::Parse format works)
+sub birthdays {			# (any Date::Parse format works)
     my($schema, $file) = @_;
     open my $fh, $file or return;
     while (my $line = <$fh>) {
@@ -196,7 +196,7 @@ sub _wanted {
     #    $dir = '' if $dir eq '.';
     status "checking $modified $_";
     if ($file eq '.picasa.ini' or $file eq 'Picasa.ini' or
-	$file eq '.names.txt' or $file eq '.birthday.txt') {
+	$file eq '.names.txt' or $file eq '.birthdays.txt') {
 	push @ini, "$dir$file";	# update later after all pictures
 	return;
     } elsif ($file =~ /^\..+/ or # ignore hidden files, and:

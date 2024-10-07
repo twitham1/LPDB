@@ -339,6 +339,49 @@ Videos are previewed with random frames from the video.  B<Enter> will
 play the video (B<Escape> to return) or you can hit B<v> to toggle
 video autoplay.
 
+
+=head1 FILES
+
+=over
+
+=item F<.lpdb.db>, F<.lpdb-thumb.db>
+
+SQLite database files of picture metadata and thumbnails respectively.
+
+=item F<.picasa.ini>
+
+Picasa Metada read into LPDB by L<LPDB::Picasa> includes albums,
+detected faces, stars, and tags.
+
+=item F<.names.txt>
+
+An alternative to Picasa faces, each line of these optional text files
+names a person in the pictures of this gallery directory.  All
+pictures of the directory will be attached to the listed contacts so
+this is useful only for directories arranged by people.  Every
+occurance of a person must have identical spelling or the person will
+get listed under multiple names.
+
+These names are loaded into the B<Contacts> table and attached to all
+B<Pictures> of the B<Directory>.
+
+=item F<.birthday.txt>
+
+This file can give birthdays to the people of Picasa or C<.names.txt>
+so that L<lpgallery> can display their age.  The file is 2 or 3
+tab-delimited colums:
+
+  birthday	Contact Name	[deathday]
+
+The dates can be in any format recognized by L<Date::Parse> so
+YYYYMMDD or YYYY/MM/DD are convenient as they sort well.  This needs
+to be defined only once per name, perhaps in the root directory of the
+images.
+
+These names and dates are loaded into the B<Contacts> table.
+
+=back
+
 =head1 TODO
 
 Add [Duplicates]/{alone,hard links,soft links}/
