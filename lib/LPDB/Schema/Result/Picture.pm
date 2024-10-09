@@ -291,4 +291,65 @@ __PACKAGE__->many_to_many("tags", "picture_tags", "tag");
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
-1;
+
+=head1 METHODS
+
+Methods are functions of the above table columns.
+
+=head1 METHODS
+
+=head2 pathtofile
+
+Returns to full filesystem path to the image file
+
+=cut
+
+sub pathtofile {
+    return $_[0]->dir->directory . $_[0]->basename;
+}
+
+=head2 pixels
+
+Returns the pixels (width * height) of the image.
+
+=cut
+
+sub pixels {
+    return $_[0]->width * $_[0]->height;
+}
+
+=head2 ratio
+
+Returns the floating point width to height ratio of the image in final
+displayed orientation after any rotation correction.
+
+=cut
+
+sub ratio {
+    $_[0]->height
+	or return 0;
+    return $_[0]->width / $_[0]->height;
+}
+
+=head2 hms
+
+Returns a formatted time string of the duration of the video or the
+empty string for still images.  The format is "H:MM:SS" if over 59
+seconds or "N seconds" otherwise.
+
+=cut
+
+sub hms {
+    my $dur = $_[0]->duration or return '';
+    return $dur > 59 ? sprintf '%d:%02d:%02d',
+	$dur / 3600, $dur % 3600 / 60, $dur % 60
+	: $dur > 1 ? "$dur seconds" : "$dur second";
+}
+
+=head1 SEE ALSO
+
+L<LPDB>
+
+=cut
+
+1;				# Picture.pm

@@ -187,28 +187,23 @@ sub ages {			# format age/[death]/now
 
 sub faces {			# on_paint tells us where the image is
     my($self, $im, $x, $y, $sx, $sy, $w, $h, $sw, $sh) = @_;
-    $self->popup->checked('contacts') or return;
-    $self->autoZoom or return;
-    my $pic = $self->picture or return;
+    $self->popup->checked('contacts')	or return;
+    $self->autoZoom			or return;
+    my $pic = $self->picture		or return;
     $self->color(0xffff00);	# brightest yellow
     $self->lineWidth(1);
     $self->font({size => 15});
     my @r;			# face rectangle
-    for my $face (sort { $a->contact->contact cmp $b->contact->contact } $pic->faces) {
-	my $contact = $face->contact or next;
-	$contact->contact or next;
+    for my $face (sort { $a->contact->contact cmp $b->contact->contact }
+		  $pic->faces, $pic->dir->faces) {
+	my $contact = $face->contact	or next;
+	$contact->contact		or next;
 	my $age = $self->ages($pic->time, $contact->birth, $contact->death);
 	if ($face->right or $face->left) { # identified face
 	    $self->rectangle(
 		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
 		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
 	    $r[0] += 5;
-	    # $self->color(0x000000);
-	    # $r[0] -= 2; $r[1] -= 2; $r[3] -= 2;
-	    # $self->text_out($contact->contact,	@r[0,1]); # above box
-	    # $self->text_out($age,		@r[0,3]); # in box
-	    $self->color(0xffff00);	# brightest yellow
-	    # $r[0] += 2; $r[1] += 2; $r[3] += 2;
 	    $self->text_out($contact->contact,	@r[0,1]); # above box
 	    $self->text_out($age,		@r[0,3]); # in box
 	} else {		# unknown position

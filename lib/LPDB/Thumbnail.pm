@@ -21,7 +21,6 @@ use strict;
 use warnings;
 use Prima;
 use LPDB::Schema;
-use LPDB::Schema::Object;
 
 =pod
 
