@@ -124,22 +124,32 @@ __PACKAGE__->table("PathView");
   data_type: 'text'
   is_nullable: 1
 
+=head2 left
+
+  data_type: 'float'
+  is_nullable: 1
+
+=head2 top
+
+  data_type: 'float'
+  is_nullable: 1
+
+=head2 right
+
+  data_type: 'float'
+  is_nullable: 1
+
+=head2 bottom
+
+  data_type: 'float'
+  is_nullable: 1
+
 =head2 contact_id
 
   data_type: 'integer'
   is_nullable: 1
 
-=head2 hexid
-
-  data_type: 'text'
-  is_nullable: 1
-
 =head2 contact
-
-  data_type: 'text'
-  is_nullable: 1
-
-=head2 email
 
   data_type: 'text'
   is_nullable: 1
@@ -197,13 +207,17 @@ __PACKAGE__->add_columns(
   { data_type => "integer", is_nullable => 1 },
   "tag",
   { data_type => "text", is_nullable => 1 },
+  "left",
+  { data_type => "float", is_nullable => 1 },
+  "top",
+  { data_type => "float", is_nullable => 1 },
+  "right",
+  { data_type => "float", is_nullable => 1 },
+  "bottom",
+  { data_type => "float", is_nullable => 1 },
   "contact_id",
   { data_type => "integer", is_nullable => 1 },
-  "hexid",
-  { data_type => "text", is_nullable => 1 },
   "contact",
-  { data_type => "text", is_nullable => 1 },
-  "email",
   { data_type => "text", is_nullable => 1 },
   "birth",
   { data_type => "integer", is_nullable => 1 },
@@ -212,8 +226,8 @@ __PACKAGE__->add_columns(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-07 01:12:37
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:WHxirTRLRHvDTndFEcfPFw
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-09 01:57:04
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:7DhAUqdZH/PfBg5IVghUuQ
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration

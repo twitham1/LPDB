@@ -168,32 +168,57 @@ sub put {	       # cid -1 is random video center not saved to DB
 	system(@cmd) == 0 or warn "@cmd failed";
     }
     my $codec;
-    if ($i = Prima::Image->load($tmp || $path)) {
+    my $in;
+    if ($in = Prima::Image->load($tmp || $path)) {
 	# PS: I've read somewhere that ist::Quadratic produces best
 	# visual results for the scaled-down images, while ist::Sinc
 	# and ist::Gaussian for the scaled-up. /Dmitry Karasik
-	$i->scaling(ist::Quadratic);
+	$in->scaling(ist::Quadratic);
 	if (my $rot = $picture->rotation) {
-	    $i->rotate(-1 * $rot);
+	    $in->rotate(-1 * $rot);
 	}
-	$i->size(_aspect($picture->width, $picture->height, @size));
+	if ($cid > 0 and		# face crop!
+	    my $face = $schema->resultset('Face')->find(
+		{file_id => $id,
+		 contact_id => $cid},
+		{columns => [qw/left top right bottom/]})) {
+	    my($l, $t, $r, $b) =
+		($face->left		* $picture->width,
+		 (1 - $face->top)	* $picture->height,
+		 $face->right		* $picture->width,
+		 (1 - $face->bottom)	* $picture->height);
+	    my($w, $h) = (abs($r - $l), abs($b - $t));
+	    # warn "found for $id/$cid: ($l, $t, $r, $b -> $w x $h)";
+	    $i = Prima::Image->new(
+		width  => $w,
+		height => $h,
+		type   => im::RGB,
+		);
+	    # warn "$i->put_image_indirect($in, 0, 0, $l, $b, $w, $h, $w, $h)";
+	    $i->put_image_indirect($in, 0, 0, $l, $b, $w, $h, $w, $h)
+		or warn "put_image failed: $@";
+	    $i->size(_aspect($w, $h, @size));
+	} else {		# whole image
+	    $i = $in;
+	    $i->size(_aspect($picture->width, $picture->height, @size));
+	}
     } else {		    # generate image containing the error text
 	my $e = "$@";
 	# warn "hello: ", $e;
 	my @s = ($SIZE, $SIZE);
 	my $b = 10;
 	$i = Prima::Image->new(
-	    width  => $s[0],
-	    height => $s[1],
+	    width  => $size[0],
+	    height => $size[1],
 	    type   => im::bpp8,
 	    );
 	$i->begin_paint;
 	$i->color(cl::Red);
-	$i->bar(0, 0, @s);
+	$i->bar(0, 0, @size);
 	$i->color(cl::White);
 	$i->font({size => 15, style => fs::Bold});
 	$i->draw_text("$path:\n$e",
-		      $b, $b, $s[0] - $b, $s[1] - $b,
+		      $b, $b, $size[0] - $b, $size[1] - $b,
 		      dt::Center|dt::VCenter|dt::Default);
 	$i->end_paint;
     }

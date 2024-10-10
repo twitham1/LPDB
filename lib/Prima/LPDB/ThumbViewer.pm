@@ -765,6 +765,7 @@ sub stackcenter {		# called by {cycler} timer
 	    my($pic) = $this->random;
 	    $pic or next;
 	    $im = $self->{thumb}->get($pic->file_id);
+#	    $im = $self->{thumb}->get($pic->ids($pic, $self->cwd));
 	} elsif ($dur = $this->duration) {
 	    $im = $self->{thumb}->put($this->file_id, -1);
 	}
@@ -918,7 +919,7 @@ sub draw_picture {
 				    $y1, $x2, $y2, $sel, $foc, $pre, $col);
 	}
     } else {			# one picture
-	my $im = $self->{thumb}->get($pic->file_id);
+	my $im = $self->{thumb}->get($pic->ids($pic, $self->cwd));
 	$im or return;
 	$b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2,
 				$sel, $foc, $pre, $col);
@@ -1031,7 +1032,7 @@ sub viewer {		 # reuse existing image viewer, or recreate it
     $self->{viewer};
 }
 
-1;
+1;				# ThumbViewer.pm
 
 =pod
 
