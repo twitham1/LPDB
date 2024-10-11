@@ -131,6 +131,7 @@ sub profile_default
 		 ]],
 	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop Images',  'n', ord 'n', sub { $_[0]->repaint }],
+	    ['*@cropfaces',  'Crop Faces',   't', ord 't', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    ['@buffered', 'Hide Screen Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],
@@ -528,6 +529,22 @@ sub current {			# path to current selected item
 		  : '/' . $self->{items}[$idx][0]);
 }
 
+sub ids {	       # file_id [contact_id] of the given pic in path
+    my($self, $pic, $path) = @_;
+    $self->popup->checked('cropfaces')	or return $pic->file_id;
+    $path = $path ? $path->path : $self->current;
+    $path =~ m{/\[People\]/([^/]+)}	or return $pic->file_id;
+    my $name = $1;
+    my $schema = $self->lpdb->schema;
+    my $rs = $schema->resultset('PathView')->find(
+	{file_id => $pic->file_id,
+	 contact => $name },
+	{group_by => [qw/file_id contact_id/]} # not sure needed here...
+	);
+    $rs					or return $pic->file_id;
+    return $rs->file_id, $rs->contact_id;
+}
+
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
 
 sub on_selectitem { # update metadata labels, later in front of earlier
@@ -696,6 +713,7 @@ sub on_keydown			# code == -1 for remote navigation
     }
     $self->SUPER::on_keydown($code, $key, $mod);
 }
+
 sub on_drawitem
 {
     my $self = shift;
@@ -764,8 +782,7 @@ sub stackcenter {		# called by {cycler} timer
 	if ($this->isa('LPDB::Schema::Result::Path')) {
 	    my($pic) = $this->random;
 	    $pic or next;
-	    $im = $self->{thumb}->get($pic->file_id);
-#	    $im = $self->{thumb}->get($pic->ids($pic, $self->cwd));
+	    $im = $self->{thumb}->get($self->ids($pic, $this));
 	} elsif ($dur = $this->duration) {
 	    $im = $self->{thumb}->put($this->file_id, -1);
 	}
@@ -884,7 +901,7 @@ sub draw_path {
 	my $where = shift @where;
 	$pic or next;
 	$self->{thumb} or last;
-	my $im = $self->{thumb}->get($pic->file_id);
+	my $im = $self->{thumb}->get($self->ids($pic, $path));
 	$im or next;
 	$first or $first = $pic;
 	$last = $pic;
@@ -919,7 +936,7 @@ sub draw_picture {
 				    $y1, $x2, $y2, $sel, $foc, $pre, $col);
 	}
     } else {			# one picture
-	my $im = $self->{thumb}->get($pic->ids($pic, $self->cwd));
+	my $im = $self->{thumb}->get($self->ids($pic));
 	$im or return;
 	$b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2,
 				$sel, $foc, $pre, $col);
@@ -988,7 +1005,8 @@ sub on_close {
     delete $self->{vfs};
     delete $self->{thumb};
     $self->lpdb->disconnect;	# flush out the WAL
-#    warn "trying to refocus";
+    my $tmp = $self->owner;
+    warn "trying to refocus to $tmp";
     $self->owner->select; # restore focus to original window, else no focus!
     $self->owner->focus;
 }

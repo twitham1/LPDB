@@ -188,13 +188,11 @@ sub put {	       # cid -1 is random video center not saved to DB
 		 $face->right		* $picture->width,
 		 (1 - $face->bottom)	* $picture->height);
 	    my($w, $h) = (abs($r - $l), abs($b - $t));
-	    # warn "found for $id/$cid: ($l, $t, $r, $b -> $w x $h)";
 	    $i = Prima::Image->new(
 		width  => $w,
 		height => $h,
 		type   => im::RGB,
 		);
-	    # warn "$i->put_image_indirect($in, 0, 0, $l, $b, $w, $h, $w, $h)";
 	    $i->put_image_indirect($in, 0, 0, $l, $b, $w, $h, $w, $h)
 		or warn "put_image failed: $@";
 	    $i->size(_aspect($w, $h, @size));

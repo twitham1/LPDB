@@ -87,21 +87,22 @@ sub update {
     }
     status "update @dirs\n";
 
-    $schema->txn_begin;
+    $schema->txn_begin;	   # recurse the filesystem, updating pictures
     @ini = ();
     find ({ no_chdir => 1,
 	    preprocess => sub { sort @_ },
 	    wanted => \&_wanted,
-#	    postprocess => $conf->{update},
+	    #	    postprocess => $conf->{update},
 	  }, @dirs);
     $schema->txn_commit;
 
-    $schema->txn_begin;
+    $schema->txn_begin;		# process Picasa text metadata files
+    status "update .picasa.ini, .names.txt, .birthdays.txt files\n";
     my @names;
     for my $ini (@ini) {
-	if ($ini =~ /.(birthdays|names).txt$/) { # not Picasa, but rather:
-	    push @names, $ini;	     # contacts of whole directory
-	    next;		     # add them last
+	if ($ini =~ /.(birthdays|names).txt$/) {
+	    push @names, $ini;	# not Picasa, but rather
+	    next;		# contacts of whole directory
 	}
 	my $tmp = ini_read($ini);
 	# use Data::Dumper;	# remove this!!! and this:
@@ -112,19 +113,37 @@ sub update {
     map { &birthdays($schema, $_) } grep /birthdays/, @names;
     $schema->txn_commit;
 
-    $schema->txn_begin;
+    $schema->txn_begin;		# add Picasa [People] = contacts
+    status "update [People] contacts\n";
     my $pics = $schema->resultset('PathView')->search(
 	{contact_id => { '!=' => undef } },
 	{ group_by => [ 'file_id', 'contact_id' ] });
     while (my $pic = $pics->next) {
 	my $name = $pic->contact or next;
 	$vfs->savepathfile("/[People]/$name/", $pic->file_id);
-#	my $time = $pic->time or next;
+	#	my $time = $pic->time or next;
 	# $vfs->savepathfile("/[People]/$name/All Time/", $pic->file_id);
 	# $vfs->savepathfile(strftime("/[People]/$name/Years/%Y/",
 	# 			    localtime $time), $pic->file_id);
 	# $vfs->savepathfile(strftime("/[People]/$name/Months/%Y-%m-%b/",
 	# 			    localtime $time), $pic->file_id);
+    }
+    $schema->txn_commit;
+
+    $schema->txn_begin;		# add Picasa [Stars] = favorites
+    status "update [Stars] = favorites\n";
+    my $pics = $schema->resultset('PathView')->search(
+	{ stars => { '!=' => undef } },
+	{ group_by => [ 'file_id', ] });
+    while (my $pic = $pics->next) {
+	if ($pic->stars) {
+	    $vfs->savepathfile("/[Stars]/All Years/", $pic->file_id);
+	    my $time = $pic->time or next;
+	    $vfs->savepathfile(strftime("/[Stars]/%Y/",
+					localtime $time), $pic->file_id);
+	} else {
+	    # TODO!!! remove star = 0 from Paths
+	}
     }
     $schema->txn_commit;
 }
