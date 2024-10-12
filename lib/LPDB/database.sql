@@ -201,14 +201,14 @@ INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) V
 CREATE TABLE IF NOT EXISTS Contacts (
    contact_id	INTEGER PRIMARY KEY NOT NULL,
    hexid	TEXT UNIQUE,
-   contact	TEXT UNIQUE NOT NULL,
+   contact	TEXT NOT NULL,
    email	TEXT,
    birth	INTEGER,
    death	INTEGER
    );
 
 CREATE INDEX IF NOT EXISTS contact_hexid_index ON Contacts (hexid);
-CREATE UNIQUE INDEX IF NOT EXISTS contact_name_index ON Contacts (contact);
+CREATE INDEX IF NOT EXISTS contact_name_index ON Contacts (contact);
 CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
 
 ---------------------------------------- FACES many2many
@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS NameValue (
 
 CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
 
-INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
-INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0);
+-- INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
+INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', NULL);
 INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename)	VALUES (0, 0, 'ALL');
 INSERT OR REPLACE INTO Contacts (contact_id, contact, email)	VALUES (0, '', '');

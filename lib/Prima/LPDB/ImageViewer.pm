@@ -179,6 +179,7 @@ sub age {			# format given seconds as age
 
 sub ages {			# format age/[death]/now
     my($self, $time, $birth, $death) = @_;
+    $birth or return '';
     my $out = $self->age($time - $birth) . '/';
     $death and $out .= $self->age($death - $birth) . '/';
     $out .= $self->age(time - $birth);

@@ -60,6 +60,8 @@ sub ini_updatedb {
 	    #  can be multi-line
 	    #  like this...',
 	    #  'location' => 'Place taken (optional)')
+	} elsif ($k =~ /^Contacts$/) {
+	    # support old format?
 	} elsif ($k =~ /^Contacts2/) {
 	    for my $id (keys %{$this}) {
 		my($name, $email) = split ';', $this->{$id};

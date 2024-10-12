@@ -95,18 +95,6 @@ __PACKAGE__->set_primary_key("contact_id");
 
 =head1 UNIQUE CONSTRAINTS
 
-=head2 C<contact_unique>
-
-=over 4
-
-=item * L</contact>
-
-=back
-
-=cut
-
-__PACKAGE__->add_unique_constraint("contact_unique", ["contact"]);
-
 =head2 C<hexid_unique>
 
 =over 4
@@ -152,31 +140,11 @@ __PACKAGE__->has_many(
 );
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-07 01:12:37
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:ngFPrlGmyvJoteYkzx/zEw
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-10-11 01:33:36
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:s0V2AOk+/GcuaDroWwpWwA
 
 
 # You can replace this text with custom code or comments, and it will
 # be preserved on regeneration
-
-# This relationship was generated when 2 database files were one.
-# Assume I will still need this link between the 2 separate files.
-
-=head1 RELATIONS
-
-=head2 thumbs
-
-Type: has_many
-
-Related object: L<LPDB::Schema::Result::Thumb>
-
-=cut
-
-__PACKAGE__->has_many(
-  "thumbs",
-  "LPDB::Schema::Result::Thumb",
-  { "foreign.contact_id" => "self.contact_id" },
-  { cascade_copy => 0, cascade_delete => 0 },
-);
 
 1;

@@ -244,7 +244,7 @@ sub _wanted {
 	$File::Find::prune = 1;
 	return;
     }
-    #    my $guard = $schema->txn_scope_guard; # DBIx::Class::Storage::TxnScopeGuard
+    # return;			# hack!!!! remove this!!!!!
     unless ($done == time) {
 	$schema->txn_commit;
 	status "checked $done";
@@ -316,9 +316,6 @@ sub _wanted {
 	$vfs->savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
 				    localtime $time), $row->file_id);
 
-	# $vfs->savepathfile("/[Captions]/", $row->file_id)
-	#     if $row->caption;
-
 	my %tags; map { $tags{$_}++ } split /,\s*/,
 		      $info->{Keywords} || $info->{Subject} || '';
 	for my $tag (keys %tags) {
@@ -329,32 +326,6 @@ sub _wanted {
 		  file_id => $row->file_id });
 	    $vfs->savepathfile("/[Tags]/$tag/", $row->file_id);
 	}
-
-	# 	$this->{face}	= $db->faces($dir, $file, $this->{rot}); # picasa data for this pic
-	# 	$this->{album}	= $db->albums($dir, $file);
-	# 	$this->{uploads} = $db->uploads($dir, $file);
-	# 	$this->{faces}	= keys %{$this->{face}} ? 1 : 0; # boolean attributes
-	# 	$this->{albums}	= keys %{$this->{album}} ? 1 : 0;
-
-	# 	$this->{time} =~ /0000/ and
-	# 	    warn "bogus time in $_: $this->{time}\n";
-
-	# 	# add virtual folders of stars, tags, albums, people
-	# 	$this->{stars} and
-	# 	    $db->_addpic2path("/[Stars]/$year/$vname", $key);
-
-	# 	for my $id (keys %{$this->{album}}) { # named user albums
-	# 	    next unless my $name = $db->{album}{$id}{name};
-	# 	    # putting year in this path would cause albums that span
-	# 	    # year boundary to be split to multiple places...
-	# 	    $db->_addpic2path("/[Albums]/$name/$vname", $key);
-	# 	}
-
-	# 	# add faces / people
-	# 	for my $id (keys %{$this->{face}}) {
-	# 	    next unless my $name = $db->contact2person($id);
-	# 	    $db->_addpic2path("/[People]/$name/$year/$vname", $key);
-	# 	}
 
     } elsif (-d $_) {
 	# $db->{dirs}{$dir}{"$file/"} or
@@ -375,23 +346,22 @@ sub cleanup {
     $vfs->captions;		# move this somewhere?
     status "cleaning removed files from DB\n";
     my $tschema = $self->tschema;
-    $schema->txn_begin;
+    $schema->txn_begin; $tschema->txn_begin;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
     while (my $pic = $rs->next) {
 	$pic->file_id or next;	# skip special 0 which is all files of dir
 	my $file = $pic->pathtofile or next;
-	my $modified = (stat $file)[9]; # remove changed thumbnails
-	if (my $thumbs = $ts->search({ file_id => $pic->file_id, $modified
-					   ? (modified => {'<' => $modified})
-					   : () })) {
-	    # warn "removing $thumbs of ", $pic->file_id;
-	    $thumbs->delete_all;
-	}
+	my $modified = -f $file ? (stat $file)[9] : time;
+	# warn "testing $modified $file";
+	my $thumbs = $ts->search( { file_id => $pic->file_id,
+				    modified => {'<' => $modified} });
+	# warn "removing ", $thumbs, " of ", $pic->file_id;
+	$thumbs->delete;	# remove changed thumbnails
 	unless ($done == time) {
-	    $schema->txn_commit;
+	    $schema->txn_commit; $tschema->txn_commit;
 	    status "checked $done";
-	    $schema->txn_begin;
+	    $schema->txn_begin; $tschema->txn_begin;
 	    $done = time;
 	}
 	-f $file and next;
@@ -413,7 +383,7 @@ sub cleanup {
 	    $done = time;
 	}
     }
-    $schema->txn_commit;
+    $schema->txn_commit; $tschema->txn_commit;
 }
 
 # TODO: find and index duplicates
