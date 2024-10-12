@@ -81,6 +81,7 @@ CREATE INDEX IF NOT EXISTS basename_index ON Pictures (basename);
 CREATE INDEX IF NOT EXISTS caption_index ON Pictures (caption);
 CREATE INDEX IF NOT EXISTS time_index ON Pictures (time);
 CREATE INDEX IF NOT EXISTS bytes_index ON Pictures (bytes);
+CREATE INDEX IF NOT EXISTS pictures_dir_index ON Pictures (dir_id);
 
 ---------------------------------------- Virtual File System
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -233,17 +234,22 @@ CREATE TABLE IF NOT EXISTS Faces (
    PRIMARY KEY (dir_id, file_id, contact_id),
    FOREIGN KEY (dir_id)
       REFERENCES Directories (dir_id)
-	 ON DELETE CASCADE
-	 ON UPDATE CASCADE,
+	 -- ON DELETE CASCADE -- these kill the Faces on startup!!!
+	 -- ON UPDATE CASCADE, -- I think due to the insert/replace id 0
    FOREIGN KEY (file_id)
       REFERENCES Pictures (file_id)
-	 ON DELETE CASCADE
-	 ON UPDATE CASCADE,
+	 -- ON DELETE CASCADE
+	 -- ON UPDATE CASCADE,
    FOREIGN KEY (contact_id)
       REFERENCES Contacts (contact_id)
-	 ON DELETE CASCADE
-	 ON UPDATE CASCADE
+	 -- ON DELETE CASCADE
+	 -- ON UPDATE CASCADE
 ) WITHOUT ROWID;
+
+CREATE INDEX IF NOT EXISTS face_index ON Faces (dir_id, file_id, contact_id);
+CREATE INDEX IF NOT EXISTS face_d_index ON Faces (dir_id);
+CREATE INDEX IF NOT EXISTS face_f_index ON Faces (file_id);
+CREATE INDEX IF NOT EXISTS face_c_index ON Faces (contact_id);
 
 ---------------------------------------- KEYVALUE
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -261,7 +267,7 @@ CREATE TABLE IF NOT EXISTS NameValue (
 
 CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
 
--- INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
+INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
 INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', NULL);
 INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename)	VALUES (0, 0, 'ALL');
 INSERT OR REPLACE INTO Contacts (contact_id, contact, email)	VALUES (0, '', '');

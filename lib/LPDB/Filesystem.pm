@@ -132,7 +132,7 @@ sub update {
 
     $schema->txn_begin;		# add Picasa [Stars] = favorites
     status "update [Stars] = favorites\n";
-    my $pics = $schema->resultset('PathView')->search(
+    $pics = $schema->resultset('PathView')->search(
 	{ stars => { '!=' => undef } },
 	{ group_by => [ 'file_id', ] });
     while (my $pic = $pics->next) {
@@ -161,13 +161,10 @@ sub birthdays {			# (any Date::Parse format works)
 	    warn "unparseable time in $file: $line";
 	$death and ($death = str2time $death or
 		    warn "unparseable time in $file: $line");
-	my $row = $schema->resultset('Contact')->find_or_create(
+	my $c = $schema->resultset('Contact')->search(
 	    { contact => $name });
-	$birth and $row->birth($birth);
-	$death and $row->death($death);
-	$row->is_changed
-	    ? $row->update
-	    : $row->discard_changes;
+	$c->update({ birth => $birth || undef,
+		     death => $death || undef });
     }
 }
 
@@ -349,6 +346,7 @@ sub cleanup {
     $schema->txn_begin; $tschema->txn_begin;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
+
     while (my $pic = $rs->next) {
 	$pic->file_id or next;	# skip special 0 which is all files of dir
 	my $file = $pic->pathtofile or next;
@@ -368,6 +366,8 @@ sub cleanup {
 #	warn "removing $file";
 	$pic->delete;
     }
+    $tschema->txn_commit;
+
     my $paths = $schema->resultset('Path'); # clean paths of no more pictures
     while (my $path = $paths->next) {
 	my $pics = $schema->resultset('PathView')->search(
@@ -383,7 +383,7 @@ sub cleanup {
 	    $done = time;
 	}
     }
-    $schema->txn_commit; $tschema->txn_commit;
+    $schema->txn_commit;
 }
 
 # TODO: find and index duplicates

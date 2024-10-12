@@ -205,7 +205,7 @@ sub faces {			# on_paint tells us where the image is
 		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
 		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
 	    $r[0] += 5;
-	    $self->text_out($contact->contact,	@r[0,1]); # above box
+	    $self->text_out($contact->contact,	$r[0], $r[1]-25);
 	    $self->text_out($age,		@r[0,3]); # in box
 	} else {		# unknown position
 	    $r[0] = $x + 10;
