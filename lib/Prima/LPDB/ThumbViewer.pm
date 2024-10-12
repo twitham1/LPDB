@@ -131,7 +131,7 @@ sub profile_default
 		 ]],
 	    ['*@croppaths', 'Crop ~Gallery Stacks', 'g', ord 'g', sub { $_[0]->repaint }],
 	    ['@cropimages', 'Crop Images',  'n', ord 'n', sub { $_[0]->repaint }],
-	    ['*@cropfaces',  'Crop Faces',   't', ord 't', sub { $_[0]->repaint }],
+	    ['*@cropfaces',  'Crop Faces',  'c', ord 'c', sub { $_[0]->repaint }],
 	    ['*@videostack','Stack ~Videos','v', ord 'v', sub { $_[0]->repaint }],
 	    ['@buffered', 'Hide Screen Updates', sub { $_[0]->buffered($_[2]) }],
 	    [],

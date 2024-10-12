@@ -4,18 +4,18 @@
 
 -- https://www.sqlitetutorial.net/sqlite-create-table/
 
--- this is per-connection so TODO: get LPDB to have this also:
+-- this is per-connection so LPDB must also do this:
 PRAGMA foreign_keys = ON;
 
 -- dbicdump automatically includes this documentation in the class output
 CREATE TABLE IF NOT EXISTS table_comments (
-   table_name TEXT PRIMARY KEY NOT NULL,
-   comment_text TEXT); --  WITHOUT ROWID;
+   table_name	TEXT PRIMARY KEY NOT NULL,
+   comment_text	TEXT); --  WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS column_comments (
-   table_name TEXT NOT NULL,
-   column_name TEXT NOT NULL,
-   comment_text TEXT,
+   table_name	TEXT NOT NULL,
+   column_name	TEXT NOT NULL,
+   comment_text	TEXT,
    PRIMARY KEY (table_name, column_name)); --  WITHOUT ROWID;
 
 ---------------------------------------- Directories of pictures
@@ -234,16 +234,16 @@ CREATE TABLE IF NOT EXISTS Faces (
    PRIMARY KEY (dir_id, file_id, contact_id),
    FOREIGN KEY (dir_id)
       REFERENCES Directories (dir_id)
-	 -- ON DELETE CASCADE -- these kill the Faces on startup!!!
-	 -- ON UPDATE CASCADE, -- I think due to the insert/replace id 0
+	 ON DELETE CASCADE
+	 ON UPDATE CASCADE,
    FOREIGN KEY (file_id)
       REFERENCES Pictures (file_id)
-	 -- ON DELETE CASCADE
-	 -- ON UPDATE CASCADE,
+	 ON DELETE CASCADE
+	 ON UPDATE CASCADE,
    FOREIGN KEY (contact_id)
       REFERENCES Contacts (contact_id)
-	 -- ON DELETE CASCADE
-	 -- ON UPDATE CASCADE
+	 ON DELETE CASCADE
+	 ON UPDATE CASCADE
 ) WITHOUT ROWID;
 
 CREATE INDEX IF NOT EXISTS face_index ON Faces (dir_id, file_id, contact_id);
@@ -261,13 +261,18 @@ INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) V
 
 CREATE TABLE IF NOT EXISTS NameValue (
    name_id	INTEGER PRIMARY KEY NOT NULL,
-   name	TEXT UNIQUE NOT NULL,
+   name		TEXT UNIQUE NOT NULL,
    value	TEXT
    );
 
 CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
 
-INSERT OR REPLACE INTO Directories (dir_id, directory)		VALUES (0, '//');
-INSERT OR REPLACE INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', NULL);
-INSERT OR REPLACE INTO Pictures (file_id, dir_id, basename)	VALUES (0, 0, 'ALL');
-INSERT OR REPLACE INTO Contacts (contact_id, contact, email)	VALUES (0, '', '');
+--------- establish the base of the trees an zero indexes
+INSERT INTO Directories (dir_id, directory) VALUES (0, '//')
+   ON CONFLICT(dir_id) DO UPDATE SET (directory) = ('//');
+INSERT INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0)
+   ON CONFLICT(dir_id) DO UPDATE SET (directory, parent_id) = ('/', 0);
+INSERT INTO Pictures (file_id, dir_id, basename) VALUES (0, 0, 'ALL')
+   ON CONFLICT(file_id) DO UPDATE SET (dir_id, basename) = (0, 'ALL');
+INSERT INTO Contacts (contact_id, contact, email) VALUES (0, '', '')
+   ON CONFLICT(contact_id) DO UPDATE SET (contact, email) = ('', '');
