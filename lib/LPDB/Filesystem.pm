@@ -114,7 +114,7 @@ sub update {
     status "update [People] contacts in the tree\n";
     my $pics = $schema->resultset('PathView')->search(
 	{contact_id => { '!=' => undef } },
-	{ group_by => [ 'file_id', 'contact_id' ] });
+	{ group_by => [ qw/file_id contact_id/ ] });
     while (my $pic = $pics->next) {
 	my $name = $pic->contact or next;
 	$vfs->savepathfile("/[People]/$name/", $pic->file_id);
@@ -236,7 +236,7 @@ sub _wanted {
     # return;			# hack!!!! remove this!!!!!
     unless ($done == time) {
 	$schema->txn_commit;
-	status "checked @ ", localtime $done;
+	status "checked @ " . localtime $done;
 	$schema->txn_begin;
 	$done = time;
     }
@@ -342,7 +342,7 @@ sub cleanup {
 	# warn "removing ", $thumbs, " of ", $pic->file_id;
 	$thumbs->delete;	# remove changed thumbnails
 	unless ($done == time) {
-	    status "file clean @ ", localtime $done;
+	    status "file clean @ " . localtime $done;
 	    $done = time;
 	}
 	-f $file and next;
@@ -359,7 +359,7 @@ sub cleanup {
 	status "removing empty ", $path->path, "\n";
 	$path->delete;
 	unless ($done == time) {
-	    status "path clean @ ", localtime $done;
+	    status "path clean @ " . localtime $done;
 	    $done = time;
 	}
     }

@@ -40,6 +40,7 @@ sub profile_default
 	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
 	    ['*@contacts', '~Contact Faces', 'c', ord 'c', sub { $_[0]->repaint }],
+	    ['*@agenow',   'Age Now',        'b', ord 'b', sub { $_[0]->repaint }],
 	    [],
 	    ['(info0',	'No Information Overlay',	'status'],
 	    ['info1',	'Progress Markers',		'status'],
@@ -180,9 +181,10 @@ sub age {			# format given seconds as age
 sub ages {			# format age/[death]/now
     my($self, $time, $birth, $death) = @_;
     $birth or return '';
-    my $out = $self->age($time - $birth) . '/';
-    $death and $out .= $self->age($death - $birth) . '/';
-    $out .= $self->age(time - $birth);
+    my $out = $self->age($time - $birth);
+    $death and $out .= '/' . $self->age($death - $birth);
+    $out .= '/' . $self->age(time - $birth)
+	if $self->popup->checked('agenow');
     return $out;
 }
 
