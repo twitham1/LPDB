@@ -192,8 +192,9 @@ sub faces {			# on_paint tells us where the image is
     $self->autoZoom			or return;
     my $pic = $self->picture		or return;
     # $self->color(0xffff00);	# brightest yellow
-    $self->color(0xff00ff);	# brightest magenta
+    # $self->color(0xff00ff);	# brightest magenta
     # $self->color(0x00ffff);	# brightest cyan
+    $self->color(0xffffff);	# brightest white
     $self->lineWidth(1);
     $self->font({size => 15});
     my @r;			# face rectangle

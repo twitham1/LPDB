@@ -53,7 +53,7 @@ sub create {
 
 sub status {
     $tty or return;
-    my $t = localtime $done;
+    my $t = localtime;
     print STDERR "\r\e[J$t    @_      ";
 }
 END {
@@ -96,9 +96,8 @@ sub update {
 	  }, @dirs);
     $schema->txn_commit;
 
-    $schema->txn_begin;		# process Picasa text metadata files
     status "update .picasa.ini, .names.txt, .birthdays.txt files\n";
-    my @names;
+    my @names;			# process Picasa text metadata files
     for my $ini (@ini) {
 	if ($ini =~ /.(birthdays|names).txt$/) {
 	    push @names, $ini;	# not Picasa, but rather
@@ -111,10 +110,8 @@ sub update {
     }
     map { &contacts($schema,  $_) } grep /names/,     @names;
     map { &birthdays($schema, $_) } grep /birthdays/, @names;
-    $schema->txn_commit;
 
-    $schema->txn_begin;		# add Picasa [People] = contacts
-    status "update [People] contacts\n";
+    status "update [People] contacts in the tree\n";
     my $pics = $schema->resultset('PathView')->search(
 	{contact_id => { '!=' => undef } },
 	{ group_by => [ 'file_id', 'contact_id' ] });
@@ -123,15 +120,11 @@ sub update {
 	$vfs->savepathfile("/[People]/$name/", $pic->file_id);
 	#	my $time = $pic->time or next;
 	# $vfs->savepathfile("/[People]/$name/All Time/", $pic->file_id);
-	# $vfs->savepathfile(strftime("/[People]/$name/Years/%Y/",
-	# 			    localtime $time), $pic->file_id);
-	# $vfs->savepathfile(strftime("/[People]/$name/Months/%Y-%m-%b/",
+	# $vfs->savepathfile(strftime("/[People]/$name/%Y/",
 	# 			    localtime $time), $pic->file_id);
     }
-    $schema->txn_commit;
 
-    $schema->txn_begin;		# add Picasa [Stars] = favorites
-    status "update [Stars] = favorites\n";
+    status "update [Stars] = favorites in the tree\n";
     $pics = $schema->resultset('PathView')->search(
 	{ stars => { '!=' => undef } },
 	{ group_by => [ 'file_id', ] });
@@ -145,11 +138,10 @@ sub update {
 	    # TODO!!! remove star = 0 from Paths
 	}
     }
-    $schema->txn_commit;
 }
 
 # birthdays of contacts (optional death) tab-delimited:
-# YYYY/MM/DD	name	YYYYMMDD
+# YYYY/MM/DD	Full Name	YYYYMMDD
 sub birthdays {			# (any Date::Parse format works)
     my($schema, $file) = @_;
     open my $fh, $file or return;
@@ -244,7 +236,7 @@ sub _wanted {
     # return;			# hack!!!! remove this!!!!!
     unless ($done == time) {
 	$schema->txn_commit;
-	status "checked $done";
+	status "checked @ ", localtime $done;
 	$schema->txn_begin;
 	$done = time;
     }
@@ -325,14 +317,8 @@ sub _wanted {
 	}
 
     } elsif (-d $_) {
-	# $db->{dirs}{$dir}{"$file/"} or
-	#     $db->{dirs}{$dir}{"$file/"} = {};
+	# TODO: maybe update modified time of directory
     }
-    #    $guard->commit;	       # DBIx::Class::Storage::TxnScopeGuard
-    # unless ($db->{dir} and $db->{file}) {
-    # 	my $tmp = $db->filter(qw(/));
-    # 	$tmp and $tmp->{children} and $db->{dir} = $db->{file} = $tmp;
-    # }
     &{$conf->{update}};
 }
 
@@ -343,7 +329,6 @@ sub cleanup {
     $vfs->captions;		# move this somewhere?
     status "cleaning removed files from DB\n";
     my $tschema = $self->tschema;
-    $schema->txn_begin; $tschema->txn_begin;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');
 
@@ -357,16 +342,13 @@ sub cleanup {
 	# warn "removing ", $thumbs, " of ", $pic->file_id;
 	$thumbs->delete;	# remove changed thumbnails
 	unless ($done == time) {
-	    $schema->txn_commit; $tschema->txn_commit;
-	    status "checked $done";
-	    $schema->txn_begin; $tschema->txn_begin;
+	    status "file clean @ ", localtime $done;
 	    $done = time;
 	}
 	-f $file and next;
-#	warn "removing $file";
+	status "removing $file\n";
 	$pic->delete;
     }
-    $tschema->txn_commit;
 
     my $paths = $schema->resultset('Path'); # clean paths of no more pictures
     while (my $path = $paths->next) {
@@ -374,16 +356,13 @@ sub cleanup {
 	    {path => { like => $path->path . '%'},
 	     time => { '!=' => undef }});
 	$pics->count and next;
-#	warn "removing empty ", $path->path;
+	status "removing empty ", $path->path, "\n";
 	$path->delete;
 	unless ($done == time) {
-	    $schema->txn_commit;
-	    status "checked $done";
-	    $schema->txn_begin;
+	    status "path clean @ ", localtime $done;
 	    $done = time;
 	}
     }
-    $schema->txn_commit;
 }
 
 # TODO: find and index duplicates
