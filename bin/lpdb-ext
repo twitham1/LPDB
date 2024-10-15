@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+# simply report Prima's supported image file extensions
+
+use strict;
+use warnings;
+use Prima;
+
+my @ext;			# all image formats we could support:
+map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
+
+# But how to define video set???  These are types I have so far:
+my @vid = qw/mp4 mov avi mpg asf wmv dv/;
+
+warn "autosupport: @ext
+videos: @vid\n";
+
+push @ext, @vid;
+
+print "@ext\n";
+
+exit 0;

@@ -1,0 +1,49 @@
+#!/usr/bin/perl
+
+# by twitham@sbcglobal.net in 2020 based on picasagallery of 2013
+
+use strict;
+use warnings;
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use LPDB;
+use Getopt::Long;
+
+my $usage = "usage: $0 [options]
+    --create	create or upgrade the Local Picture DataBase
+    --update	update the LPDB from the image and metadata files
+    --clean	clean the LPDB
+    ";
+my %opt;
+GetOptions(\%opt, qw/create update clean/)
+    or die $usage;
+
+# configuration options that can be overridden in files:
+our $conf = {
+    autoconfigure => 1,		# config from .lpdb.pl files
+    # dbfile => '.lpdb.db',
+    # thumbfile => '.lpdb-thumb.db',
+    sqltrace => 0,	       # see SQL of DB updates?
+    minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
+};
+
+$opt{create} and $conf->{create} = 1;
+
+my $lpdb = new LPDB($conf);
+
+$opt{create} and $lpdb->create;
+
+if ($opt{update}) {
+    my $ext;
+    if ($ext = `$Bin/lpdb-ext` and chomp $ext) {
+	my @ext = split ' ', $ext;
+	$conf->{ext} = \@ext;	# if set, auto-sets {regex}
+    }
+    $lpdb->update('.');
+}    
+
+$opt{clean} and $lpdb->cleanup;
+
+$lpdb->disconnect;
+
+exit 0;
