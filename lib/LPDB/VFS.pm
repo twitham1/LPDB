@@ -18,8 +18,8 @@ use LPDB::Schema::Object;	# object extensions by twitham
 
 sub new {
     my($class, $lpdb) = @_;
-    my $self = { schema => $lpdb->schema,
-		 conf => $lpdb->conf,
+    my $self = { schema => $lpdb->{schema},
+		 conf => $lpdb->{conf},
 		 id => 0,	# default id is last one
     };
     bless $self, $class;
@@ -65,28 +65,6 @@ sub savepathfile {
     $self->{schema}->resultset('PicturePath')->find_or_create(
 	{ path_id => $path_id,
 	  file_id => $id });
-}
-
-# update [Captions] from the pictures
-sub captions {
-    my($self) = @_;
-    if (my $pics = $self->{schema}->resultset('Picture')->search(
-	    { caption => { '!=' => undef }},
-	    { columns => [ qw/file_id caption/ ]})) {
-	while (my $pic = $pics->next) {
-	    $self->savepathfile("/[Captions]/All/",
-				$pic->file_id);
-	    my $cap = $pic->caption;
-	    $cap =~ /^(.)/;
-	    my $letter = uc $1;
-	    $self->savepathfile("/[Captions]/Alphabetical/$letter/",
-				$pic->file_id);
-	    my $n = split/\s+/, $cap;
-	    $self->savepathfile(sprintf("/[Captions]/Words/%03d/", $n),
-				$pic->file_id);
-	}
-    }
-    # TODO: fix captions that disappeared or changed
 }
 
 # READING METHODS ------------------------------------------------------------

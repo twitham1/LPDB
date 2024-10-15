@@ -14,7 +14,7 @@ use Time::Local;
 use POSIX qw/strftime/;
 use Image::ExifTool qw(:Public);
 use LPDB::Schema;
-use LPDB::VFS;
+# use LPDB::VFS;
 use LPDB::Picasa;		# grok .picasa.ini files
 use base 'Exporter::Tiny';
 our @EXPORT = qw(create update cleanup);
@@ -66,17 +66,7 @@ sub update {
     @dirs or @dirs = ('.');
     $schema = $self->schema;
     $conf = $self->conf;
-    if ($conf->{ext}) {		# supported filename extensions
-	my @ext = join '|', @{$conf->{ext}};
-	my $regex = "\\.(@ext)\$";
-	warn $regex;
-	$conf->{regex} = $regex;
-    }
-    # warn "self=$self, conf=$conf, reject=$conf->{reject}";
-    # warn "reject: ", $self->conf('reject');
-    unless ($vfs) {
-	$vfs = new LPDB::VFS($self);
-    }
+    $vfs or $vfs = $self->{vfs};
     unless ($exiftool) {
 	$exiftool = new Image::ExifTool;
 	$exiftool->Options(FastScan => 1,
@@ -111,8 +101,26 @@ sub update {
     map { &contacts($schema,  $_) } grep /names/,     @names;
     map { &birthdays($schema, $_) } grep /birthdays/, @names;
 
+    status "update [Captions] in the tree\n";
+    my $pics = $schema->resultset('Picture')->search(
+	{ caption => { '!=' => undef }},
+	{ columns => [ qw/file_id caption/ ]});
+    while (my $pic = $pics->next) {
+	$vfs->savepathfile("/[Captions]/All/",
+			   $pic->file_id);
+	my $cap = $pic->caption;
+	$cap =~ /^(.)/;
+	my $letter = uc $1;
+	$vfs->savepathfile("/[Captions]/Alphabetical/$letter/",
+			   $pic->file_id);
+	my $n = split/\s+/, $cap;
+	$vfs->savepathfile(sprintf("/[Captions]/Words/%03d/", $n),
+			   $pic->file_id);
+    }
+    # TODO: fix captions that disappeared or changed
+
     status "update [People] contacts in the tree\n";
-    my $pics = $schema->resultset('PathView')->search(
+    $pics = $schema->resultset('PathView')->search(
 	{contact_id => { '!=' => undef } },
 	{ group_by => [ qw/file_id contact_id/ ] });
     while (my $pic = $pics->next) {
@@ -190,7 +198,7 @@ sub contacts {			# lines from .names.txt
 	    my $obj = $schema->resultset('Directory')->find_or_new(
 		{ directory => $this });
 	    unless ($obj->in_storage) { # pre-existing?
-		my($dir, $file) = LPDB::dirfile $this;
+		my($dir, $file) = $vfs->dirfile($this);
 		$obj->parent_id(&_savedirs($dir));
 		$obj->insert;
 	    }
@@ -217,7 +225,7 @@ sub _dirtimes {
 
 # add a file or directory to the database, adapted from Picasa.pm
 sub _wanted {
-    my($dir, $file) = LPDB::dirfile $_;
+    my($dir, $file) = $vfs->dirfile($_);
     my $modified = (stat $_)[9];
     $dir =~ s@\./@@;
     #    $dir = '' if $dir eq '.';
@@ -242,7 +250,6 @@ sub _wanted {
     }
     if (-f $_) {
 	return unless $file =~ /$conf->{regex}/i;
-	#	return unless $file =~ /$conf->{keep}/;
 	my $key = $_;
 	$key =~ s@\./@@;
 	return unless -f $key and -s $key > 100;
@@ -326,8 +333,8 @@ sub _wanted {
 # TODO: maybe stat files only in dirs that changed !!!
 sub cleanup {
     my $self = shift;
-    $vfs->captions;		# move this somewhere?
     status "cleaning removed files from DB\n";
+    my $schema = $self->schema;
     my $tschema = $self->tschema;
     my $rs = $schema->resultset('Picture');
     my $ts = $tschema->resultset('Thumb');

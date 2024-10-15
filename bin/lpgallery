@@ -17,75 +17,38 @@ my $usage = "usage: $0 [startup perl configuration files, see manual]";
 
 # configuration file options that can be overridden in files:
 our $conf = {
-    dbfile => '.lpdb.db',
-    thumbfile => '.lpdb-thumb.db',
-    updatesqltrace => 0,       # see SQL of DB updates?
-    guisqltrace => 0,	       # see SQL of GUI?
+    autoconfigure => 1,		# config from .lpdb.pl files
+    # dbfile => '.lpdb.db',
+    # thumbfile => '.lpdb-thumb.db',
+    sqltrace => 0,	       # see SQL of DB updates?
+    # guisqltrace => 0,	       # see SQL of GUI?
     thumbviewer => sub {},     # called at startup, gets viewer object
     imageviewer => sub {},     # called at startup, gets viewer object
-    minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
+    # minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
+    noupdate => 0,		# don't update the DB from the files?
 };
 
-my @ext;			# all image formats we could support:
-map { push @ext, @{$_->{fileExtensions}} } @{Prima::Image->codecs};
-# But how to define video set???  These are types I have so far:
-my @vid = qw/mp4 mov avi mpg asf wmv dv/;
-warn "autosupport: @ext
-videos: @vid\n";
-push @ext, @vid;
-$conf->{ext} = \@ext;
-#exit;
-
-# configuration files: last option setting wins
-for ("$ENV{HOME}/.lpdb.pl", "./.lpdb.pl", @ARGV) {
-    if (-f $_) {
-#	s{^(\w+)}{./$1};
-	warn "using config $_\n";
-	my $tmp = require $_ or die "$usage\n$_: $!";
-	map { $conf->{$_} = $tmp->{$_} } keys %$tmp;
-    } else {
-	warn "no config at $_, skipping\n";
-    }
-}
-
-# don't accidentally recurse: create database only with confirmation
-my $create = -f $conf->{dbfile} && -s _ ? 0 : 1;
-if ($create) {
-    -t STDIN or die "bailing out, $conf->{dbfile} not found here!\n";
-    print "$conf->{dbfile} doesn't exist here!
-	Shall I create it and recurse for pictures?  yes/no [no] : ";
-    my $ans = <STDIN>;
-    $ans =~ /^\s*y/i
-	or die "cd to root of pictures and re-run\n";
-    print "\n\nPlease wait 10 seconds for DB creation, ",
-	"then GUI should appear\n\n";
-}
-
 my $lpdb;			# LPDB object, a local picture database
+
 my $child;
 my $ppid = $$;
 if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
+    $lpdb = new LPDB($conf);
     $SIG{USR1} = sub {
 	warn "$$: signal USR1 received, DB updated!";
 	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
     };
     $conf->{guisqltrace} and $conf->{sqltrace} = 1;
     $conf->{child} = $child;
-    sleep($create ? 10 : 2);
-    $lpdb = new LPDB($conf);
+
 } else {			# child updates DB, creating if needed
-    $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
+
+    # $conf->{updatesqltrace} and $conf->{sqltrace} = 1;
     if ($conf->{noupdate}) {
 	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
     } else {
-	unlink $conf->{dbfile} if $create;
-	$lpdb = new LPDB($conf);
-	$lpdb->create;		# or update schema via *.sql
-	$lpdb->update('.');
-	$lpdb->cleanup;
-	$lpdb->disconnect;
-	warn "$0: $$ done updating $conf->{dbfile}\n";
+	system "$Bin/lpdb", '--update', '--signal', $ppid;
 	kill 'USR1', $ppid;	# tell GUI I'm done
     }
     exit;
@@ -136,6 +99,12 @@ $lv = $w->insert(
     pack => { expand => 1, fill => 'both' },
     );
 
+    $SIG{USR1} = sub {
+	warn "$$: signal USR1 received, DB updated!";
+	$lpdb->conf(noupdate => 1);	# ThumbViewer can now cache searches
+	$lv->goto($lv->current);	# how to refresh the view?
+    };
+
 #$::application->yield;
 $lv->repaint;
 $lv->update_view;
@@ -160,7 +129,8 @@ lpgallery [startup file]
 
 What would happen if all your pictures(*) were available in just 1
 local file and their metadata in a second file?  Any pictures could be
-seen instantly and in any order.  This is that!
+seen instantly and navigated, sorted and filtered by the metadata.
+This is that!
 
 (*) thumbnails only, full resolution remains in the original separate
 local files.
@@ -197,9 +167,9 @@ B<Rewind/Seek> of media remotes control the zoom or speed like B<a/s>.
 B<Prev/Next Track> find the next gallery like B<u/o>.  B<HomePage>
 hits B<n> which toggles thumb crop or cycles information.
 
-=head2 Thumbnail Grid
+=head2 Thumbnail Viewer
 
-The main window is a grid of thumnail images.  Pictures below this
+The main window is a grid of thumbnail images.  Pictures below each
 path in the tree are represented by a stack of three images: the
 oldest, center (or random) and youngest.  Metadata about the selected
 path is displayed above and below the grid.
@@ -233,23 +203,25 @@ time.  Be patient with large selections as they take a while to sort.
 
 =item [Captions]
 
-caption strings found in EXIF picture metadata
+Caption strings found in EXIF picture metadata.
 
 =item [Tags]
 
-tag strings found in EXIF picture metadata
-
-=item [Albums]
-
-pictures organized by Albums (Picasa only not implemented)
+Tag strings found in EXIF picture metadata.
 
 =item [People]
 
-pictures of recognized named faces (Picasa only not implemented)
+Pictures of recognized named faces (Picasa only).  The B<c> key
+toggles face crops on the grid or face rectangles on the Image Viewer
+below.
 
 =item [Stars]
 
-pictures marked with stars as favorites (Picasa only not implemented)
+pictures marked with stars as favorites (Picasa only)
+
+=item [Albums]
+
+Pictures organized by Albums (Picasa only not implemented)
 
 =back
 
@@ -257,17 +229,18 @@ pictures marked with stars as favorites (Picasa only not implemented)
 
 A second window opens when hitting B<Enter> on an image from the grid.
 This displays one picture at maximum size for the window.  Arrow keys
-will now navigate both windows as will the B<u/i/o/j/k/l>.
+will now navigate both windows as will the B<u/i/o/j/k/l> keys.
 
-The B<Enter> key will zoom to original size.  Scroll with the arrow
-keys for images larger than the window and hit B<Enter> again to
-toggle back to auto zoom best fit.  For video files B<Enter> instead
-plays the video, hit B<Escape> to return when finished.
+The B<Enter> key will zoom to original size while B<a/s> zoom further.
+Scroll with the arrow keys for images larger than the window and hit
+B<Enter> again to toggle back to auto zoom best fit.  For video files
+B<Enter> instead plays the video, hit B<Escape> to return when
+finished.
 
 The B<n> key cycles through metadata "info" overlay levels.  This adds
-common picture and camera metadata to the corners and (for Picasa
-only) draws named rectangles around recognized faces.  Hit the B<d>
-key to see all known metadata.
+common picture and camera metadata to the corners.  Hit the B<d> key
+to see all known metadata.  Picasa face rectangles can be toggled with
+the B<c> key.
 
 Finally, B<Escape> returns back to the thumbnail browser.
 
@@ -284,8 +257,9 @@ shortcuts.
 
 The grid menu provides options to select only pictures with certain
 attributes or only those from a recent timeframe.  Filtering can cause
-nodes in the tree to go blank where no pictures match.  Simply "Clear
-All Filters" to restore access to all pictures.
+nodes in the tree to go blank where no pictures match.  When filtering
+is active, upper right text is highlighted.  Simply "Clear All
+Filters" to restore access to all pictures.
 
 =head2 SORTING
 
@@ -339,7 +313,6 @@ Videos are previewed with random frames from the video.  B<Enter> will
 play the video (B<Escape> to return) or you can hit B<v> to toggle
 video autoplay.
 
-
 =head1 FILES
 
 =over
@@ -350,8 +323,8 @@ SQLite database files of picture metadata and thumbnails respectively.
 
 =item F<.picasa.ini>
 
-Picasa Metada read into LPDB by L<LPDB::Picasa> includes albums,
-detected faces, stars, and tags.
+Picasa Metada read into LPDB by L<LPDB::Picasa> includes detected
+faces, stars, tags and albums.
 
 =item F<.names.txt>
 
