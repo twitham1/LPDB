@@ -28,13 +28,12 @@ our $conf = {
     noupdate => 0,		# don't update the DB from the files?
 };
 
-my $lpdb;			# LPDB object, a local picture database
+my $lpdb = new LPDB($conf);    # LPDB object, a local picture database
 
 my $child;
 my $ppid = $$;
 if ($child = fork) {		# GUI starts after child is updating DB
     warn "$0: $$ forked $child to update $conf->{dbfile}\n";
-    $lpdb = new LPDB($conf);
     $SIG{USR1} = sub {
 	warn "$$: signal USR1 received, DB updated!";
 	$conf->{noupdate} = 1;	# ThumbViewer can now cache searches
@@ -48,7 +47,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     if ($conf->{noupdate}) {
 	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
     } else {
-	system "$Bin/lpdb", '--update', '--signal', $ppid;
+	system "$Bin/lpdb", '--update';
 	kill 'USR1', $ppid;	# tell GUI I'm done
     }
     exit;

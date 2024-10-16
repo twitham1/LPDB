@@ -251,6 +251,19 @@ CREATE INDEX IF NOT EXISTS face_d_index ON Faces (dir_id);
 CREATE INDEX IF NOT EXISTS face_f_index ON Faces (file_id);
 CREATE INDEX IF NOT EXISTS face_c_index ON Faces (contact_id);
 
+---------------------------------------- PATHCACHE
+INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
+   ('PathCache', 'Cache of filtered sorted file_id per path');
+
+INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
+   ('PathCache', 'cache',	'Selected path/filter/sort key'),
+   ('PathCache', 'value',	'Space delimited list of file_id,gal_num');
+
+CREATE TABLE IF NOT EXISTS PathCache (
+   cache	TEXT PRIMARY KEY NOT NULL,
+   list		TEXT
+   );
+
 ---------------------------------------- KEYVALUE
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
    ('NameValue', 'Name / Value data store');
@@ -267,7 +280,7 @@ CREATE TABLE IF NOT EXISTS NameValue (
 
 CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
 
---------- establish the base of the trees an zero indexes
+--------- establish the base of the trees and zero indexes
 INSERT INTO Directories (dir_id, directory) VALUES (0, '//')
    ON CONFLICT(dir_id) DO UPDATE SET (directory) = ('//');
 INSERT INTO Directories (dir_id, directory, parent_id) VALUES (1, '/', 0)

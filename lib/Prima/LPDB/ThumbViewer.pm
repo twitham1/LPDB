@@ -404,22 +404,9 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    use Data::Dumper;
-    local $Data::Dumper::Terse = 1;
-    (my $string = Dumper($parent, \@sort, $filter)) =~ s/\n//g;
-    $string =~ s/ +//g;
-
-    # my($path, $file, $dur) = $self->vfs->pathpics($parent, \@sort, \@$filter);
-    my($path, $file, $dur);	# cache lookups for faster redos
-    if ($self->lpdb->conf('noupdate') # but no cache when updating
-	&& $self->{cache}{$string}) {
-	warn "hit! on $string";
-    } else {
-	warn "miss! on $string";
-	$self->{cache}{$string} =
-	    [ $self->vfs->pathpics($parent, \@sort, \@$filter) ];
-    }
-    ($path, $file, $dur) = (@{$self->{cache}{$string}});
+    # filtered/sorted paths, pics, gals, duration from cache or DB
+    my($path, $file, $dur, $list) =
+	$self->vfs->pathpics($parent, \@$filter, \@sort);
 
     $self->{duration} = $dur;
     $self->{galleries} = 0;
@@ -866,8 +853,8 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
 	: $pos == 3 ? ($x2 - $b - $dw, $y1 + $b) # South East
 	: ($x1, $y1));		# should never happen
     $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
-				$self->rop)
-	or warn "put_image failed: $@";
+				$self->rop) or warn
+	"put_image failed ($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh): $@";
     if (!$pos and !$b) {       # overlay rectangle on focused pictures
 	$canvas->lineWidth(3);
         my ($x, $y, $w, $h);

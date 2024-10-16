@@ -18,7 +18,8 @@ use LPDB::Schema::Object;	# object extensions by twitham
 
 sub new {
     my($class, $lpdb) = @_;
-    my $self = { schema => $lpdb->{schema},
+    my $self = { lpdb => $lpdb,
+		 schema => $lpdb->{schema},
 		 conf => $lpdb->{conf},
 		 id => 0,	# default id is last one
     };
@@ -83,7 +84,7 @@ sub pathobject {		# return object of given path
 }
 
 sub pathpics {		     # return paths and pictures in given path
-    my($self, $parent, $sort, $filter) = @_;
+    my($self, $parent, $filter, $sort) = @_;
     my @filter;
     @filter = @$filter if $filter;
     $parent =~ s{/+}{/};	# cleanup
@@ -94,20 +95,31 @@ sub pathpics {		     # return paths and pictures in given path
 	$id =  $obj->path_id;
     }
     $self->{id} = $id;
-    my $paths;
-    if ($paths = $self->{schema}->resultset('Path')->search(
-	    { parent_id => $id })) {
-    }
-    my @pics;
+    my $paths = $self->{schema}->resultset('Path')->search(
+	{ parent_id => $id });
     my $dur = 0;		# total video duration
-    if (my $pics = $self->{schema}->resultset('Picture')->search(
+
+    use Data::Dumper;		# cache to the database
+    local $Data::Dumper::Terse = 1;
+    (my $string = Dumper($parent, $filter, $sort)) =~ s/\n//g;
+    $string =~ s/ +//g;
+    my $list = '';
+    if (my $cache = $self->{schema}->resultset('PathCache')->find(
+    	    { cache => $string })) {
+	$list = $cache->list;
+    # if (0) {
+	warn "cache hit on: $string -> ", length($list), " bytes";
+
+    } else {	    # not in cache: filter/sort and save list in cache
+
+	my $pics = $self->{schema}->resultset('Picture')->search(
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
 	      prefetch => [ qw/picture_paths dir picture_tags faces/],
 	      columns => [ qw/file_id dir_id duration/ ],
 	      # required to tell DBIC to collapse has_many relationships
 	      collapse => 1,
-	    })) {
+	    });
 
 	# We can't afford returning full (big) picture objects, so
 	# return IDs only then look up each picture as needed later.
@@ -121,16 +133,24 @@ sub pathpics {		     # return paths and pictures in given path
 		my $now = $one->dir_id;
 		$now != $prev and ++$gal;
 		$prev = $now;
-		push @pics, [ $one->file_id, $gal ];
+		$list .= ' ' . $one->file_id . ",$gal";
 		$dur += $one->duration || 0;
 	    }
-	} else {		# no sort, instant DB order
-	    @pics =  $pics->get_column('file_id')->all;
-	    @pics = map { [ $_, ++$gal ] } @pics; # checkerboard!
+	    chomp $list;
+	} else {	 # no sort, instant DB order, checkerboard!
+	    $list = join '', map { " $_," . ++$gal }
+	    $pics->get_column('file_id')->all;
+	    map { $dur += $_ || 0 }
+	    $pics->get_column('duration')->all;
 	}
-#	warn "pics: @pics";
+	$self->{schema}->resultset('PathCache')->update_or_create(
+	    { cache => $string, list => $list });
     }
-    return [ $paths->all ], \@pics, $dur;
+    # warn "list: $list";
+    my @pics;
+    map { push @pics, [ split ',', $_ ] } split ' ', $list;
+    # warn Dumper "pics=", \@pics, 'dur=', $dur;
+    return [ $paths->all ], \@pics, $dur, $list;
 }
 
 sub related {		      # paths related to given path or picture
