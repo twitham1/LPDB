@@ -285,7 +285,8 @@ sub init {
 		 onMouseClick => sub { $self->hitkey(kb::Down) },
 	);
 
-    $self->items($self->children('/'));
+    my($pos, @children) = $self->children('/');
+    $self->items(@children);
     $self->focusedItem(0);
     $self->repaint;
     $self->select;
@@ -345,7 +346,7 @@ sub sorter {	    # applies current sort/filter via children of goto
 }
 
 sub children {			# return children of given text path
-    my($self, $parent) = @_;
+    my($self, $parent, $id) = @_; # id to find in the path
     $parent ||= '/';
     # warn "children of $parent";
     my $m = $self->popup;
@@ -407,7 +408,11 @@ sub children {			# return children of given text path
     # filtered/sorted paths, pics, gals, duration from cache or DB
     my($path, $file, $dur, $list) =
 	$self->vfs->pathpics($parent, \@$filter, \@sort);
-
+    my $n = 0;
+    if ($id and $list =~ /(.*) $id,/) {
+	$n = split ' ', $1;
+	warn "--- $id found at position $n";
+    }
     $self->{duration} = $dur;
     $self->{galleries} = 0;
     $self->{galleries} = $file->[-1][1] if @$file > 0;
@@ -418,7 +423,7 @@ sub children {			# return children of given text path
 	$m->checked('plast')  ? sort { $a->time(2) <=> $b->time(2) } @$path :
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
-    return [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
+    return $n, [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
 }
 
 sub duration {			# total video duration
@@ -466,7 +471,7 @@ sub goto {			# goto path//file or path/path
 		my $out = message("Do you really want to exit?",
 				  mb::Yes|mb::No, { defButton => mb::No });
 		$::application->close if $out & mb::Yes;
-#		warn "user said $out";
+		#		warn "user said $out";
 	    } else {		# shouldn't happen!
 		warn "bad path $path";
 	    }
@@ -474,13 +479,17 @@ sub goto {			# goto path//file or path/path
     };
     my $file;
     ($path, $file) = ($1, $2);
+    my $id = $file =~ /^\d+$/ ? $file	     # go direct to file_id
+	: $self->vfs->id_of_path($file);     # lookup id of image file
+    $id ||= 0;
+    warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
     $self->cwd($path);	       # this says "filter, sort, please wait"
     $self->profile;
-    $self->items($self->children($path)); # this blocks on the DB
+    my($pos, @children) = $self->children($path, $id); # this blocks on the DB
+    $self->items(@children);
     $self->profile("in DB");
-    $self->focusedItem(-1);
-    #$self->repaint;
-    $self->focusedItem(0);
+    # $self->focusedItem(-1);
+    $self->focusedItem($pos || 0); # children found position of id in the list
     my $n = $self->count;
     unless ($n) {
 	$self->owner->NORTH->N
@@ -488,14 +497,10 @@ sub goto {			# goto path//file or path/path
 	$self->owner->NORTH->NW->text('');
 	$self->owner->NORTH->NE->text('');
     }
-    unless ($file eq 'FIRST') {
-	my $id = $file =~ /^\d+$/ ? $file    # go direct to file_id
-	    : $self->vfs->id_of_path($file); # lookup id of image file
-	$id ||= 0;
-	warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
+    unless ($pos or $file eq 'FIRST') {	 # loop not used if $pos worked above
 	for (my $i = 0; $i < $n; $i++) { # select myself in parent
 	    if ($id and ref($self->{items}[$i]) eq "ARRAY"
-		and $self->{items}[$i][0] == $id) { # quickly find image index
+		and $self->{items}[$i][0] == $id) { # find image index
 		$self->focusedItem($i);
 		last;
 	    } elsif ($self->item($i)->pathtofile eq $file) { # or matching path
