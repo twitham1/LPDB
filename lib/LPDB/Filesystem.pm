@@ -17,7 +17,7 @@ use LPDB::Schema;
 # use LPDB::VFS;
 use LPDB::Picasa;		# grok .picasa.ini files
 use base 'Exporter::Tiny';
-our @EXPORT = qw(create update cleanup);
+our @EXPORT = qw(create importfiles cleanup);
 
 my $exiftool;	  # global hacks for File::Find !!!  We'll never
 my $schema;	  # find more than once per process, so this is OK.
@@ -61,7 +61,7 @@ END {
 }
 
 # recursively add given directory or . to LPDB
-sub update {
+sub importfiles {
     my($self, @dirs) = @_;
     @dirs or @dirs = ('.');
     $schema = $self->schema;
@@ -100,52 +100,6 @@ sub update {
     }
     map { &contacts($schema,  $_) } grep /names/,     @names;
     map { &birthdays($schema, $_) } grep /birthdays/, @names;
-
-    status "update [Captions] in the tree\n";
-    my $pics = $schema->resultset('Picture')->search(
-	{ caption => { '!=' => undef }},
-	{ columns => [ qw/file_id caption/ ]});
-    while (my $pic = $pics->next) {
-	$vfs->savepathfile("/[Captions]/All/",
-			   $pic->file_id);
-	my $cap = $pic->caption;
-	$cap =~ /^(.)/;
-	my $letter = uc $1;
-	$vfs->savepathfile("/[Captions]/Alphabetical/$letter/",
-			   $pic->file_id);
-	my $n = split/\s+/, $cap;
-	$vfs->savepathfile(sprintf("/[Captions]/Words/%03d/", $n),
-			   $pic->file_id);
-    }
-    # TODO: fix captions that disappeared or changed
-
-    status "update [People] contacts in the tree\n";
-    $pics = $schema->resultset('PathView')->search(
-	{contact_id => { '!=' => undef } },
-	{ group_by => [ qw/file_id contact_id/ ] });
-    while (my $pic = $pics->next) {
-	my $name = $pic->contact or next;
-	$vfs->savepathfile("/[People]/$name/", $pic->file_id);
-	#	my $time = $pic->time or next;
-	# $vfs->savepathfile("/[People]/$name/All Time/", $pic->file_id);
-	# $vfs->savepathfile(strftime("/[People]/$name/%Y/",
-	# 			    localtime $time), $pic->file_id);
-    }
-
-    status "update [Stars] = favorites in the tree\n";
-    $pics = $schema->resultset('PathView')->search(
-	{ stars => { '!=' => undef } },
-	{ group_by => [ 'file_id', ] });
-    while (my $pic = $pics->next) {
-	if ($pic->stars) {
-	    $vfs->savepathfile("/[Stars]/All Years/", $pic->file_id);
-	    my $time = $pic->time or next;
-	    $vfs->savepathfile(strftime("/[Stars]/%Y/",
-					localtime $time), $pic->file_id);
-	} else {
-	    # TODO!!! remove star = 0 from Paths
-	}
-    }
 }
 
 # birthdays of contacts (optional death) tab-delimited:

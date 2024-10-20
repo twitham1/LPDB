@@ -405,7 +405,7 @@ sub children {			# return children of given text path
     $m->checked('month') and push @$filter,
 	time => { '>', time - 31 * 86400 };
 
-    # filtered/sorted paths, pics, gals, duration from cache or DB
+    # filtered/sorted paths, [pics,gals], duration from cache or DB
     my($path, $file, $dur, $list) =
 	$self->vfs->pathpics($parent, \@$filter, \@sort);
     my $n = 0;
@@ -423,7 +423,8 @@ sub children {			# return children of given text path
 	$m->checked('plast')  ? sort { $a->time(2) <=> $b->time(2) } @$path :
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
-    return $n, [ $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
+    return $m->checked('picsfirst') ? $n : $n + @path,
+	[  $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
 }
 
 sub duration {			# total video duration

@@ -10,12 +10,19 @@ use LPDB;
 use Getopt::Long;
 
 my $usage = "usage: $0 [options]
-    --create	create or upgrade the Local Picture DataBase
-    --update	update the LPDB from the image and metadata files
+    --create	create  the Local Picture DataBase
+    --upgrade	upgrade the Local Picture DataBase
+    --importfiles	update the LPDB from the image and metadata files
+    --updatecaptions	update the [Captions] tree from the LPDB
+    --updatepeople	update the [People] tree from the LPDB
+    --updatestars	update the [Stars] tree from the LPDB
     --clean	clean the LPDB
-    ";
+    --all	do all of the above, a full import or refresh\n";
+
+my @opt = qw/create upgrade importfiles
+    updatecaptions updatepeople updatestars clean all/;
 my %opt;
-GetOptions(\%opt, qw/create update clean/)
+GetOptions(\%opt, @opt)
     or die $usage;
 
 # configuration options that can be overridden in files:
@@ -27,22 +34,30 @@ our $conf = {
     minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
 };
 
+$opt{all} and map { $opt{$_} = 1 } @opt;
+
 $opt{create} and $conf->{create} = 1;
 
 my $lpdb = new LPDB($conf);
 
-$opt{create} and $lpdb->create;
+($opt{create} or $opt{upgrade}) and $lpdb->create;
 
-if ($opt{update}) {
+if ($opt{importfiles}) {	# TODO: configurable {ext}
     my $ext;
     if ($ext = `$Bin/lpdb-ext` and chomp $ext) {
 	my @ext = split ' ', $ext;
 	$conf->{ext} = \@ext;	# if set, auto-sets {regex}
     }
-    $lpdb->update('.');
+    $lpdb->importfiles('.');
 }    
 
-$opt{clean} and $lpdb->cleanup;
+$opt{updatecaptions}	and $lpdb->vfs->updatecaptions;
+
+$opt{updatepeople}	and $lpdb->vfs->updatepeople;
+
+$opt{updatestars}	and $lpdb->vfs->updatestars;
+
+$opt{clean}		and $lpdb->cleanup;
 
 $lpdb->disconnect;
 

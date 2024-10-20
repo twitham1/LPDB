@@ -137,8 +137,9 @@ sub conf {	     # return whole config, or key, or set key's value
     return $self->{conf};	# whole configuration hash
 }
 
-sub dbh { return $_[0]->{dbh}; }
+sub dbh  { return $_[0]->{dbh};  }
 sub tdbh { return $_[0]->{tdbh}; }
+sub vfs  { return $_[0]->{vfs};  }
 
 sub disconnect {
     my $self = shift;

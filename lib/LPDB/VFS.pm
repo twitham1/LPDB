@@ -13,6 +13,7 @@ organizes the images by metadata in several ways.
 
 use strict;
 use warnings;
+use POSIX qw/strftime/;
 use LPDB::Schema;
 use LPDB::Schema::Object;	# object extensions by twitham
 
@@ -25,6 +26,10 @@ sub new {
     };
     bless $self, $class;
     return $self;
+}
+
+sub schema {
+    return $_[0]->{schema};
 }
 
 # verbatim from Picasa.pm
@@ -47,7 +52,7 @@ sub dirfile { # similar to fileparse, but leave trailing / on directories
 	$this =~ m@/$@ or return;
 	unless ($id{$this}) {
 	    # warn "saving path $this";
-	    my $obj = $self->{schema}->resultset('Path')->find_or_new(
+	    my $obj = $self->schema->resultset('Path')->find_or_new(
 		{ path => $this });
 	    unless ($obj->in_storage) { # pre-existing?
 		my($dir, $file) = $self->dirfile($this);
@@ -63,9 +68,64 @@ sub dirfile { # similar to fileparse, but leave trailing / on directories
 sub savepathfile {
     my($self, $path, $id) = @_;
     my $path_id = $self->savepath($path);
-    $self->{schema}->resultset('PicturePath')->find_or_create(
+    $self->schema->resultset('PicturePath')->find_or_create(
 	{ path_id => $path_id,
 	  file_id => $id });
+}
+
+sub updatecaptions {
+    my($self) = @_;
+    print "update [Captions] in the tree\n";
+    my $pics = $self->schema->resultset('Picture')->search(
+	{ caption => { '!=' => undef }},
+	{ columns => [ qw/file_id caption/ ]});
+    while (my $pic = $pics->next) {
+	$self->savepathfile("/[Captions]/All/",
+			    $pic->file_id);
+	my $cap = $pic->caption;
+	$cap =~ /^(.)/;
+	my $letter = uc $1;
+	$self->savepathfile("/[Captions]/Alphabetical/$letter/",
+			    $pic->file_id);
+	my $n = split/\s+/, $cap;
+	$self->savepathfile(sprintf("/[Captions]/Words/%03d/", $n),
+			    $pic->file_id);
+    }
+    # TODO: fix captions that disappeared or changed
+}
+
+sub updatepeople {
+    my($self) = @_;
+    print "update [People] contacts in the tree\n";
+    my $pics = $self->schema->resultset('PathView')->search(
+	{contact_id => { '!=' => undef } },
+	{ group_by => [ qw/file_id contact_id/ ] });
+    while (my $pic = $pics->next) {
+	my $name = $pic->contact or next;
+	$self->savepathfile("/[People]/$name/", $pic->file_id);
+	#	my $time = $pic->time or next;
+	# $self->savepathfile("/[People]/$name/All Time/", $pic->file_id);
+	# $self->savepathfile(strftime("/[People]/$name/%Y/",
+	# 			    localtime $time), $pic->file_id);
+    }
+}
+
+sub updatestars {
+    my($self) = @_;
+    print "update [Stars] = favorites in the tree\n";
+    my $pics = $self->schema->resultset('PathView')->search(
+	{ stars => { '!=' => undef } },
+	{ group_by => [ 'file_id', ] });
+    while (my $pic = $pics->next) {
+	if ($pic->stars) {
+	    $self->savepathfile("/[Stars]/All Years/", $pic->file_id);
+	    my $time = $pic->time or next;
+	    $self->savepathfile(strftime("/[Stars]/%Y/",
+					 localtime $time), $pic->file_id);
+	} else {
+	    # TODO!!! remove star = 0 from Paths
+	}
+    }
 }
 
 # READING METHODS ------------------------------------------------------------
@@ -76,7 +136,7 @@ sub pathobject {		# return object of given path
 #    warn "pathobj $parent";
     $parent =~ s{/+}{/};	# cleanup
     if ($parent and my $obj =
-	$self->{schema}->resultset('Path')->find(
+	$self->schema->resultset('Path')->find(
 	    { path => $parent })) {
 	return $obj;
     }
@@ -90,12 +150,12 @@ sub pathpics {		     # return paths and pictures in given path
     $parent =~ s{/+}{/};	# cleanup
     my $id = $self->{id};
     if ($parent and my $obj =
-	$self->{schema}->resultset('Path')->find(
+	$self->schema->resultset('Path')->find(
 	    { path => $parent })) {
 	$id =  $obj->path_id;
     }
     $self->{id} = $id;
-    my $paths = $self->{schema}->resultset('Path')->search(
+    my $paths = $self->schema->resultset('Path')->search(
 	{ parent_id => $id });
     my $dur = 0;		# total video duration
 
@@ -104,7 +164,7 @@ sub pathpics {		     # return paths and pictures in given path
     (my $string = Dumper($parent, $filter, $sort)) =~ s/\n//g;
     $string =~ s/ +//g;
     my $list = '';
-    if (my $cache = $self->{schema}->resultset('PathCache')->find(
+    if (my $cache = $self->schema->resultset('PathCache')->find(
     	    { cache => $string })) {
 	$list = $cache->list;
     # if (0) {
@@ -112,7 +172,7 @@ sub pathpics {		     # return paths and pictures in given path
 
     } else {	    # not in cache: filter/sort and save list in cache
 
-	my $pics = $self->{schema}->resultset('Picture')->search(
+	my $pics = $self->schema->resultset('Picture')->search(
 	    { path_id => $id, @filter },
 	    { order_by => $sort || [],
 	      prefetch => [ qw/picture_paths dir picture_tags faces/],
@@ -143,7 +203,7 @@ sub pathpics {		     # return paths and pictures in given path
 	    map { $dur += $_ || 0 }
 	    $pics->get_column('duration')->all;
 	}
-	$self->{schema}->resultset('PathCache')->update_or_create(
+	$self->schema->resultset('PathCache')->update_or_create(
 	    { cache => $string, list => $list });
     }
     # warn "list: $list";
@@ -157,7 +217,7 @@ sub related {		      # paths related to given path or picture
     my($self, $path, $id) = @_;
     my %path = ( $path => 1 );
     if ($id and my $paths =
-	$self->{schema}->resultset('PicturePath')->search(
+	$self->schema->resultset('PicturePath')->search(
     	    {"me.file_id" => $id},
 	    {prefetch => [ 'path', 'file' ]},
 	)) {
@@ -176,7 +236,7 @@ sub related {		      # paths related to given path or picture
 sub picture {			# return picture object of given ID
     my($self, $id) = @_;
     $self->{rsallpics} ||=
-	$self->{schema}->resultset('Picture');
+	$self->schema->resultset('Picture');
     my $obj = $self->{rsallpics}->find($id);
 #    warn "vfs picture: $id = $obj\n";
     return $obj;
@@ -189,7 +249,7 @@ sub id_of_path {		# return ID of given pathtofile
     $2 or return undef;
     # warn "($1 / $2)";
     $self->{rspicdir} ||=
-	$self->{schema}->resultset('Picture');
+	$self->schema->resultset('Picture');
     my $obj = $self->{rspicdir}->find(
 	{ 'dir.directory' => $1,
 	      'basename' => $2,
