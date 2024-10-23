@@ -128,6 +128,32 @@ sub updatestars {
     }
 }
 
+sub updateflats {
+    my($self) = @_;
+    print "update [Flats] = flattened [Folders] of the tree\n";
+    my $schema = $self->schema;
+    my $pics = $schema->resultset('Picture')->search(
+	undef,
+	{ columns => [ qw/dir_id file_id basename/ ] });
+    my $done = time;
+    my $num;
+    while (my $pic = $pics->next) {
+	my $fid = $pic->file_id or next;
+	my $path = $pic->pathtofile;
+	my $n = $path =~ tr{/}{/} - 1;
+	while ($n > 0 and $path =~ s{[^/]+/$}{}) {
+	    $self->savepathfile("/[Flats]/$n/$path", $fid);
+	    $n--;
+	}
+	$num++;
+	unless ($done == time) {
+	    warn "checked $num @ " . localtime $done;
+	    $done = time;
+	}
+    }
+}
+
+
 # READING METHODS ------------------------------------------------------------
 
 sub pathobject {		# return object of given path

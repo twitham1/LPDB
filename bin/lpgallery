@@ -47,7 +47,7 @@ if ($child = fork) {		# GUI starts after child is updating DB
     if ($conf->{noupdate}) {
 	warn "$0: $$ skipping DB update per {noupdate} config, exiting\n";
     } else {
-	system "$Bin/lpdb", '--update';
+	system "$Bin/lpdb", '--all';
 	kill 'USR1', $ppid;	# tell GUI I'm done
     }
     exit;

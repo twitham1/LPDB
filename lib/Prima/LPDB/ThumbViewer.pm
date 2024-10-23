@@ -409,7 +409,7 @@ sub children {			# return children of given text path
     my($path, $file, $dur, $list) =
 	$self->vfs->pathpics($parent, \@$filter, \@sort);
     my $n = 0;
-    if ($id and $list =~ /(.*) $id,/) {
+    if ($id and $list =~ /(.*) $id,/) { # locate position of item in list
 	$n = split ' ', $1;
 	warn "--- $id found at position $n";
     }
@@ -423,7 +423,7 @@ sub children {			# return children of given text path
 	$m->checked('plast')  ? sort { $a->time(2) <=> $b->time(2) } @$path :
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
-    return $m->checked('picsfirst') ? $n : $n + @path,
+    return $m->checked('picsfirst') ? $n : $n ? $n + @path : 0,
 	[  $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
 }
 
@@ -487,9 +487,9 @@ sub goto {			# goto path//file or path/path
     $self->cwd($path);	       # this says "filter, sort, please wait"
     $self->profile;
     my($pos, @children) = $self->children($path, $id); # this blocks on the DB
+    $self->focusedItem(-1);
     $self->items(@children);
     $self->profile("in DB");
-    # $self->focusedItem(-1);
     $self->focusedItem($pos || 0); # children found position of id in the list
     my $n = $self->count;
     unless ($n) {
