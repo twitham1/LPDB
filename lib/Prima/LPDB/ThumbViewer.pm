@@ -411,7 +411,7 @@ sub children {			# return children of given text path
     my $n = 0;
     if ($id and $list =~ /(.*) $id,/) { # locate position of item in list
 	$n = split ' ', $1;
-	warn "--- $id found at position $n";
+	# warn "--- $id found at position $n";
     }
     $self->{duration} = $dur;
     $self->{galleries} = 0;
@@ -524,18 +524,21 @@ sub current {			# path to current selected item
 
 sub ids {	       # file_id [contact_id] of the given pic in path
     my($self, $pic, $path) = @_;
-    $self->popup->checked('cropfaces')	or return $pic->file_id;
+    my $fid = $pic->file_id;
+    $self->popup->checked('cropfaces')	or return $fid;
     $path = $path ? $path->path : $self->current;
-    $path =~ m{/\[People\]/([^/]+)}	or return $pic->file_id;
+    $path =~ m{/\[People\]/([^/]+)}	or return $fid;
     my $name = $1;
     my $schema = $self->lpdb->schema;
-    my $rs = $schema->resultset('PathView')->find(
-	{file_id => $pic->file_id,
-	 contact => $name },
-	{group_by => [qw/file_id contact_id/]} # not sure needed here...
-	);
-    $rs					or return $pic->file_id;
-    return $rs->file_id, $rs->contact_id;
+    my $con = $schema->resultset('Contact')->find(
+	{contact => $name},
+	{columns => [qw/contact_id/]})	or return $fid;
+    my $face = $schema->resultset('Face')->find(
+	{file_id => $fid,
+	 contact_id => $con->contact_id},
+	{columns => [qw/right/]})	or return $fid;
+    $face->right			or return $fid;
+    return $fid, $con->contact_id;
 }
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }

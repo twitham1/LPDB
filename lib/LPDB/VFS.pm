@@ -102,6 +102,7 @@ sub updatepeople {
 	{ group_by => [ qw/file_id contact_id/ ] });
     while (my $pic = $pics->next) {
 	my $name = $pic->contact or next;
+#	warn "/[People]/$name/ in ", $pic->path, $pic->basename;
 	$self->savepathfile("/[People]/$name/", $pic->file_id);
 	#	my $time = $pic->time or next;
 	# $self->savepathfile("/[People]/$name/All Time/", $pic->file_id);

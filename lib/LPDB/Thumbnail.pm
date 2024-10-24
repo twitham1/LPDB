@@ -167,9 +167,18 @@ sub put {	       # cid -1 is random video center not saved to DB
 	# warn "@cmd\n";
 	system(@cmd) == 0 or warn "@cmd failed";
     }
+    my $face;
     my $codec;
     my $in;
-    if ($in = Prima::Image->load($tmp || $path)) {
+    if (!$tmp and $cid > 0
+	and $face = $schema->resultset('Face')->find(
+	    {file_id => $id,
+	     contact_id => $cid},
+	    {columns => [qw/left top right bottom/]}) and
+	!$face->right) {	# no crop for contact, use whole image
+	$i = $self->get($id, 0);
+	warn "using full for $id / $cid";
+    } elsif ($in = Prima::Image->load($tmp || $path)) {
 	# PS: I've read somewhere that ist::Quadratic produces best
 	# visual results for the scaled-down images, while ist::Sinc
 	# and ist::Gaussian for the scaled-up. /Dmitry Karasik
@@ -177,11 +186,7 @@ sub put {	       # cid -1 is random video center not saved to DB
 	if (my $rot = $picture->rotation) {
 	    $in->rotate(-1 * $rot);
 	}
-	if ($cid > 0 and		# face crop!
-	    my $face = $schema->resultset('Face')->find(
-		{file_id => $id,
-		 contact_id => $cid},
-		{columns => [qw/left top right bottom/]})) {
+	if ($face and $cid > 0) { # face crop!
 	    my($l, $t, $r, $b) =
 		($face->left		* $picture->width,
 		 (1 - $face->top)	* $picture->height,
