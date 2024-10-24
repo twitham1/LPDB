@@ -527,7 +527,7 @@ sub ids {	       # file_id [contact_id] of the given pic in path
     my $fid = $pic->file_id;
     $self->popup->checked('cropfaces')	or return $fid;
     $path = $path ? $path->path : $self->current;
-    $path =~ m{/\[People\]/([^/]+)}	or return $fid;
+    $path =~ m{/\[Faces\]/([^/]+)}	or return $fid;
     my $name = $1;
     my $schema = $self->lpdb->schema;
     my $con = $schema->resultset('Contact')->find(

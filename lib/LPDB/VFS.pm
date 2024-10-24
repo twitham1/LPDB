@@ -94,20 +94,16 @@ sub updatecaptions {
     # TODO: fix captions that disappeared or changed
 }
 
-sub updatepeople {
+sub updatefaces {
     my($self) = @_;
-    print "update [People] contacts in the tree\n";
+    print "update [Faces] contacts in the tree\n";
     my $pics = $self->schema->resultset('PathView')->search(
 	{contact_id => { '!=' => undef } },
 	{ group_by => [ qw/file_id contact_id/ ] });
     while (my $pic = $pics->next) {
 	my $name = $pic->contact or next;
-#	warn "/[People]/$name/ in ", $pic->path, $pic->basename;
-	$self->savepathfile("/[People]/$name/", $pic->file_id);
-	#	my $time = $pic->time or next;
-	# $self->savepathfile("/[People]/$name/All Time/", $pic->file_id);
-	# $self->savepathfile(strftime("/[People]/$name/%Y/",
-	# 			    localtime $time), $pic->file_id);
+#	warn "/[Faces]/$name/ in ", $pic->path, $pic->basename;
+	$self->savepathfile("/[Faces]/$name/", $pic->file_id);
     }
 }
 

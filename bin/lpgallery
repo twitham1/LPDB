@@ -195,6 +195,11 @@ grouped in these physical gallery collections in all virtual paths
 that follow unless the Sort -> Gallery Groups menu option is changed
 to Ungrouped.
 
+=item [Flats]
+
+Like B<Folders> but flattened to longer lists at a given depth in the
+tree.
+
 =item [Timeline]
 
 Pictures grouped chronologically into years or months or even all
@@ -208,7 +213,7 @@ Caption strings found in EXIF picture metadata.
 
 Tag strings found in EXIF picture metadata.
 
-=item [People]
+=item [Faces]
 
 Pictures of recognized named faces (Picasa only).  The B<c> key
 toggles face crops on the grid or face rectangles on the Image Viewer
