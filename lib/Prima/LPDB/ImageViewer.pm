@@ -51,6 +51,7 @@ sub profile_default
 	    ['*@loop',     'Loop Slide Show',                      'slideshow'],
 	    ['slower',     'Slower Show',            'a', ord 'a', 'delayorzoom'],
 	    ['faster',     'Faster Show',            's', ord 's', 'delayorzoom'],
+	    ['@starspeed', 'Star Based Spee~d',      'd', ord 'd', 'slideshow'],
 	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],
@@ -106,6 +107,28 @@ sub init {
     $self->insert(@opt, name => 'S', growMode => gm::XCenter, bottom => $pad,
 		  alignment => ta::Center);
 
+    $self->{seconds} = 4;
+    $self->{timer} = Prima::Timer->create(
+	timeout => 4000,	# milliseconds
+	onTick => sub {
+	    $self->autoZoom or return;
+	    my $th = $self->{thumbviewer};
+	    my $x = $th->focusedItem + 1;
+	    my $y = $th->count;
+	    if ($self->popup->checked('slideshow') and $x == $y) {
+		if ($self->popup->checked('loop')) {
+		    warn "looping show";
+		    $self->key_down(ord '0'); # move to first
+		} else {
+		    warn "stopping show";
+		    $self->popup->checked('slideshow', 0);
+		    $self->slideshow;
+		}
+	    } else {		# next picture
+		$self->key_down(0, kb::Right );
+	    }
+	}
+	);
     return %profile;
 }
 
@@ -130,10 +153,10 @@ sub viewimage
 	warn "$filename: $e";
 	my @s = (800, 450);
 	my $b = $s[0] / 10;
-	my $i = Prima::Icon->new(
+	$i = Prima::Image->new(
 	    width  => $s[0],
 	    height => $s[1],
-	    type   => im::bpp8,
+	    type   => im::RGB,
 	    );
 	$i->begin_paint;
 	$i->color(cl::Red);
@@ -185,6 +208,7 @@ sub ages {			# format age/[death]/now
     $death and $out .= '/' . $self->age($death - $birth);
     $out .= '/' . $self->age(time - $birth)
 	if $self->popup->checked('agenow');
+    # warn " $time - $birth = $out";
     return $out;
 }
 
@@ -200,25 +224,48 @@ sub faces {			# on_paint tells us where the image is
     $self->lineWidth(1);
     $self->font({size => 15});
     my @r;			# face rectangle
-    for my $face (sort { $a->contact->contact cmp $b->contact->contact }
-		  $pic->faces, $pic->dir->faces) {
+    for my $face (sort { $a->contact && $b->contact ?
+			     $a->contact->contact cmp $b->contact->contact : 0
+		  } $pic->faces, $pic->dir->faces) {
 	my $contact = $face->contact	or next;
-	$contact->contact		or next;
+	my $name = $contact->contact	or next;
 	my $age = $self->ages($pic->time, $contact->birth, $contact->death);
 	if ($face->right or $face->left) { # identified face
 	    $self->rectangle(
 		@r = ($x + $w * $face->left, $y + $h * (1 - $face->top),
 		      $x + $w* $face->right, $y + $h * (1 - $face->bottom)));
 	    $r[0] += 5;
-	    $self->text_out($contact->contact,	$r[0], $r[1]-25);
-	    $self->text_out($age,		@r[0,3]); # in box
+	    $self->text_out($name,	$r[0], $r[1]-25);
+	    $self->text_out($age,	@r[0,3]); # in box
 	} else {		# unknown position
 	    $r[0] = $x + 10;
-	    $r[1] ||= $y + $h - 75; # list names down the side
+	    $r[1] ||= $y + $h - 80; # list names down the side
 	    $r[1] -= 25;
-	    $self->text_out($contact->contact . "  ($age)", @r[0,1]);
+	    $self->text_out("$name  ($age)", @r[0,1]);
 	}
     }
+    my $stars = $pic->stars ? '*' : '';
+    $stars = $pic->stars || 0
+	if $self->{thumbviewer}->lpdb->conf('maxstars') > 1;
+    my $str = join ' ', $stars, $pic->attrs || '';
+    $self->text_out($str, $x + 10, $y + $h - 80);
+    $self->color(cl::Fore);
+}
+
+sub text_out {			# white on black to see on any color
+    my($self, $str, $x, $y) = @_;
+    $self->color(0x000000);
+    $x -= 1; $y -= 1;
+    $self->SUPER::text_out($str, $x, $y);
+    $y += 2;
+    $self->SUPER::text_out($str, $x, $y);
+    $x += 2;
+    $self->SUPER::text_out($str, $x, $y);
+    $y -= 2;
+    $self->SUPER::text_out($str, $x, $y);
+    $self->color(0xffffff);
+    $x -= 1; $y += 1;
+    $self->SUPER::text_out($str, $x, $y);
     $self->color(cl::Fore);
 }
 
@@ -260,6 +307,13 @@ sub on_paint { # update metadata label overlays, later in front of earlier
 	    $self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
 	}
 	$self->color(cl::Fore);
+    }
+    if ($self->popup->checked('starspeed') and my $pic = $self->picture) {
+	my $max = $self->{thumbviewer}->lpdb->conf('maxstars') || 1;
+	my $n = $pic->stars || 0;
+	my $val = $self->{seconds} * 1000 * $n / $max;
+	# warn "---- timeout $self->{seconds} seconds $n / $max = $val";
+	$self->{timer}->timeout($val);
     }
     $self->status(1);	      # update zoom label in case zoom changed
 }
@@ -594,27 +648,6 @@ sub delay {
 }
 sub slideshow {
     my($self) = @_;
-    $self->{timer} ||= Prima::Timer->create(
-	timeout => 3000,	# milliseconds
-	onTick => sub {
-	    $self->autoZoom or return;
-	    my $th = $self->{thumbviewer};
-	    my $x = $th->focusedItem + 1;
-	    my $y = $th->count;
-	    if ($self->popup->checked('slideshow') and $x == $y) {
-		if ($self->popup->checked('loop')) {
-		    warn "looping show";
-		    $self->key_down(ord '0'); # move to first
-		} else {
-		    warn "stopping show";
-		    $self->popup->checked('slideshow', 0);
-		    $self->slideshow;
-		}
-	    } else {		# next picture
-		$self->key_down(0, kb::Right );
-	    }
-	}
-	);
     my $sec = $self->{seconds} || 4; # set by delay above
     my $n = $self->{thumbviewer}->count;
     my $d = $self->{thumbviewer}->duration;
@@ -622,7 +655,10 @@ sub slideshow {
     my $t = '';			# show timing information
     $d and $t = "\nVideo AutoPlay " .
 	($self->popup->checked('autoplay') ? 'ON' : 'OFF');
-    $t .= sprintf "\n%s picture time%s", _hms($n * $sec),
+    $t .= sprintf "\n%s%s picture time%s",
+	# TODO: (total stars / pics * maxstars) * runtime
+	$self->popup->checked('starspeed') ? '< ' : '',
+	_hms($n * $sec),
 	$d ? sprintf(' %2.0f%%', $n * $sec / $tot * 100) : '';
     $d and $t .= sprintf "\n%s  video  time %2.0f%%", _hms($d),
 	$d / $tot * 100;

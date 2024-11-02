@@ -530,15 +530,17 @@ sub ids {	       # file_id [contact_id] of the given pic in path
     $path =~ m{/\[Faces\]/([^/]+)}	or return $fid;
     my $name = $1;
     my $schema = $self->lpdb->schema;
-    my $con = $schema->resultset('Contact')->find(
+    my $rs = $schema->resultset('Contact')->search(
 	{contact => $name},
-	{columns => [qw/contact_id/]})	or return $fid;
-    my $face = $schema->resultset('Face')->find(
-	{file_id => $fid,
-	 contact_id => $con->contact_id},
-	{columns => [qw/right/]})	or return $fid;
-    $face->right			or return $fid;
-    return $fid, $con->contact_id;
+	{columns => [qw/contact_id/]});
+    while (my $c = $rs->next) {
+	my $face = $schema->resultset('Face')->find(
+	    {file_id => $fid,
+	     contact_id => $c->contact_id},
+	    {columns => [qw/right/]});
+	$face and $face->right and return $fid, $c->contact_id;
+    }
+    return $fid;
 }
 
 sub _trimfile { (my $t = $_) =~ s{//.*}{}; $t }
@@ -584,8 +586,10 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 				: 'Check ~Menu -> AND Filters!');
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
 	my($x, $y) = $self->xofy($idx);
-	my $stars = $this->stars ? '*' x $this->stars : '';
-	$owner->NORTH->N->text($stars . ' ' . $this->basename . ' ');
+	$owner->NORTH->N->text(($self->lpdb->conf('maxstars') > 1
+				? $this->stars
+				: $this->stars ? '*' : '')
+			       . ' ' . $this->basename . ' ');
 	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,
 				$self->gallery($idx), $self->gallery(-1),
 				$progress);
@@ -942,7 +946,9 @@ sub draw_picture {
     my @border = ($x1 + $b, $y1 + $b, $x2 - $b, $y2 - $b);
     $canvas->textOpaque(1);
     if (($pic->stars || 0) > 0) {
-	$canvas->draw_text('*' x $pic->stars, @border,
+	$canvas->draw_text($self->lpdb->conf('maxstars') > 1
+			   ? $pic->stars
+			   : $pic->stars ? '*' : '', @border,
 			   dt::Left|dt::Top|dt::Default);
     }
     if ($dur) {

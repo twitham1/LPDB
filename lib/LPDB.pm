@@ -44,6 +44,7 @@ my $conf = {		       # override any keys in first arg to new
     sqltrace	=> 0,	    # SQL to STDERR from DBIx::Class::Storage
     # editpath	=> 0,	# optional sub to return modified virtual path
     minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
+    maxstars	=> 1,		# maximum star number
 };
 
 sub new {
