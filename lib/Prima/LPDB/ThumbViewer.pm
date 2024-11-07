@@ -83,6 +83,7 @@ sub profile_default
 		      ['pfirst'	=> 'Begin Time'		=> 'sorter'],
 		      ['pmid'	=> 'Middle Time'	=> 'sorter'],
 		      ['plast'	=> 'End Time'		=> 'sorter'],
+		      ['pcount'	=> 'Picture Count'	=> 'sorter'],
 		      [')prnd'	=> 'Random'		=> 'sorter'],
 		      [],
 		      ['*(pasc'	=> 'Ascending (default)' => 'sorter'],
@@ -421,6 +422,7 @@ sub children {			# return children of given text path
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
 	$m->checked('pmid')   ? sort { $a->time(1) <=> $b->time(1) } @$path :
 	$m->checked('plast')  ? sort { $a->time(2) <=> $b->time(2) } @$path :
+	$m->checked('pcount') ? sort { $a->count <=> $b->count } @$path :
 	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
     return $m->checked('picsfirst') ? $n : $n ? $n + @path : 0,
