@@ -73,6 +73,19 @@ sub savepathfile {
 	  file_id => $id });
 }
 
+BEGIN {
+    my $done = 0;
+    sub commit {
+	my($self) = @_;
+	unless ($done == time) {
+	    $self->schema->txn_commit;
+	    # status "checked @ " . localtime $done;
+	    $self->schema->txn_begin;
+	    $done = time;
+	}
+    }
+}
+
 sub updatecaptions {
     my($self) = @_;
     print "update [Captions] in the tree\n";
@@ -94,16 +107,34 @@ sub updatecaptions {
     # TODO: fix captions that disappeared or changed
 }
 
-sub updatefaces {
-    my($self) = @_;
-    print "update [Faces] contacts in the tree\n";
-    my $pics = $self->schema->resultset('PathView')->search(
-	{contact_id => { '!=' => undef } },
-	{ group_by => [ qw/file_id contact_id/ ] });
-    while (my $pic = $pics->next) {
-	my $name = $pic->contact or next;
-#	warn "/[Faces]/$name/ in ", $pic->path, $pic->basename;
-	$self->savepathfile("/[Faces]/$name/", $pic->file_id);
+{
+    my $alias;
+    sub updatefaces {
+	my($self) = @_;
+	$alias ||= $self->{lpdb}->conf('alias') || {};
+	print "update [Faces] contacts in the tree\n";
+	my $pics = $self->schema->resultset('PathView')->search(
+	    {contact_id => { '!=' => undef } },
+	    { group_by => [ qw/file_id contact_id/ ] });
+#	$self->schema->txn_begin;
+	while (my $pic = $pics->next) {
+	    my $name = $pic->contact or next;
+	    if ($alias->{$name}) {
+		warn "$name merged into $alias->{$name}";
+		my $old = $self->schema->resultset('Path')->search(
+		    { path => { like => "/[Faces]/$name/%" } });
+		$old->delete;
+		(my $tmp = $alias->{$name}) =~ s/ +//g;
+		$old = $self->schema->resultset('PathCache')->search(
+		    { cache => { like => "%/[Faces]/$tmp/%" } });
+		$old->delete;
+		$name = $alias->{$name};
+	    }
+	    # warn "/[Faces]/$name/ in ", $pic->path, $pic->basename;
+	    $self->savepathfile("/[Faces]/$name/", $pic->file_id);
+	    # $self->commit;
+	}
+#	$self->schema->txn_commit;
     }
 }
 
