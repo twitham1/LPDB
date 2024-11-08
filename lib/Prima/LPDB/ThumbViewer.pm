@@ -407,16 +407,17 @@ sub children {			# return children of given text path
 	time => { '>', time - 31 * 86400 };
 
     # filtered/sorted paths, [pics,gals], duration from cache or DB
-    my($path, $file, $dur, $list) =
+    my($path, $list, $dur) =
 	$self->vfs->pathpics($parent, \@$filter, \@sort);
     my $n = 0;
     if ($id and $list =~ /(.*) $id,/) { # locate position of item in list
 	$n = split ' ', $1;
 	# warn "--- $id found at position $n";
     }
+    my $file = [ split ' ', $list ];
     $self->{duration} = $dur;
     $self->{galleries} = 0;
-    $self->{galleries} = $file->[-1][1] if @$file > 0;
+    $self->{galleries} = $1 if $list and $list =~ /,(\d+)$/;
     my @path =			# sort paths per menu selection
     	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
 	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
@@ -437,13 +438,12 @@ sub item {	    # return the path or picture object at given index
     my($self, $index, $gallery) = @_;
     my $this = $self->{items}[$index];
     $this or warn "index $index not found" and return;
-    if ('ARRAY' eq ref $this) {	# [ file_id, dir_number ]
-	return $gallery ? $this->[1]
-	    : $self->vfs ? $self->vfs->picture($this->[0])
-	    : undef;
-    }
-    elsif ($this->isa('LPDB::Schema::Result::Path')) {
+    if ($this->isa('LPDB::Schema::Result::Path')) {
 	return $gallery ? -1 : $this;
+    } elsif ($this =~ /(\d+),(\d+)/) {
+	return $gallery ? $2
+	    : $self->vfs ? $self->vfs->picture($1)
+	    : undef
     }				# else picture lookup, slower:
     return;
 }
@@ -521,7 +521,8 @@ sub current {			# path to current selected item
     my $idx = $self->focusedItem;
     my $this = $self->item($idx);
     $self->cwd . ($this->basename =~ m{/$} ? $this->basename
-		  : '/' . $self->{items}[$idx][0]);
+		  # : '/' . $self->{items}[$idx][0]);
+		  : '/' . (split ',', $self->{items}[$idx])[0]);
 }
 
 sub ids {	       # file_id [contact_id] of the given pic in path
@@ -614,19 +615,15 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 sub xofy {	      # find pic position in current gallery directory
     my($self, $me) = @_;
     my $max = $self->count;
-    my $this = $self->{items}[$me];
-    'ARRAY' eq ref $this or return (0, 0);
-    my $dir = $this->[1];
+    my $this = $self->{items}[$me] or return (0, 0);
+    $this =~ /,(\d+)/ or return (0, 0);
+    my $dir = $1;
     my $first = $me;
-    while ($first > -1
-	   and 'ARRAY' eq ref $self->{items}[$first]
-	   and $self->{items}[$first][1] == $dir) {
+    while ($first > -1 and $self->{items}[$first] =~ /,$dir\b/) {
 	$first--;
     }
     my $last = $me;
-    while ($last < $max
-	   and 'ARRAY' eq ref $self->{items}[$last]
-	   and $self->{items}[$last][1] == $dir) {
+    while ($last < $max and $self->{items}[$last] =~ /,$dir\b/) {
 	$last++;
     }
     $last--;

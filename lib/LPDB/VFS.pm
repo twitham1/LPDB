@@ -260,11 +260,7 @@ sub pathpics {		     # return paths and pictures in given path
 	$self->schema->resultset('PathCache')->update_or_create(
 	    { cache => $string, list => $list });
     }
-    # warn "list: $list";
-    my @pics;
-    map { push @pics, [ split ',', $_ ] } split ' ', $list;
-    # warn Dumper "pics=", \@pics, 'dur=', $dur;
-    return [ $paths->all ], \@pics, $dur, $list;
+    return [ $paths->all ], $list, $dur;
 }
 
 sub related {		      # paths related to given path or picture
