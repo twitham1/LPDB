@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS Directories (
    begin	INTEGER,
    end		INTEGER
    );
-CREATE INDEX IF NOT EXISTS dir_index ON Directories (directory);
-CREATE INDEX IF NOT EXISTS dir_begin_index ON Directories (begin);
-CREATE INDEX IF NOT EXISTS dir_end_index ON Directories (end);
+CREATE INDEX IF NOT EXISTS Directories_directory ON Directories (directory);
+CREATE INDEX IF NOT EXISTS Directories_begin ON Directories (begin);
+CREATE INDEX IF NOT EXISTS Directories_end ON Directories (end);
 
 ---------------------------------------- PICTURES
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -77,11 +77,11 @@ CREATE TABLE IF NOT EXISTS Pictures (
 	 ON UPDATE CASCADE
    );
 
-CREATE INDEX IF NOT EXISTS basename_index ON Pictures (basename);
-CREATE INDEX IF NOT EXISTS caption_index ON Pictures (caption);
-CREATE INDEX IF NOT EXISTS time_index ON Pictures (time);
-CREATE INDEX IF NOT EXISTS bytes_index ON Pictures (bytes);
-CREATE INDEX IF NOT EXISTS pictures_dir_index ON Pictures (dir_id);
+CREATE INDEX IF NOT EXISTS Pictures_basename ON Pictures (basename);
+CREATE INDEX IF NOT EXISTS Pictures_caption ON Pictures (caption);
+CREATE INDEX IF NOT EXISTS Pictures_time ON Pictures (time);
+CREATE INDEX IF NOT EXISTS Pictures_bytes ON Pictures (bytes);
+CREATE INDEX IF NOT EXISTS Pictures_dir_id ON Pictures (dir_id);
 
 ---------------------------------------- Virtual File System
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS Paths (
    path		TEXT UNIQUE NOT NULL,
    parent_id	INTEGER
    );
-CREATE INDEX IF NOT EXISTS path_index ON Paths (path);
+CREATE INDEX IF NOT EXISTS Paths_path ON Paths (path);
 INSERT OR REPLACE INTO Paths (path_id, path, parent_id) VALUES (1, '/', 0);
 
 ---------------------------------------- PICTURE PATH many2many
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS Tags (
    tag_id	INTEGER PRIMARY KEY NOT NULL,
    tag		TEXT UNIQUE NOT NULL);
 
-CREATE UNIQUE INDEX IF NOT EXISTS tag_index ON Tags (tag);
+CREATE UNIQUE INDEX IF NOT EXISTS Tags_tag ON Tags (tag);
 
 ---------------------------------------- PICTURE TAGS many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -166,9 +166,9 @@ CREATE TABLE IF NOT EXISTS Albums (
    description	TEXT
    );
 
-CREATE UNIQUE INDEX IF NOT EXISTS album_name_index ON Albums (album);
-CREATE INDEX IF NOT EXISTS album_place_index ON Albums (place);
-CREATE INDEX IF NOT EXISTS album_description_index ON Albums (description);
+CREATE UNIQUE INDEX IF NOT EXISTS Albums_album ON Albums (album);
+CREATE INDEX IF NOT EXISTS Albums_place ON Albums (place);
+CREATE INDEX IF NOT EXISTS Albums_description ON Albums (description);
 
 ---------------------------------------- PICTURE ALBUM many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -208,9 +208,9 @@ CREATE TABLE IF NOT EXISTS Contacts (
    death	INTEGER
    );
 
-CREATE INDEX IF NOT EXISTS contact_hexid_index ON Contacts (hexid);
-CREATE INDEX IF NOT EXISTS contact_name_index ON Contacts (contact);
-CREATE INDEX IF NOT EXISTS contact_email_index ON Contacts (email);
+CREATE INDEX IF NOT EXISTS Contacts_hexid ON Contacts (hexid);
+CREATE INDEX IF NOT EXISTS Contacts_contact ON Contacts (contact);
+CREATE INDEX IF NOT EXISTS Contacts_email ON Contacts (email);
 
 ---------------------------------------- FACES many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -246,10 +246,10 @@ CREATE TABLE IF NOT EXISTS Faces (
 	 ON UPDATE CASCADE
 ) WITHOUT ROWID;
 
-CREATE INDEX IF NOT EXISTS face_index ON Faces (dir_id, file_id, contact_id);
-CREATE INDEX IF NOT EXISTS face_d_index ON Faces (dir_id);
-CREATE INDEX IF NOT EXISTS face_f_index ON Faces (file_id);
-CREATE INDEX IF NOT EXISTS face_c_index ON Faces (contact_id);
+CREATE INDEX IF NOT EXISTS Faces_dir_id_file_id_contact_id ON Faces (dir_id, file_id, contact_id);
+CREATE INDEX IF NOT EXISTS Faces_dir_id ON Faces (dir_id);
+CREATE INDEX IF NOT EXISTS Faces_file_id ON Faces (file_id);
+CREATE INDEX IF NOT EXISTS Faces_contact_id ON Faces (contact_id);
 
 ---------------------------------------- PATHCACHE
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS NameValue (
    value	TEXT
    );
 
-CREATE UNIQUE INDEX IF NOT EXISTS nv_name_index ON NameValue (name);
+CREATE UNIQUE INDEX IF NOT EXISTS NameValue_name ON NameValue (name);
 
 --------- establish the base of the trees and zero indexes
 INSERT INTO Directories (dir_id, directory) VALUES (0, '//')
@@ -289,3 +289,34 @@ INSERT INTO Pictures (file_id, dir_id, basename) VALUES (0, 0, 'ALL')
    ON CONFLICT(file_id) DO UPDATE SET (dir_id, basename) = (0, 'ALL');
 INSERT INTO Contacts (contact_id, contact, email) VALUES (0, '', '')
    ON CONFLICT(contact_id) DO UPDATE SET (contact, email) = ('', '');
+
+---- from .lint fkey-indexes:
+CREATE INDEX IF NOT EXISTS 'PictureAlbum_album_id' ON 'PictureAlbum'('album_id');
+CREATE INDEX IF NOT EXISTS 'PictureAlbum_file_id' ON 'PictureAlbum'('file_id');
+CREATE INDEX IF NOT EXISTS 'PicturePath_path_id' ON 'PicturePath'('path_id');
+CREATE INDEX IF NOT EXISTS 'PicturePath_file_id' ON 'PicturePath'('file_id');
+CREATE INDEX IF NOT EXISTS 'PictureTag_tag_id' ON 'PictureTag'('tag_id');
+CREATE INDEX IF NOT EXISTS 'PictureTag_file_id' ON 'PictureTag'('file_id');
+
+--- these indexes were replaced by standard names in version to 0.6:
+DROP INDEX IF EXISTS dir_index;
+DROP INDEX IF EXISTS dir_begin_index;
+DROP INDEX IF EXISTS dir_end_index;
+DROP INDEX IF EXISTS basename_index;
+DROP INDEX IF EXISTS caption_index;
+DROP INDEX IF EXISTS time_index;
+DROP INDEX IF EXISTS bytes_index;
+DROP INDEX IF EXISTS pictures_dir_index;
+DROP INDEX IF EXISTS path_index;
+DROP INDEX IF EXISTS tag_index;
+DROP INDEX IF EXISTS album_name_index;
+DROP INDEX IF EXISTS album_place_index;
+DROP INDEX IF EXISTS album_description_index;
+DROP INDEX IF EXISTS contact_hexid_index;
+DROP INDEX IF EXISTS contact_name_index;
+DROP INDEX IF EXISTS contact_email_index;
+DROP INDEX IF EXISTS face_index;
+DROP INDEX IF EXISTS face_d_index;
+DROP INDEX IF EXISTS face_f_index;
+DROP INDEX IF EXISTS face_c_index;
+DROP INDEX IF EXISTS nv_name_index;
