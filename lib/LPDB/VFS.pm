@@ -16,6 +16,7 @@ use warnings;
 use POSIX qw/strftime/;
 use LPDB::Schema;
 use LPDB::Schema::Object;	# object extensions by twitham
+use Data::Dumper;
 
 sub new {
     my($class, $lpdb) = @_;
@@ -199,27 +200,34 @@ sub pathobject {		# return object of given path
 
 sub pathpics {		     # return paths and pictures in given path
     my($self, $parent, $filter, $sort) = @_;
-    my @filter;
-    @filter = @$filter if $filter;
+    $filter or $filter = [];
     $parent =~ s{/+}{/};	# cleanup
     my $id = $self->{id};
     if ($parent and my $obj =
 	$self->schema->resultset('Path')->find(
-	    { path => $parent })) {
+	    { path => $parent },
+	    { columns => qw/path_id/})) {
 	$id =  $obj->path_id;
     }
     $self->{id} = $id;
+
+# sqlite> select MIN(time),AVG(time),MAX(time),count(distinct file_id) from PathView where path like "/[Folders]/%";
+# 1213854021|1482244816.30303|1627612772|32
+
     my $paths = $self->schema->resultset('Path')->search(
 	{ parent_id => $id });
+    my @path;
+    for my $one ($paths->all) {
+	push @path, $one->path_id;
+    }
     my $dur = 0;		# total video duration
 
-    use Data::Dumper;		# cache to the database
     local $Data::Dumper::Terse = 1;
     (my $string = Dumper($parent, $filter, $sort)) =~ s/\n//g;
     $string =~ s/ +//g;
-    my $list = '';
+    my $list = '';		# cache to the database
     if (my $cache = $self->schema->resultset('PathCache')->find(
-    	    { cache => $string })) {
+	    { cache => $string })) {
 	$list = $cache->list;
     # if (0) {
 	warn "cache hit on: $string -> ", length($list), " bytes";
@@ -227,7 +235,7 @@ sub pathpics {		     # return paths and pictures in given path
     } else {	    # not in cache: filter/sort and save list in cache
 
 	my $pics = $self->schema->resultset('Picture')->search(
-	    { path_id => $id, @filter },
+	    { path_id => $id, @$filter },
 	    { order_by => $sort || [],
 	      prefetch => [ qw/picture_paths dir picture_tags faces/],
 	      columns => [ qw/file_id dir_id duration/ ],
@@ -251,7 +259,7 @@ sub pathpics {		     # return paths and pictures in given path
 		$dur += $one->duration || 0;
 	    }
 	    chomp $list;
-	} else {	 # no sort, instant DB order, checkerboard!
+	} else {	    # no sort, instant DB order, checkerboard!
 	    $list = join '', map { " $_," . ++$gal }
 	    $pics->get_column('file_id')->all;
 	    map { $dur += $_ || 0 }
@@ -260,7 +268,7 @@ sub pathpics {		     # return paths and pictures in given path
 	$self->schema->resultset('PathCache')->update_or_create(
 	    { cache => $string, list => $list });
     }
-    return [ $paths->all ], $list, $dur;
+    return \@path, $list, $dur;
 }
 
 sub related {		      # paths related to given path or picture
@@ -288,6 +296,15 @@ sub picture {			# return picture object of given ID
     $self->{rsallpics} ||=
 	$self->schema->resultset('Picture');
     my $obj = $self->{rsallpics}->find($id);
+#    warn "vfs picture: $id = $obj\n";
+    return $obj;
+}
+
+sub path {			# return path object of given ID
+    my($self, $id) = @_;
+    $self->{rsallpaths} ||=
+	$self->schema->resultset('Path');
+    my $obj = $self->{rsallpaths}->find($id);
 #    warn "vfs picture: $id = $obj\n";
     return $obj;
 }

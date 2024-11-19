@@ -26,7 +26,7 @@ sub resultset {		 # all files below logical path, in time order
 	{order_by => { -asc => 'time' },
 	 group_by => 'file_id',
 	 columns => [ qw/time file_id dir_id/ ],
-	 # cache => 1,		# does this work?
+	 cache => 1,		# does this work?
     	});
     return $self->{resultset};
 }

@@ -25,22 +25,27 @@ CREATE VIEW PathView AS
    LEFT JOIN Contacts		USING ( contact_id );
    -- TODO: add joins to picasa metadata here
 
+-- CREATE VIEW PathView2 AS
+--    WITH stats(x) AS (
+--       SELECT MIN(time),AVG(time),MAX(time),COUNT(DISTINCT file_id) FROM PathView WHERE path LIKE x
+--    )
+
 -- experimental stats in 1 view
 -- TODO: fix bug that files are counted multiple times
 DROP VIEW IF EXISTS PathStats;
 
-CREATE VIEW PathStats AS
-   SELECT
-      Paths.path_id AS path_id,
-      COUNT(Pictures.file_id) AS files,
-      MIN(Pictures.time) AS mintime,
-      MAX(Pictures.time) AS maxtime,
-      SUM(Pictures.bytes) AS totalbytes,
-      SUM(Pictures.width * Pictures.height) AS totalpixels
-   FROM
-      Paths
-   LEFT JOIN PicturePath ON Paths.path_id = PicturePath.path_id
-   LEFT JOIN Pictures ON Pictures.file_id = PicturePath.file_id;
+-- CREATE VIEW PathStats AS
+--    SELECT
+--       Paths.path_id AS path_id,
+--       COUNT(Pictures.file_id) AS files,
+--       MIN(Pictures.time) AS mintime,
+--       MAX(Pictures.time) AS maxtime,
+--       SUM(Pictures.bytes) AS totalbytes,
+--       SUM(Pictures.width * Pictures.height) AS totalpixels
+--    FROM
+--       Paths
+--    LEFT JOIN PicturePath ON Paths.path_id = PicturePath.path_id
+--    LEFT JOIN Pictures ON Pictures.file_id = PicturePath.file_id;
 
 -- CREATE VIEW PathStats AS
 --    SELECT

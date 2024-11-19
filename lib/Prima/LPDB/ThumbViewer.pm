@@ -346,7 +346,7 @@ sub sorter {	    # applies current sort/filter via children of goto
     $self->goto($self->current);
 }
 
-sub children {			# return children of given text path
+sub children {			  # return children of given text path
     my($self, $parent, $id) = @_; # id to find in the path
     $parent ||= '/';
     # warn "children of $parent";
@@ -391,8 +391,8 @@ sub children {			# return children of given text path
 
     $m->checked('portrait') and push @$filter,
 	width => { '<', \'height' }; # string ref for literal SQL
-    $m->checked('landscape') and push @$filter,
-	width => { '>', \'height' }; # string ref for literal SQL
+		   $m->checked('landscape') and push @$filter,
+		       width => { '>', \'height' }; # string ref for literal SQL
 
     $m->checked('pictures') and push @$filter,
 	duration => { '=', undef };
@@ -418,16 +418,34 @@ sub children {			# return children of given text path
     $self->{duration} = $dur;
     $self->{galleries} = 0;
     $self->{galleries} = $1 if $list and $list =~ /,(\d+)$/;
-    my @path =			# sort paths per menu selection
-    	$m->checked('pname')  ? sort { $a->path cmp $b->path } @$path :
-	$m->checked('pfirst') ? sort { $a->time(0) <=> $b->time(0) } @$path :
-	$m->checked('pmid')   ? sort { $a->time(1) <=> $b->time(1) } @$path :
-	$m->checked('plast')  ? sort { $a->time(2) <=> $b->time(2) } @$path :
-	$m->checked('pcount') ? sort { $a->count <=> $b->count } @$path :
-	$m->checked('prnd')   ? sort { rand(1) <=> rand(1) } @$path : @$path;
+    my @path = @$path;
+    # if (my $v = $self->vfs) {
+    my $v = $self;
+    @path =			# sort paths per menu selection
+	$m->checked('pname')  ?
+	sort { $v->pid($a)->path cmp $v->pid($b)->path } @$path :
+	$m->checked('pfirst') ?
+	sort { $v->pid($a)->time(0) <=> $v->pid($b)->time(0) } @$path :
+	$m->checked('pmid')   ?
+	sort { $v->pid($a)->time(1) <=> $v->pid($b)->time(1) } @$path :
+	$m->checked('plast')  ?
+	sort { $v->pid($a)->time(2) <=> $v->pid($b)->time(2) } @$path :
+	$m->checked('pcount') ?
+	sort { $v->pid($a)->count <=> $v->pid($b)->count } @$path :
+	$m->checked('prnd')   ?
+	sort { rand(1) <=> rand(1) } @$path : @$path;
     @path = reverse @path if $m->checked('pdsc');
     return $m->checked('picsfirst') ? $n : $n ? $n + @path : 0,
 	[  $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
+}
+
+my %pathid;
+sub pid {			# cached path object of given id
+    my($self, $id) = @_;
+    unless ($pathid{$id}) {
+	$pathid{$id} = $self->vfs->path($id);
+    }
+    return $pathid{$id};
 }
 
 sub duration {			# total video duration
@@ -438,11 +456,13 @@ sub item {	    # return the path or picture object at given index
     my($self, $index, $gallery) = @_;
     my $this = $self->{items}[$index];
     $this or warn "index $index not found" and return;
-    if ($this->isa('LPDB::Schema::Result::Path')) {
-	return $gallery ? -1 : $this;
-    } elsif ($this =~ /(\d+),(\d+)/) {
+    if ($this =~ /(\d+),(\d+)/) {
 	return $gallery ? $2
 	    : $self->vfs ? $self->vfs->picture($1)
+	    : undef
+    } elsif ($this =~ /(\d+)/) {
+	return $gallery ? -1
+	    : $self->vfs ? $self->vfs->path($1)
 	    : undef
     }				# else picture lookup, slower:
     return;
