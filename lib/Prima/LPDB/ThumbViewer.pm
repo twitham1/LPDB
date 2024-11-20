@@ -84,6 +84,8 @@ sub profile_default
 		      ['pmid'	=> 'Middle Time'	=> 'sorter'],
 		      ['plast'	=> 'End Time'		=> 'sorter'],
 		      ['pcount'	=> 'Picture Count'	=> 'sorter'],
+		      ['pbytes'	=> 'Total Size in Bytes' => 'sorter'],
+		      ['pstars'	=> 'Total Stars'	=> 'sorter'],
 		      [')prnd'	=> 'Random'		=> 'sorter'],
 		      [],
 		      ['*(pasc'	=> 'Ascending (default)' => 'sorter'],
@@ -351,32 +353,48 @@ sub children {			  # return children of given text path
     $parent ||= '/';
     # warn "children of $parent";
     my $m = $self->popup;
-    my @sort;		      # menu sort options to database order_by
+    my(@psort, @sort);	      # menu sort options to database order_by
+
+    my $dsc = $m->checked('pdsc') ? '-desc' : '-asc';
+    if ($m->checked('pname')) {
+	push @psort,
+	{ $dsc => 'path' };
+    } elsif ($m->checked('pfirst')) {
+	push @psort, { $dsc => 'beg'   }, { '-asc' => 'path' };
+    } elsif ($m->checked('pmid')) {
+	push @psort, { $dsc => 'mid'   }, { '-asc' => 'path' };
+    } elsif ($m->checked('plast')) {
+	push @psort, { $dsc => 'end'   }, { '-asc' => 'path' };
+    } elsif ($m->checked('pcount')) {
+	push @psort, { $dsc => 'files' }, { '-asc' => 'path' };
+    } elsif ($m->checked('pbytes')) {
+	push @psort, { $dsc => 'bytes' }, { '-asc' => 'path' };
+    } elsif ($m->checked('pstars')) {
+	push @psort, { $dsc => 'stars' }, { '-asc' => 'path' };
+    } elsif ($m->checked('prnd')) {
+	push @psort, { '-asc' => 'RANDOM()' };
+    }
+
+    $dsc = $m->checked('gdsc') ? '-desc' : '-asc';
     if ($m->checked('gname')) {
-	push @sort,
-	{ ($m->checked('gdsc') ? '-desc' : '-asc') => 'dir.directory' };
+	push @sort, { $dsc => 'dir.directory' };
     } elsif ($m->checked('gfirst')) {
-	push @sort,
-	{ ($m->checked('gdsc') ? '-desc' : '-asc') => 'dir.begin' },
-	{ '-asc' => 'dir.directory' };
+	push @sort, { $dsc => 'dir.begin' }, { '-asc' => 'dir.directory' };
     } elsif ($m->checked('glast')) {
-	push @sort,
-	{ ($m->checked('gdsc') ? '-desc' : '-asc') => 'dir.end' },
-	{ '-asc' => 'dir.directory' };
+	push @sort, { $dsc => 'dir.end'   }, { '-asc' => 'dir.directory' };
     }				# else gskip sorts by files only:
+
+    $dsc = $m->checked('idsc') ? '-desc' : '-asc';
     if ($m->checked('inone')) {	# DB order implies none of the above
 	@sort = ();
     } elsif ($m->checked('itime')) {
-	push @sort,
-	{ ($m->checked('idsc') ? '-desc' : '-asc') => 'me.time' };
+	push @sort, { $dsc => 'me.time' };
     } elsif ($m->checked('iname')) {
-	push @sort,
-	{ ($m->checked('idsc') ? '-desc' : '-asc') => 'me.basename' }
+	push @sort, { $dsc => 'me.basename' };
     } elsif ($m->checked('isize')) {
-	push @sort,
-	{ ($m->checked('idsc') ? '-desc' : '-asc') => 'me.bytes' }
+	push @sort, { $dsc => 'me.bytes' };
     } elsif ($m->checked('irnd')) {
-	push @sort, { '-asc' => 'RANDOM()' }
+	push @sort, { '-asc' => 'RANDOM()' };
     }
     my $filter = $self->{filter} = []; # menu filter options to database where
 
@@ -407,45 +425,19 @@ sub children {			  # return children of given text path
 	time => { '>', time - 31 * 86400 };
 
     # filtered/sorted paths, [pics,gals], duration from cache or DB
-    my($path, $list, $dur) =
-	$self->vfs->pathpics($parent, \@$filter, \@sort);
+    my($list, $dur) =
+	$self->vfs->pathpics($parent, \@$filter, \@sort, \@psort,
+			     $m->checked('picsfirst'));
     my $n = 0;
-    if ($id and $list =~ /(.*) $id,/) { # locate position of item in list
+    if ($id and $list =~ /(.*) \b$id\b/) { # locate position of item in list
 	$n = split ' ', $1;
-	# warn "--- $id found at position $n";
+	warn "--- $id found at position $n";
     }
     my $file = [ split ' ', $list ];
     $self->{duration} = $dur;
     $self->{galleries} = 0;
-    $self->{galleries} = $1 if $list and $list =~ /,(\d+)$/;
-    my @path = @$path;
-    # if (my $v = $self->vfs) {
-    my $v = $self;
-    @path =			# sort paths per menu selection
-	$m->checked('pname')  ?
-	sort { $v->pid($a)->path cmp $v->pid($b)->path } @$path :
-	$m->checked('pfirst') ?
-	sort { $v->pid($a)->time(0) <=> $v->pid($b)->time(0) } @$path :
-	$m->checked('pmid')   ?
-	sort { $v->pid($a)->time(1) <=> $v->pid($b)->time(1) } @$path :
-	$m->checked('plast')  ?
-	sort { $v->pid($a)->time(2) <=> $v->pid($b)->time(2) } @$path :
-	$m->checked('pcount') ?
-	sort { $v->pid($a)->count <=> $v->pid($b)->count } @$path :
-	$m->checked('prnd')   ?
-	sort { rand(1) <=> rand(1) } @$path : @$path;
-    @path = reverse @path if $m->checked('pdsc');
-    return $m->checked('picsfirst') ? $n : $n ? $n + @path : 0,
-	[  $m->checked('picsfirst') ? (@$file, @path) : (@path, @$file) ];
-}
-
-my %pathid;
-sub pid {			# cached path object of given id
-    my($self, $id) = @_;
-    unless ($pathid{$id}) {
-	$pathid{$id} = $self->vfs->path($id);
-    }
-    return $pathid{$id};
+    $self->{galleries} = $1 if $list and $list =~ /.*,(\d+)/;
+    return $n, [ split ' ', $list ];
 }
 
 sub duration {			# total video duration

@@ -6,7 +6,7 @@ DROP VIEW IF EXISTS PathView;
 
 CREATE VIEW PathView AS
    SELECT
-      Paths.*,
+      Paths.path_id, Paths.path, Paths.parent_id,
       Pictures.*,
       (Pictures.width * Pictures.height) AS pixels,
       (Directories.directory || Pictures.basename) AS filename,

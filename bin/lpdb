@@ -13,6 +13,7 @@ my $usage = "usage: $0 [options]
     --create	create  the Local Picture DataBase
     --upgrade	upgrade the Local Picture DataBase
     --importfiles	update the LPDB from the image and metadata files
+    --updatepaths	update [Path] recursive metadata summaries
     --updateflats	update the [Flats] tree from the LPDB
     --updatecaptions	update the [Captions] tree from the LPDB
     --updatefaces	update the [Faces] tree from the LPDB
@@ -20,7 +21,7 @@ my $usage = "usage: $0 [options]
     --clean	clean the LPDB
     --all	do all of the above, a full import or refresh\n";
 
-my @opt = qw/create upgrade importfiles updateflats
+my @opt = qw/create upgrade importfiles updatepaths updateflats
     updatecaptions updatefaces updatestars clean all/;
 my %opt;
 GetOptions(\%opt, @opt)
@@ -51,6 +52,8 @@ if ($opt{importfiles}) {	# TODO: configurable {ext}
     }
     $lpdb->importfiles('.');
 }    
+
+$opt{updatepaths}	and $lpdb->vfs->updatepaths;
 
 $opt{updateflats}	and $lpdb->vfs->updateflats;
 

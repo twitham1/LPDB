@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS Directories (
    end		INTEGER
    );
 CREATE INDEX IF NOT EXISTS Directories_directory ON Directories (directory);
+CREATE INDEX IF NOT EXISTS Directories_parent_id ON Directories (parent_id);
 CREATE INDEX IF NOT EXISTS Directories_begin ON Directories (begin);
 CREATE INDEX IF NOT EXISTS Directories_end ON Directories (end);
 
@@ -81,6 +82,8 @@ CREATE INDEX IF NOT EXISTS Pictures_basename ON Pictures (basename);
 CREATE INDEX IF NOT EXISTS Pictures_caption ON Pictures (caption);
 CREATE INDEX IF NOT EXISTS Pictures_time ON Pictures (time);
 CREATE INDEX IF NOT EXISTS Pictures_bytes ON Pictures (bytes);
+CREATE INDEX IF NOT EXISTS Pictures_stars ON Pictures (stars);
+CREATE INDEX IF NOT EXISTS Pictures_duration ON Pictures (duration);
 CREATE INDEX IF NOT EXISTS Pictures_dir_id ON Pictures (dir_id);
 
 ---------------------------------------- Virtual File System
@@ -88,8 +91,15 @@ INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
    ('Paths', 'Virtual logical collections of pictures');
 
 INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) VALUES
-   ('Paths', 'path', 'Logical path to a collection of pictures'),
-   ('Paths', 'parent_id', 'ID of parent path, 0 for / root');
+   ('Paths', 'path',	'Logical path to a collection of pictures'),
+   ('Paths', 'parent_id', 'ID of parent path, 0 for / root'),
+   ('Paths', 'files',	'Total unique image files below this path'),
+   ('Paths', 'beg',	'Beginning time of images below this path'),
+   ('Paths', 'mid',	'Mean time of images below this path'),
+   ('Paths', 'end',	'Ending time of images below this path'),
+   ('Paths', 'bytes',	'Total bytes in files below this path'),
+   ('Paths', 'stars',	'Total stars in files below this path'),
+   ('Paths', 'duration', 'Total seconds in video files below this path');
 
 CREATE TABLE IF NOT EXISTS Paths (
    path_id	INTEGER PRIMARY KEY NOT NULL,
@@ -97,7 +107,24 @@ CREATE TABLE IF NOT EXISTS Paths (
    parent_id	INTEGER
    );
 CREATE INDEX IF NOT EXISTS Paths_path ON Paths (path);
+CREATE INDEX IF NOT EXISTS Paths_parent_id ON Paths (parent_id);
 INSERT OR REPLACE INTO Paths (path_id, path, parent_id) VALUES (1, '/', 0);
+
+------ added in 0.6 for quicker sorting
+ALTER TABLE Paths ADD COLUMN files INTEGER;
+ALTER TABLE Paths ADD COLUMN beg   INTEGER;
+ALTER TABLE Paths ADD COLUMN mid   INTEGER;
+ALTER TABLE Paths ADD COLUMN end   INTEGER;
+ALTER TABLE Paths ADD COLUMN bytes INTEGER;
+ALTER TABLE Paths ADD COLUMN stars INTEGER;
+ALTER TABLE Paths ADD COLUMN duration REAL;
+CREATE INDEX IF NOT EXISTS Paths_files ON Paths (files);
+CREATE INDEX IF NOT EXISTS Paths_beg ON Paths (beg);
+CREATE INDEX IF NOT EXISTS Paths_mid ON Paths (mid);
+CREATE INDEX IF NOT EXISTS Paths_end ON Paths (end);
+CREATE INDEX IF NOT EXISTS Paths_bytes ON Paths (bytes);
+CREATE INDEX IF NOT EXISTS Paths_stars ON Paths (stars);
+CREATE INDEX IF NOT EXISTS Paths_duration ON Paths (duration);
 
 ---------------------------------------- PICTURE PATH many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES
@@ -290,7 +317,7 @@ INSERT INTO Pictures (file_id, dir_id, basename) VALUES (0, 0, 'ALL')
 INSERT INTO Contacts (contact_id, contact, email) VALUES (0, '', '')
    ON CONFLICT(contact_id) DO UPDATE SET (contact, email) = ('', '');
 
----- from .lint fkey-indexes:
+------ from .lint fkey-indexes:
 CREATE INDEX IF NOT EXISTS 'PictureAlbum_album_id' ON 'PictureAlbum'('album_id');
 CREATE INDEX IF NOT EXISTS 'PictureAlbum_file_id' ON 'PictureAlbum'('file_id');
 CREATE INDEX IF NOT EXISTS 'PicturePath_path_id' ON 'PicturePath'('path_id');
@@ -298,7 +325,7 @@ CREATE INDEX IF NOT EXISTS 'PicturePath_file_id' ON 'PicturePath'('file_id');
 CREATE INDEX IF NOT EXISTS 'PictureTag_tag_id' ON 'PictureTag'('tag_id');
 CREATE INDEX IF NOT EXISTS 'PictureTag_file_id' ON 'PictureTag'('file_id');
 
---- these indexes were replaced by standard names in version to 0.6:
+------ these indexes were replaced by standard names in version to 0.6:
 DROP INDEX IF EXISTS dir_index;
 DROP INDEX IF EXISTS dir_begin_index;
 DROP INDEX IF EXISTS dir_end_index;

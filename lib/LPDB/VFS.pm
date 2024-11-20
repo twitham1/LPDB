@@ -87,6 +87,45 @@ BEGIN {
     }
 }
 
+# sqlite> select MIN(time),AVG(time),MAX(time),count(distinct file_id) from PathView where path like "/[Folders]/%";
+# 1213854021|1482244816.30303|1627612772|32
+
+sub updatepaths {
+    my($self) = @_;
+    print "update total summary metadata of [Paths] in the tree\n";
+    my $paths = $self->schema->resultset('Path')->search(
+	{},
+	{ order_by => 'path' });
+    # $self->schema->txn_begin;
+    while (my $path = $paths->next) {
+	my $rs = $self->schema->resultset('PathView')->search(
+	    { path => { like => $path->path . '%' }},
+	    { group_by => 'file_id' });
+	print join("\t", $path->path,
+		   $rs->count,
+		   $rs->get_column('time')->min,
+		   int($rs->get_column('time')->func('avg')),
+		   $rs->get_column('time')->max,
+		   $rs->get_column('bytes')->func('total'),
+		   $rs->get_column('duration')->func('total'),
+		   $rs->get_column('stars')->func('total'),
+	    ), "\n";
+	my $p = $self->schema->resultset('Path')->find(
+	    { path_id => $path->path_id });
+	$p->update({
+	    files	=> $rs->count,
+	    beg		=> $rs->get_column('time')->min,
+	    mid		=> int($rs->get_column('time')->func('avg')),
+	    end		=> $rs->get_column('time')->max,
+	    bytes	=> $rs->get_column('bytes')->func('total'),
+	    stars	=> $rs->get_column('stars')->func('total'),
+	    duration	=> int($rs->get_column('duration')->func('total')),
+		   });
+	# $self->commit;
+    }
+    # $self->schema->txn_commit;
+}
+
 sub updatecaptions {
     my($self) = @_;
     print "update [Captions] in the tree\n";
@@ -199,40 +238,41 @@ sub pathobject {		# return object of given path
 }
 
 sub pathpics {		     # return paths and pictures in given path
-    my($self, $parent, $filter, $sort) = @_;
-    $filter or $filter = [];
-    $parent =~ s{/+}{/};	# cleanup
-    my $id = $self->{id};
-    if ($parent and my $obj =
-	$self->schema->resultset('Path')->find(
-	    { path => $parent },
-	    { columns => qw/path_id/})) {
-	$id =  $obj->path_id;
-    }
-    $self->{id} = $id;
-
-# sqlite> select MIN(time),AVG(time),MAX(time),count(distinct file_id) from PathView where path like "/[Folders]/%";
-# 1213854021|1482244816.30303|1627612772|32
-
-    my $paths = $self->schema->resultset('Path')->search(
-	{ parent_id => $id });
-    my @path;
-    for my $one ($paths->all) {
-	push @path, $one->path_id;
-    }
-    my $dur = 0;		# total video duration
+    my($self, $parent, $filter, $sort, $psort, $picsfirst) = @_;
 
     local $Data::Dumper::Terse = 1;
-    (my $string = Dumper($parent, $filter, $sort)) =~ s/\n//g;
-    $string =~ s/ +//g;
+    local $Data::Dumper::Indent = 0;
+    (my $string = Dumper($parent, $filter, $sort, $psort, $picsfirst)) =~ s/\n//g;
+    $string =~ s/ => /=>/g;
     my $list = '';		# cache to the database
+    my $dur = 0;		# total video duration
     if (my $cache = $self->schema->resultset('PathCache')->find(
 	    { cache => $string })) {
 	$list = $cache->list;
-    # if (0) {
-	warn "cache hit on: $string -> ", length($list), " bytes";
+	my $len = length $list;
+	warn "cache hit on: $string ->\n", $len < 150 ? $list : "$len bytes";
 
     } else {	    # not in cache: filter/sort and save list in cache
+
+	$filter or $filter = [];
+	$parent =~ s{/+}{/};	# cleanup
+	my $id = $self->{id};
+	if ($parent and my $obj =
+	    $self->schema->resultset('Path')->find(
+		{ path => $parent },
+		{ columns => qw/path_id/})) {
+	    $id =  $obj->path_id;
+	}
+	$self->{id} = $id;
+
+	my $paths = $self->schema->resultset('Path')->search(
+	    { parent_id => $id },
+	    { order_by => $psort || [],
+	      columns => [ qw/path_id/ ]});
+	my @path;
+	for my $one ($paths->all) {
+	    push @path, $one->path_id;
+	}
 
 	my $pics = $self->schema->resultset('Picture')->search(
 	    { path_id => $id, @$filter },
@@ -265,10 +305,12 @@ sub pathpics {		     # return paths and pictures in given path
 	    map { $dur += $_ || 0 }
 	    $pics->get_column('duration')->all;
 	}
+	$list = $picsfirst ? join(' ', $list, @path) : join(' ', @path, $list);
 	$self->schema->resultset('PathCache')->update_or_create(
 	    { cache => $string, list => $list });
     }
-    return \@path, $list, $dur;
+    # return \@path, $list, $dur;
+    return $list, $dur;
 }
 
 sub related {		      # paths related to given path or picture

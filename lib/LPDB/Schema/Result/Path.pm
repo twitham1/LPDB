@@ -43,6 +43,55 @@ Logical path to a collection of pictures
 
 ID of parent path, 0 for / root
 
+=head2 files
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Total unique image files below this path
+
+=head2 beg
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Beginning time of images below this path
+
+=head2 mid
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Mean time of images below this path
+
+=head2 end
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Ending time of images below this path
+
+=head2 bytes
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Total bytes in files below this path
+
+=head2 stars
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Total stars in files below this path
+
+=head2 duration
+
+  data_type: 'integer'
+  is_nullable: 1
+
+Total seconds in video files below this path
+
 =cut
 
 __PACKAGE__->add_columns(
@@ -51,6 +100,20 @@ __PACKAGE__->add_columns(
   "path",
   { data_type => "text", is_nullable => 0 },
   "parent_id",
+  { data_type => "integer", is_nullable => 1 },
+  "files",
+  { data_type => "integer", is_nullable => 1 },
+  "beg",
+  { data_type => "integer", is_nullable => 1 },
+  "mid",
+  { data_type => "integer", is_nullable => 1 },
+  "end",
+  { data_type => "integer", is_nullable => 1 },
+  "bytes",
+  { data_type => "integer", is_nullable => 1 },
+  "stars",
+  { data_type => "integer", is_nullable => 1 },
+  "duration",
   { data_type => "integer", is_nullable => 1 },
 );
 
@@ -108,8 +171,8 @@ Composing rels: L</picture_paths> -> file
 __PACKAGE__->many_to_many("files", "picture_paths", "file");
 
 
-# Created by DBIx::Class::Schema::Loader v0.07049 @ 2021-10-13 00:56:51
-# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:SWYs55YsguH2cnhWEKFtWA
+# Created by DBIx::Class::Schema::Loader v0.07049 @ 2024-11-19 23:53:55
+# DO NOT MODIFY THIS OR ANYTHING ABOVE! md5sum:Gi8UXSmISrknA9M2R/Lamw
 
 
 # You can replace this text with custom code or comments, and it will be preserved on regeneration
