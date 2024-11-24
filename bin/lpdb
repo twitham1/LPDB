@@ -10,19 +10,19 @@ use LPDB;
 use Getopt::Long;
 
 my $usage = "usage: $0 [options]
-    --create	create  the Local Picture DataBase
-    --upgrade	upgrade the Local Picture DataBase
+    --create		create  the Local Picture DataBase
+    --upgrade		upgrade the Local Picture DataBase
     --importfiles	update the LPDB from the image and metadata files
-    --updatepaths	update [Path] recursive metadata summaries
-    --updateflats	update the [Flats] tree from the LPDB
-    --updatecaptions	update the [Captions] tree from the LPDB
-    --updatefaces	update the [Faces] tree from the LPDB
-    --updatestars	update the [Stars] tree from the LPDB
-    --clean	clean the LPDB
-    --all	do all of the above, a full import or refresh\n";
+    --updateflats	update the [Flats]	tree from the LPDB
+    --updatecaptions	update the [Captions]	tree from the LPDB
+    --updatefaces	update the [Faces]	tree from the LPDB
+    --updatestars	update the [Stars]	tree from the LPDB
+    --clean		clean the LPDB of removed files
+    --updatepaths	update recursive metadata for logical [Paths]
+    --all		do all of the above, a full import or refresh\n";
 
-my @opt = qw/create upgrade importfiles updatepaths updateflats
-    updatecaptions updatefaces updatestars clean all/;
+my @opt = qw/create upgrade importfiles updateflats updatecaptions
+    updatefaces updatestars clean updatepaths all/;
 my %opt;
 GetOptions(\%opt, @opt)
     or die $usage;
@@ -53,8 +53,6 @@ if ($opt{importfiles}) {	# TODO: configurable {ext}
     $lpdb->importfiles('.');
 }    
 
-$opt{updatepaths}	and $lpdb->vfs->updatepaths;
-
 $opt{updateflats}	and $lpdb->vfs->updateflats;
 
 $opt{updatecaptions}	and $lpdb->vfs->updatecaptions;
@@ -64,6 +62,8 @@ $opt{updatefaces}	and $lpdb->vfs->updatefaces;
 $opt{updatestars}	and $lpdb->vfs->updatestars;
 
 $opt{clean}		and $lpdb->cleanup;
+
+$opt{updatepaths}	and $lpdb->vfs->updatepaths;
 
 $lpdb->disconnect;
 

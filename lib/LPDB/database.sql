@@ -104,20 +104,17 @@ INSERT OR REPLACE INTO column_comments (table_name, column_name, comment_text) V
 CREATE TABLE IF NOT EXISTS Paths (
    path_id	INTEGER PRIMARY KEY NOT NULL,
    path		TEXT UNIQUE NOT NULL,
-   parent_id	INTEGER
+   parent_id	INTEGER,
+   files	INTEGER,
+   beg		INTEGER,
+   mid		INTEGER,
+   end		INTEGER,
+   bytes	INTEGER,
+   stars	INTEGER,
+   duration	INTEGER
    );
 CREATE INDEX IF NOT EXISTS Paths_path ON Paths (path);
 CREATE INDEX IF NOT EXISTS Paths_parent_id ON Paths (parent_id);
-INSERT OR REPLACE INTO Paths (path_id, path, parent_id) VALUES (1, '/', 0);
-
------- added in 0.6 for quicker sorting
-ALTER TABLE Paths ADD COLUMN files INTEGER;
-ALTER TABLE Paths ADD COLUMN beg   INTEGER;
-ALTER TABLE Paths ADD COLUMN mid   INTEGER;
-ALTER TABLE Paths ADD COLUMN end   INTEGER;
-ALTER TABLE Paths ADD COLUMN bytes INTEGER;
-ALTER TABLE Paths ADD COLUMN stars INTEGER;
-ALTER TABLE Paths ADD COLUMN duration REAL;
 CREATE INDEX IF NOT EXISTS Paths_files ON Paths (files);
 CREATE INDEX IF NOT EXISTS Paths_beg ON Paths (beg);
 CREATE INDEX IF NOT EXISTS Paths_mid ON Paths (mid);
@@ -125,6 +122,7 @@ CREATE INDEX IF NOT EXISTS Paths_end ON Paths (end);
 CREATE INDEX IF NOT EXISTS Paths_bytes ON Paths (bytes);
 CREATE INDEX IF NOT EXISTS Paths_stars ON Paths (stars);
 CREATE INDEX IF NOT EXISTS Paths_duration ON Paths (duration);
+INSERT OR REPLACE INTO Paths (path_id, path, parent_id) VALUES (1, '/', 0);
 
 ---------------------------------------- PICTURE PATH many2many
 INSERT OR REPLACE INTO table_comments (table_name, comment_text) VALUES

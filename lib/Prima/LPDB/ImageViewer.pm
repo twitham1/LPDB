@@ -51,7 +51,7 @@ sub profile_default
 	    ['*@loop',     'Loop Slide Show',                      'slideshow'],
 	    ['slower',     'Slower Show',            'a', ord 'a', 'delayorzoom'],
 	    ['faster',     'Faster Show',            's', ord 's', 'delayorzoom'],
-	    ['@starspeed', 'Star Based Spee~d',      'd', ord 'd', 'slideshow'],
+	    ['@starspeed', 'Star ~Rated Speed',      'r', ord 'r', 'slideshow'],
 	    ['@autoplay',  'Auto Play ~Videos',      'v', ord 'v', 'slideshow'],
 	    [],
 	    ['fullscreen', '~Full Screen', 'f', ord 'f', sub { $_[0]->owner->fullscreen(-1) }],

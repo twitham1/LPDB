@@ -101,19 +101,12 @@ sub updatepaths {
 	my $rs = $self->schema->resultset('PathView')->search(
 	    { path => { like => $path->path . '%' }},
 	    { group_by => 'file_id' });
-	print join("\t", $path->path,
-		   $rs->count,
-		   $rs->get_column('time')->min,
-		   int($rs->get_column('time')->func('avg')),
-		   $rs->get_column('time')->max,
-		   $rs->get_column('bytes')->func('total'),
-		   $rs->get_column('duration')->func('total'),
-		   $rs->get_column('stars')->func('total'),
-	    ), "\n";
+	my $num = $rs->count;
+	print join("\t", $num, $path->path), "\n";
 	my $p = $self->schema->resultset('Path')->find(
 	    { path_id => $path->path_id });
 	$p->update({
-	    files	=> $rs->count,
+	    files	=> $num,
 	    beg		=> $rs->get_column('time')->min,
 	    mid		=> int($rs->get_column('time')->func('avg')),
 	    end		=> $rs->get_column('time')->max,
@@ -251,6 +244,7 @@ sub pathpics {		     # return paths and pictures in given path
 	$list = $cache->list;
 	my $len = length $list;
 	warn "cache hit on: $string ->\n", $len < 150 ? $list : "$len bytes";
+	$dur = $1 if $list =~ s/(\S+) //;
 
     } else {	    # not in cache: filter/sort and save list in cache
 
@@ -307,7 +301,7 @@ sub pathpics {		     # return paths and pictures in given path
 	}
 	$list = $picsfirst ? join(' ', $list, @path) : join(' ', @path, $list);
 	$self->schema->resultset('PathCache')->update_or_create(
-	    { cache => $string, list => $list });
+	    { cache => $string, list => "$dur $list" });
     }
     # return \@path, $list, $dur;
     return $list, $dur;
