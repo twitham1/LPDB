@@ -197,8 +197,10 @@ to Ungrouped.
 
 =item [Flats]
 
-Like B<Folders> but flattened to longer lists at a given depth in the
-tree.
+Like B<Folders> but deeper directories are stripped to flatten the
+galleries into fewer but longer image lists.  The number is the
+flattened depth so 1 is all images below the root directory in 1 long
+list.  The 2 is all images below depth 2 and so on.
 
 =item [Timeline]
 
@@ -216,12 +218,11 @@ Tag strings found in EXIF picture metadata.
 =item [Faces]
 
 Pictures of recognized named faces (Picasa only).  The B<c> key
-toggles face crops on the grid or face rectangles on the Image Viewer
-below.
+toggles face crops on the grid or face rectangles on the Image Viewer.
 
 =item [Stars]
 
-pictures marked with stars as favorites (Picasa only)
+Pictures marked with stars as favorites (Picasa only)
 
 =item [Albums]
 
@@ -381,7 +382,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2024 Timothy D Witham.
+Copyright 2013-2026 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
