@@ -139,6 +139,7 @@ sub put {	       # cid -1 is random video center not saved to DB
 	contact_id => $cid},
 	{columns => [qw/basename dir_id width height rotation duration/]});
     $picture or warn "$id/$cid not found" and return;
+#    $picture->bytes or warn "$id/$cid has no bytes" and return;
     my $path = $picture->pathtofile;
     my($row, $modified);
     if ($cid > -1) {		# not random video center
@@ -203,10 +204,12 @@ sub put {	       # cid -1 is random video center not saved to DB
 	    $i->size(_aspect($w, $h, @size));
 	} else {		# whole image
 	    $i = $in;
+	    # warn $picture->width, ' x ', $picture->height, " in $path";
 	    $i->size(_aspect($picture->width, $picture->height, @size));
 	}
     } else {		    # generate image containing the error text
-	my $e = "$@";
+	my $n = $picture->bytes || 0;
+	my $e = "$@" || "$id has $n bytes";
 	# warn "hello: ", $e;
 	my @s = ($SIZE, $SIZE);
 	my $b = 10;
@@ -227,6 +230,7 @@ sub put {	       # cid -1 is random video center not saved to DB
     }
     $cid == -1 and return $i;	# random video center, all done!
 
+    warn "thumbnailing $id/$cid = $path";
     my $data;
     open my $fh, '>', \$data
 	or die $!;
@@ -255,7 +259,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2023 Timothy D Witham.
+Copyright 2013-2026 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
