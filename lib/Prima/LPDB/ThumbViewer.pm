@@ -903,6 +903,13 @@ sub _draw_thumb { # pos 0 = full box, pos 1,2,3 = picture stack in 2/3 box
 	: $pos == 2 ? (($x1 + $x2)/2 - $dw/2, ($y1 + $y2)/2 - $dh/2) # center
 	: $pos == 3 ? ($x2 - $b - $dw, $y1 + $b) # South East
 	: ($x1, $y1));		# should never happen
+    unless ($b) {		# selected: zoom in on source
+	my $frac = 0.05;	# border to discard
+	$sx += $sw * $frac;
+	$sy += $sh * $frac;
+	$sw -= $sw * $frac * 2;
+	$sh -= $sh * $frac * 2;
+    }
     $canvas->put_image_indirect($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh,
 				$self->rop) or warn
 	"put_image failed ($im, $x, $y, $sx, $sy, $dw, $dh, $sw, $sh): $@";
@@ -1108,7 +1115,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2024 Timothy D Witham.
+Copyright 2013-2026 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
