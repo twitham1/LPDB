@@ -20,7 +20,8 @@ sub resultset {		 # all files below logical path, in time order
     $self->{resultset} and return $self->{resultset};
     my $schema = $self->result_source->schema;
     $self->{resultset} = $schema->resultset('PathView')->search(
-    	{path => { like => $self->path . '%'},
+	# {path => { like => $self->path . '%'},
+	{path => $self->path,
 	 time => { '!=' => undef },
 	 @{$self->{filter}} },
 	{order_by => { -asc => 'time' },

@@ -252,6 +252,7 @@ generating thumbnail stacks.
 
 sub stack { # stack of up to 3 paths (first middle last), for thumbnails
     my($self) = @_;
+    # warn "stack: $self -> $self->{stack}";
     $self->{stack} and return @{$self->{stack}}; # TODO: when to drop cache?
     my $rs = $self->resultset;
     my $num = $self->count

@@ -2,7 +2,7 @@ package LPDB::VFS;
 
 =head1 NAME
 
-LPDB::VFS - interact with the virtual file system of LPDB
+LPDB::VFS - interact with the Virtual File System of LPDB
 
 =head1 DESCRIPTION
 
@@ -44,34 +44,52 @@ sub dirfile { # similar to fileparse, but leave trailing / on directories
 
 # WRITING METHODS ------------------------------------------------------------
 
+sub picpath {
+    my($self, $pathid, $picid) = @_;
+    $pathid > 0 or return;
+    $self->schema->resultset('PicturePath')->find_or_create(
+	{ path_id => $pathid,
+	  file_id => $picid });
+}
+
 # add a path and its parents to the virtual Paths table (see also
 # similar _savedirs of Filesystem.pm)
 {
     my %id;			# cache: {path} = id
     sub savepath {		# recursive up to root /
-	my($self, $this) = @_;
-	$this =~ m@/$@ or return;
-	unless ($id{$this}) {
-	    # warn "saving path $this";
-	    my $obj = $self->schema->resultset('Path')->find_or_new(
-		{ path => $this });
-	    unless ($obj->in_storage) { # pre-existing?
-		my($dir, $file) = $self->dirfile($this);
-		$obj->parent_id($self->savepath($dir));
-		$obj->insert;
-	    }
-	    $id{$this} = $obj->path_id;
+	my($self, $this, $id) = @_;
+	$this eq '/' and return 1;
+	my $parent;
+	$this  =~ m@.+/$@ or
+	    $parent = $self->savepath("$this/", $id);
+	# unless ($id{$this}) {
+	# warn "saving path $this";
+	my $obj = $self->schema->resultset('Path')->find_or_new(
+	    { path => $this });
+	my($dir, $file) = $self->dirfile($this);
+	$obj->parent_id($parent || $self->savepath($dir, $id));
+	unless ($obj->in_storage) { # pre-existing?
+	    $obj->insert;
+	} else {
+	    $obj->update;
 	}
+	$id{$this} = $obj->path_id;
+	# }
+	# warn ">>>putting $id in $id{$this} for $this";
+	$self->picpath($id{$this}, $id);
 	return $id{$this};
     }
 }
+
 # connect a picture id to one logical path, creating it as needed
 sub savepathfile {
     my($self, $path, $id) = @_;
-    my $path_id = $self->savepath($path);
-    $self->schema->resultset('PicturePath')->find_or_create(
-	{ path_id => $path_id,
-	  file_id => $id });
+    $id or warn "ignoring null file_id for $path" and return;
+    $path =~ s{/$}{};
+    my $path_id = $self->savepath($path, $id);
+    # $self->schema->resultset('PicturePath')->find_or_create(
+    # 	{ path_id => $path_id,
+    # 	  file_id => $id });
 }
 
 BEGIN {
@@ -99,10 +117,11 @@ sub updatepaths {
     # $self->schema->txn_begin;
     while (my $path = $paths->next) {
 	my $rs = $self->schema->resultset('PathView')->search(
-	    { path => { like => $path->path . '%' }},
+	    # { path => { like => $path->path . '%' }},
+	    { path => $path->path },
 	    { group_by => 'file_id' });
 	my $num = $rs->count;
-	print join("\t", $num, $path->path), "\n";
+	print join("\t", "--", $num, $path->path), "\n";
 	my $p = $self->schema->resultset('Path')->find(
 	    { path_id => $path->path_id });
 	$p->update({
@@ -149,7 +168,7 @@ sub updatecaptions {
 	my $pics = $self->schema->resultset('PathView')->search(
 	    {contact_id => { '!=' => undef } },
 	    { group_by => [ qw/file_id contact_id/ ] });
-#	$self->schema->txn_begin;
+	$self->schema->txn_begin;
 	while (my $pic = $pics->next) {
 	    my $name = $pic->contact or next;
 	    if ($alias->{$name}) {
@@ -165,9 +184,9 @@ sub updatecaptions {
 	    }
 	    # warn "/[Faces]/$name/ in ", $pic->path, $pic->basename;
 	    $self->savepathfile("/[Faces]/$name/", $pic->file_id);
-	    # $self->commit;
+	    $self->commit;
 	}
-#	$self->schema->txn_commit;
+	$self->schema->txn_commit;
     }
 }
 
@@ -195,23 +214,39 @@ sub updateflats {
     my $schema = $self->schema;
     my $pics = $schema->resultset('Picture')->search(
 	undef,
-	{ columns => [ qw/dir_id file_id basename/ ] });
+	{ columns => [ qw/dir_id file_id basename time/ ] });
     my $done = time;
-    my $num;
+    # my $num;
+    $self->schema->txn_begin;
     while (my $pic = $pics->next) {
 	my $fid = $pic->file_id or next;
-	my $path = $pic->pathtofile;
+	(my $dir = my $path = $pic->pathtofile) =~ s{(.*/).*}{$1};
+
+	$self->savepathfile("/[Folders]/$dir", $pic->file_id);
+	if (my $time = $pic->time) {
+	    $self->savepathfile("/[Timeline]/All Time/", $pic->file_id);
+	    $self->savepathfile(strftime("/[Timeline]/Years/%Y/",
+					 localtime $time), $pic->file_id);
+	    $self->savepathfile(strftime("/[Timeline]/Months/%Y-%m-%b/",
+					 localtime $time), $pic->file_id);
+	}
+
 	my $n = $path =~ tr{/}{/} - 1;
+	$path =~ s{[^/]+$}{};
+	# warn "$n\t$path";
 	while ($n > 0 and $path =~ s{[^/]+/$}{}) {
+	    warn "$fid\t/[Flats]/$n/$path";
 	    $self->savepathfile("/[Flats]/$n/$path", $fid);
 	    $n--;
 	}
-	$num++;
-	unless ($done == time) {
-	    warn "checked $num @ " . localtime $done;
-	    $done = time;
-	}
+	# $num++;
+	# unless ($done == time) {
+	#     warn "checked $num @ " . localtime $done;
+	#     $done = time;
+	$self->commit;
+	# }
     }
+    $self->schema->txn_commit;
 }
 
 
@@ -235,12 +270,14 @@ sub pathpics {		     # return paths and pictures in given path
 
     local $Data::Dumper::Terse = 1;
     local $Data::Dumper::Indent = 0;
-    (my $string = Dumper($parent, $filter, $sort, $psort, $picsfirst)) =~ s/\n//g;
+    my $string = Dumper($parent, $filter, $sort, $psort, $picsfirst);
+    $string =~ s/\n//g;
     $string =~ s/ => /=>/g;
     my $list = '';		# cache to the database
     my $dur = 0;		# total video duration
     if (my $cache = $self->schema->resultset('PathCache')->find(
-	    { cache => $string })) {
+    # if (0 and my $cache = $self->schema->resultset('PathCache')->find(
+    	    { cache => $string })) {
 	$list = $cache->list;
 	my $len = length $list;
 	warn "cache hit on: $string ->\n", $len < 150 ? $list : "$len bytes";
@@ -249,7 +286,8 @@ sub pathpics {		     # return paths and pictures in given path
     } else {	    # not in cache: filter/sort and save list in cache
 
 	$filter or $filter = [];
-	$parent =~ s{/+}{/};	# cleanup
+#	$parent =~ s{/+}{/};	# cleanup
+	# my $pathpics = $parent =~ s{//$}{/} ? 1 : 0;
 	my $id = $self->{id};
 	if ($parent and my $obj =
 	    $self->schema->resultset('Path')->find(
@@ -258,46 +296,59 @@ sub pathpics {		     # return paths and pictures in given path
 	    $id =  $obj->path_id;
 	}
 	$self->{id} = $id;
+	my $pid;
+	(my $picshere = $parent) =~ s{/$}{};
+	warn "looking for $picshere";
+	if ($picshere and my $obj =
+	    $self->schema->resultset('Path')->find(
+		{ path => $picshere },
+		{ columns => qw/path_id/})) {
+	    $pid =  $obj->path_id;
+	    warn "found $pid for $picshere";
+	}
 
 	my $paths = $self->schema->resultset('Path')->search(
 	    { parent_id => $id },
 	    { order_by => $psort || [],
-	      columns => [ qw/path_id/ ]});
+	      columns => [ qw/path path_id/ ]});
 	my @path;
-	for my $one ($paths->all) {
+	while (my $one = $paths->next) {
+	    $one->path =~ m{/$} or next;
 	    push @path, $one->path_id;
 	}
+	if ($pid ) {
+	    my $pics = $self->schema->resultset('Picture')->search(
+		{ path_id => $pid,
+		  @$filter },
+		{ order_by => $sort || [],
+		  prefetch => [ qw/picture_paths dir picture_tags faces/],
+		  columns => [ qw/file_id dir_id duration/ ],
+		  # required to tell DBIC to collapse has_many relationships
+		  collapse => 1,
+		});
 
-	my $pics = $self->schema->resultset('Picture')->search(
-	    { path_id => $id, @$filter },
-	    { order_by => $sort || [],
-	      prefetch => [ qw/picture_paths dir picture_tags faces/],
-	      columns => [ qw/file_id dir_id duration/ ],
-	      # required to tell DBIC to collapse has_many relationships
-	      collapse => 1,
-	    });
+	    # We can't afford returning full (big) picture objects, so
+	    # return IDs only then look up each picture as needed later.
+	    # get_column is fast but it loses the order.  Sorting all
+	    # records is slow no matter what, so "Fast" menu option exists
+	    # to take the fast DB order immediately (assumes Ungrouped).
 
-	# We can't afford returning full (big) picture objects, so
-	# return IDs only then look up each picture as needed later.
-	# get_column is fast but it loses the order.  Sorting all
-	# records is slow no matter what, so "Fast" menu option exists
-	# to take the fast DB order immediately (assumes Ungrouped).
-
-	my $prev = my $gal = 0;
-	if (@$sort > 0) {	# slow full sort required
-	    for my $one ($pics->all) {
-		my $now = $one->dir_id;
-		$now != $prev and ++$gal;
-		$prev = $now;
-		$list .= ' ' . $one->file_id . ",$gal";
-		$dur += $one->duration || 0;
+	    my $prev = my $gal = 0;
+	    if (@$sort > 0) {	# slow full sort required
+		for my $one ($pics->all) {
+		    my $now = $one->dir_id;
+		    $now != $prev and ++$gal;
+		    $prev = $now;
+		    $list .= ' ' . $one->file_id . ",$gal";
+		    $dur += $one->duration || 0;
+		}
+		chomp $list;
+	    } else {	    # no sort, instant DB order, checkerboard!
+		$list = join '', map { " $_," . ++$gal }
+		$pics->get_column('file_id')->all;
+		map { $dur += $_ || 0 }
+		$pics->get_column('duration')->all;
 	    }
-	    chomp $list;
-	} else {	    # no sort, instant DB order, checkerboard!
-	    $list = join '', map { " $_," . ++$gal }
-	    $pics->get_column('file_id')->all;
-	    map { $dur += $_ || 0 }
-	    $pics->get_column('duration')->all;
 	}
 	$list = $picsfirst ? join(' ', $list, @path) : join(' ', @path, $list);
 	$self->schema->resultset('PathCache')->update_or_create(
@@ -316,7 +367,8 @@ sub related {		      # paths related to given path or picture
 	    {prefetch => [ 'path', 'file' ]},
 	)) {
 	while (my $one = $paths->next) {
-	    $path{$one->path->path . '/' . $id } = 1;
+	    $one->path->path =~ m{/$} and next;
+	    $path{$one->path->path . '//' . $id } = 1;
 	}
 	return sort keys %path;
     }
@@ -336,13 +388,17 @@ sub picture {			# return picture object of given ID
     return $obj;
 }
 
-sub path {			# return path object of given ID
-    my($self, $id) = @_;
-    $self->{rsallpaths} ||=
-	$self->schema->resultset('Path');
-    my $obj = $self->{rsallpaths}->find($id);
-#    warn "vfs picture: $id = $obj\n";
-    return $obj;
+{
+    my %obj;			# will it get too big in memory?!!!!!!!!
+    sub path {			# return path object of given ID
+	my($self, $id) = @_;
+	# $obj{$id} and return $obj{$id};
+	$self->{rsallpaths} ||=
+	    $self->schema->resultset('Path');
+	$obj{$id} = $self->{rsallpaths}->find($id);
+	#    warn "vfs picture: $id = $obj\n";
+	return $obj{$id};
+    }
 }
 
 sub id_of_path {		# return ID of given pathtofile
@@ -350,19 +406,27 @@ sub id_of_path {		# return ID of given pathtofile
     # warn "id of $path";
     $path =~ m{(.*/)(.+)} or return undef;
     $2 or return undef;
+    my($p, $base) = ($1, $1);
     # warn "($1 / $2)";
     $self->{rspicdir} ||=
 	$self->schema->resultset('Picture');
-    my $obj = $self->{rspicdir}->find(
-	{ 'dir.directory' => $1,
-	      'basename' => $2,
+    $self->{rspathdir} ||=
+	$self->schema->resultset('Path');
+    my $f = $base =~ m{/$} ? 0 : 1;
+    my $obj = !$f ? $self->{rspathdir}->find(
+	{ 'path' => $path },
+	{ columns => [ qw/path_id/ ],
+	})
+	: $self->{rspicdir}->find(
+	{ 'dir.directory' => $p,
+	      'basename' => $base,
 	},
 	{ join => 'dir',
 	  columns => [ qw/file_id/ ],
 	});
     $obj or return undef;
     # warn "obj=$obj";
-    my $id = $obj->file_id
+    my $id = $f ? $obj->file_id : $obj->path_id
 	or return undef;
     # warn "vfs id of $path = $id";
     return $id;

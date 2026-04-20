@@ -218,6 +218,7 @@ sub _wanted {
 	my $pix = $info->{ImageWidth} * $info->{ImageHeight};
 	if ($pix < $conf->{minpixels}) {
 	    status("skipping too small $pix at $_\n");
+	    $row->delete;
 	    return;
 	}
 	if (my $dur = $info->{Duration}) {
