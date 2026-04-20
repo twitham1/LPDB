@@ -549,6 +549,7 @@ sub info {			# update text overlay, per info level
     my $X = $th->count;
     my($w, $h) = $self->size;
     my $im = $self->picture or return;
+    $im->height or return;
     $self->NW->text($i > 2 ?
 		    sprintf(' %.0f%%  %.2f  %dx%d  %.1fMP  %.0fKB ',
 			    $self->zoom * 100,

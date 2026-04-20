@@ -53,7 +53,7 @@ sub profile_default
 		     qw/bothfiles bothshapes unlimited/;
 		     map { $_[0]->popup->checked($_, 0) }
 		     qw/captions contacts stars tags/;
-		     $_[0]->goto($_[0]->current);
+		     $_[0]->sorter;
 		  }],
 		 [],
 		 ['*(bothfiles'	=> 'Both Files:'    => 'sorter'],
@@ -208,8 +208,9 @@ sub init {
     $self->{vfs} = new LPDB::VFS($self->{lpdb});
     $self->{thumb} = new LPDB::Thumbnail($self->{lpdb});
     $self->{viewer} = undef;
-    $self->{firstlast} = '';	# cache of first/last viewed
-    $self->{cwd} = '/';
+    $self->{FIRSTLAST} =	# cache of first/last viewed
+	$self->{firstlast} = '';
+    $self->{cwd} = $self->{newcwd} = '/';
 
     # This appears to speed up thumbnail generation, but it might
     # deadlock more than 1 run at a time, a case I never have
@@ -345,6 +346,7 @@ sub hitkey {
 
 sub sorter {	    # applies current sort/filter via children of goto
     my($self) = @_;
+    $self->{FIRSTLAST} = $self->{firstlast} = '';
     $self->goto($self->current);
 }
 
@@ -408,9 +410,9 @@ sub children {			  # return children of given text path
 	tag_id => { '!=', undef };
 
     $m->checked('portrait') and push @$filter,
-	width => { '<', \'height' }; # string ref for literal SQL
+	width => { '<=', \'height' }; # string ref for literal SQL
 		   $m->checked('landscape') and push @$filter,
-		       width => { '>', \'height' }; # string ref for literal SQL
+		       width => { '>=', \'height' }; # string ref for literal SQL
 
     $m->checked('pictures') and push @$filter,
 	duration => { '=', undef };
@@ -444,18 +446,36 @@ sub duration {			# total video duration
     return $_[0]->{duration} || 0;
 }
 
+# Only the items in view are objects and the rest are only IDs.  So
+# when the view changes, we empty the in view array and recreate the
+# objects from the IDs in view.
+
 sub item {	    # return the path or picture object at given index
     my($self, $index, $gallery) = @_;
     my $this = $self->{items}[$index];
     $this or warn "index $index not found" and return;
+
+    my $cwd = $self->{cwd};	   # using internals here not methods
+    my $first = $self->{topItem};  # could be method
+    my $last = $self->{lastItem};  # internal to Lists.pm, no method
+    my $key = "$cwd $first $last $self->{filter}"; # view change detector
+    if ($self->{FIRSTLAST} ne $key) { # update the in-view cache
+	# warn "key=$key";
+	$self->{inview} = [];
+	$self->{FIRSTLAST} = $key; # view change detector
+    }
+    my $n = $index - $self->{topItem};
+    $n >= 0 or return;
+    $self->{inview}[$n] ||=
+	($this =~ /(\d+),(\d+)/ ? $self->vfs->picture($1)
+	 : $this =~ /(\d+)/ ? $self->vfs->path($1) : undef);
+    # warn "$self->{inview}[$n] <<<<<";
     if ($this =~ /(\d+),(\d+)/) {
-	return $gallery ? $2
-	    : $self->vfs ? $self->vfs->picture($1)
-	    : undef
+	return $2 if $gallery;
+	return $self->{inview}[$n];
     } elsif ($this =~ /(\d+)/) {
-	return $gallery ? -1
-	    : $self->vfs ? $self->vfs->path($1)
-	    : undef
+	return -1 if $gallery;
+	return $self->{inview}[$n];
     }				# else picture lookup, slower:
     return;
 }
@@ -495,16 +515,19 @@ sub goto {			# goto path//file or path/path
     my $file;
     ($path, $file) = ($1, $2);
     my $id = $file =~ /^\d+$/ ? $file	     # go direct to file_id
+	: $file =~ m{/$} ? $self->vfs->id_of_path("$path$file")
 	: $self->vfs->id_of_path($file);     # lookup id of image file
     $id ||= 0;
     warn "\tid of $path / $file = $id" if $self->lpdb->conf('debug');
-    $self->cwd($path);	       # this says "filter, sort, please wait"
     $self->profile;
+    $self->cwd($path);	       # this says "filter, sort, please wait"
     my($pos, @children) = $self->children($path, $id); # this blocks on the DB
-    $self->focusedItem(-1);
+    $self->{cwd} = $self->{newcwd}; # finish the cwd()
+    $self->profile("chdir in DB");
     $self->items(@children);
-    $self->profile("in DB");
     $self->focusedItem($pos || 0); # children found position of id in the list
+    $self->focusedItem(-1);	   # unfocus
+    $self->focusedItem($pos || 0); # focus change rewrites top line metadata
     my $n = $self->count;
     unless ($n) {
 	$self->owner->NORTH->N
@@ -518,7 +541,8 @@ sub goto {			# goto path//file or path/path
 		and $self->{items}[$i][0] == $id) { # find image index
 		$self->focusedItem($i);
 		last;
-	    } elsif ($self->item($i)->pathtofile eq $file) { # or matching path
+	    } elsif ($self->item($i) and
+		     $self->item($i)->pathtofile eq $file) { # or matching path
 		$self->focusedItem($i);
 		last;
 	    }
@@ -566,7 +590,8 @@ sub on_selectitem { # update metadata labels, later in front of earlier
     my $x = $idx + 1;
     my $y = $self->count;
     my $p = sprintf '%.0f', $x / $y * 100;
-    my $this = $self->item($idx);
+    # warn "selecting $idx = ", $self->item($idx);
+    my $this = $self->item($idx) or return;
     my $id = 0;			# file_id of image only, for related
     my $owner = $self->owner;
     $owner->NORTH->NW->text($self->cwd);
@@ -600,11 +625,12 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	$owner->SOUTH->SW->text($p[0] ? scalar localtime $p[0]->time
 				: 'Check ~Menu -> AND Filters!');
     } elsif ($this->isa('LPDB::Schema::Result::Picture')) {
+	$this->height or return;
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text(($self->lpdb->conf('maxstars') > 1
-				? $this->stars
-				: $this->stars ? '*' : '')
-			       . ' ' . $this->basename . ' ');
+				? $this->stars . ' - '
+				: $this->stars ? '* - ' : '')
+			       . $this->basename . ' ');
 	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,
 				$self->gallery($idx), $self->gallery(-1),
 				$progress);
@@ -666,7 +692,7 @@ sub galnext {
 
 sub cwd {
     my($self, $cwd) = @_;
-    $cwd and $self->{cwd} = $cwd;
+    $cwd and $self->{newcwd} = $cwd;
     if ($cwd) {
 	my $str = '';
 	my $tmp = $self->vfs->pathobject($cwd);
@@ -750,7 +776,8 @@ sub stackcenter {		# called by {cycler} timer
 	    my $this = $self->item($i);
 	    ref $this or next;
 	    $this->isa('LPDB::Schema::Result::Picture') and
-		$this->duration and push @path, $i and next;
+		$this->duration and
+		push @path, $i and next;
 	    $this->isa('LPDB::Schema::Result::Path') or next;
 	    $this->picturecount > 2 or next;
 	    push @path, $i;
@@ -784,7 +811,7 @@ sub stackcenter {		# called by {cycler} timer
     }				# else cnone
     my @s = $self->size;
     for my $idx (keys %idx) {	# 1 or 2
-	$::application->yield;
+	$::application and $::application->yield;
 	$self->focused		# don't slow down slide shows
 	    or $idx == $self->{focusedItem} or next;
 	my $this = $self->item($idx) or next;
@@ -941,12 +968,14 @@ sub draw_picture {
     my $b;			# video stack at 5%, 50%, 95% of time:
     if ($dur and $self->popup->checked('videostack')) {
 	for my $pos (1, 3, 0) {	# pos 2 is stored at cid 0, don't duplicate it
+	    $self->{thumb} or next;
 	    my $im = $self->{thumb}->get($pic->file_id, $pos);
 	    $im or return;
 	    $b = $self->_draw_thumb($im, -1 * ($pos || 2), $canvas, $idx,$x1,
 				    $y1, $x2, $y2, $sel, $foc, $pre, $col);
 	}
     } else {			# one picture
+	$self->{thumb} or return;
 	my $im = $self->{thumb}->get($self->ids($pic));
 	$im or return;
 	$b = $self->_draw_thumb($im, 0, $canvas, $idx, $x1, $y1, $x2, $y2,
