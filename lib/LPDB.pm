@@ -182,6 +182,23 @@ sub namevalue {			# key / value store
     return $row ? $row->value : undef;
 }
 
+sub profile {
+    my($self, $msg) = @_;
+    $self->conf('profile') or return;
+    $msg or
+	$self->{tm} = [gettimeofday] and return;
+    my $str =  "\tseconds: " . tv_interval($self->{tm}) . " $msg\n";
+    push @{$self->{profile}}, $str;
+    warn $str;
+    $self->{tm} = [gettimeofday];
+}
+
+sub profilesum {
+    my($self, $msg) = @_;
+    $self->conf('profile') or return;
+    warn @{$self->{profile}};
+}
+
 1;				# LPDB.pm
 
 __END__

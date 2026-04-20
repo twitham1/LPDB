@@ -22,7 +22,7 @@ my $usage = "usage: $0 [options]
     --all		do all of the above, a full import or refresh\n";
 
 my @opt = qw/create upgrade importfiles updateflats updatecaptions
-    updatefaces updatestars clean updatepaths all/;
+    updatefaces updatestars clean updatepaths all sortlist/;
 my %opt;
 GetOptions(\%opt, @opt)
     or die $usage;
@@ -34,6 +34,7 @@ our $conf = {
     # thumbfile => '.lpdb-thumb.db',
     sqltrace => 0,	       # see SQL of DB updates?
     minpixels => 320 * 320 + 1,	# reject icons/thumbnails smaller than this
+    profile => 1,
 };
 
 $opt{all} and map { $opt{$_} = 1 } @opt;
@@ -42,7 +43,11 @@ $opt{create} and $conf->{create} = 1;
 
 my $lpdb = new LPDB($conf);
 
-($opt{create} or $opt{upgrade}) and $lpdb->create;
+$lpdb->profile;
+if ($opt{create} or $opt{upgrade}) {
+    $lpdb->create;
+    $lpdb->profile("create/upgrade");
+};
 
 if ($opt{importfiles}) {	# TODO: configurable {ext}
     my $ext;
@@ -51,20 +56,47 @@ if ($opt{importfiles}) {	# TODO: configurable {ext}
 	$conf->{ext} = \@ext;	# if set, auto-sets {regex}
     }
     $lpdb->importfiles('.');
-}    
+    $lpdb->profile("import files");
+}
 
-$opt{updateflats}	and $lpdb->vfs->updateflats;
+if ($opt{updateflats}) {
+    $lpdb->vfs->updateflats;
+    $lpdb->profile("update flats");
+}
 
-$opt{updatecaptions}	and $lpdb->vfs->updatecaptions;
+if ($opt{updatecaptions}) {
+    $lpdb->vfs->updatecaptions;
+    $lpdb->profile("update flats");
+}
 
-$opt{updatefaces}	and $lpdb->vfs->updatefaces;
+if ($opt{updatefaces}) {
+    $lpdb->vfs->updatefaces;
+    $lpdb->profile("update faces");
+}
 
-$opt{updatestars}	and $lpdb->vfs->updatestars;
+if ($opt{updatestars}) {
+    $lpdb->vfs->updatestars;
+    $lpdb->profile("update stars");
+}
 
-$opt{clean}		and $lpdb->cleanup;
+if ($opt{clean}) {
+    $lpdb->cleanup;
+    $lpdb->profile("clean");
+}
 
-$opt{updatepaths}	and $lpdb->vfs->updatepaths;
+if ($opt{updatepaths}) {
+    $lpdb->vfs->updatepaths;
+    $lpdb->profile("update paths");
+}
+
+if ($opt{sortlist}) {
+    my($list, $dur) = $lpdb->vfs->pathpics("/[Timeline]/Years/2013",
+	[], [{ '-asc' => 'dir.begin' }, { '-asc' => 'dir.directory' }], [], 0);
+    $lpdb->profile("sort list");
+}
 
 $lpdb->disconnect;
+
+$lpdb->profilesum;
 
 exit 0;
