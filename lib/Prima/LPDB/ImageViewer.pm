@@ -16,6 +16,7 @@ use strict;
 use warnings;
 use Prima::ImageViewer;
 use Prima::Edit;		# for ExifTool metadata window
+use Prima::LPDB::Slider;
 # use Prima::LPDB::Fullscreen;	# could someday promote to Prima?
 
 use vars qw(@ISA);
@@ -35,7 +36,7 @@ sub profile_default
 	stretch => 0,
 	timer => undef,
 	seconds => 4,
-	buffered => 0,		# 1 is not good for overlay mode
+	buffered => 1,	    # 1 works better with my new backing store
 	popupItems => [
 	    ['~Escape back to Thumb Gallery', sub { $_[0]->key_down(0, kb::Escape) } ],
 	    [],
@@ -87,6 +88,17 @@ sub init {
     # my $pad = $self->{pad} = sv::XScrollbar; # too small
     # warn "scrollbar x=", sv::XScrollbar, " y=", sv::YScrollbar;
     my $pad = $self->{pad} = 20; # pixels between edge and text, > scrollbar
+
+    $self->{backup} = Prima::Image->new(width => $w, height => $h, type => im::RGB);
+    $self->{prev} = "$w $h";	# backing store and its size
+
+    $self->insert('Prima::LPDB::Slider', name => 'showprog',
+		  growMode => gm::GrowHiX,
+		  left => 0, right => $w, top => $h, height => 15);
+
+    $self->insert('Prima::LPDB::Slider', name => 'galprog',
+		  growMode => gm::Left, vertical => 1,
+		  bottom => 0, top => $h, left => 0, width => 15);
 
     $self->insert(@opt, name => 'NW', growMode => gm::GrowLoY,
 		  top => $h - $pad, left => $pad);
@@ -170,6 +182,7 @@ sub viewimage
 	$i->end_paint;
 	$self->image($i);
     }
+    # this is image overlay mode in alternating corners
     if ($self->popup->checked('overlay')) {
 	$self->alignment($self->alignment == ta::Left ? ta::Right : ta::Left);
 	$self->valignment($self->valignment == ta::Top ? ta::Bottom : ta::Top);
@@ -279,35 +292,36 @@ sub on_paint { # update metadata label overlays, later in front of earlier
     $self->{scaling} = $self->zoom > 1 ? ist::Gaussian : ist::Quadratic;
     # $self->{scaling} = ist::Box; # fastest, but square pixels
 
-#    warn "painting $self: ", $self->picture->pathtofile;
+    my @c = $self->clipRect;
+    # warn "painting $self (@c): ", $self->picture->pathtofile;
     $self->faces($self->SUPERon_paint(@_)); # hack!!! see below!!!
+
+    # prevent recursive repaints, bail out if progress handles painted
+    my($w, $h) = $self->size;
+    return if "@c" ne join ' ', 0, 0, $w-1, $h-1; # any easier way?
+
     my $th = $self->{thumbviewer};
     my $x = $th->focusedItem + 1;
     my $y = $th->count;
-    my($w, $h) = $self->size;
+
     if ($self->autoZoom and $y > 1 and ! $self->popup->checked('info0')) {
-	# TODO: move to a new frame progress object
-	my $min = 20;		# minimum length
-	$self->lineEnd(le::Round); # Flat, Square, Round
-	my $each = $w / $y;
-	my($b, $e) = ($each * ($x - 1), $each * $x);
-	$e > $b + $min or $e = $b + $min; # minimum indicator length
-	my $s = 2;			  # position from side
-	for my $l (10, 5) {		  # line width
-	    $self->lineWidth($l);
-	    $self->color($l > 6  ? 0xff00ff : 0x00ff00);
-	    $self->polyline([$b, $h - $s, $e, $h - $s]);
-	    $self->polyline([$b, $s, $e, $s]);
+	$self->showprog->top($h);
+	$self->showprog->max($y);
+	$self->showprog->value($x);
+	$self->showprog->show;
+	{
 	    my($x, $y) = $th->xofy($th->focusedItem);
 	    if ($y > 1) {
-		$each = $h / $y;
-		my($b, $e) = ($each * ($x - 1), $each * $x);
-		$e > $b + $min or $e = $b + $min;
-		$self->polyline([$s, $h - $b, $s, $h - $e]);
-		$self->polyline([$w - $s, $h - $b, $w - $s, $h - $e]);
+		$self->galprog->max($y);
+		$self->galprog->value($x);
+		$self->galprog->show;
+	    } else {
+		$self->galprog->hide;
 	    }
 	}
-	$self->color(cl::Fore);
+    } else {
+	$self->showprog->hide;
+	$self->galprog->hide;
     }
     if ($self->popup->checked('starspeed') and my $pic = $self->picture) {
 	my $max = $self->{thumbviewer}->lpdb->conf('maxstars') || 1;
@@ -596,7 +610,7 @@ sub info {			# update text overlay, per info level
 	push @info, $im->hms if $im->hms;
 	$self->SE->text(join "\n", @info);
 	$self->SE->right($w - $self->{pad}); # hack!!! since growMode doesn't handle size changing
-	$self->SE->transparent(0);	     # 1 flashes too much
+	$self->SE->transparent(1);	     # 1 flashes too much?
 	$self->SE->show;
     } elsif ($i == 2) {
 	my $tmp = $im->hms || '';
@@ -608,6 +622,7 @@ sub info {			# update text overlay, per info level
 	$self->SE->show;
     } else {
 	$self->SE->hide;
+	$self->SE->transparent(0);
     }
     $self->S->show;
     $i == 3 ? $self->S->text(sprintf ' %s ', $im->dir->directory)
@@ -723,14 +738,24 @@ sub metadata {			# exiftool -G in a window
 }
 
 # !!! hack !!! this copy from SUPER tweaked only to support image
-# !!! {overlay} mode.  This option should be in SUPER instead.
+# !!! {overlay} mode, including returning where the image is placed.
+# !!! This option should be in SUPER instead.
 sub SUPERon_paint
 {
 	my ( $self, $canvas) = @_;
 	my @size   = $self-> size;
 	$self-> draw_border( $canvas, $self-> {image} ? undef : $self->backColor, @size);
 	return 1 unless $self->{image};
-
+	# warn "size: @size";
+	unless ($self->{prev} eq "@size") {
+	    # warn "resizing backup @size";
+	    my $tmp = $self->{backup};
+	    $self->{backup} = Prima::Image->new(width => $size[0], height => $size[1], type   => im::RGB);
+	    $self->{backup}->clear();
+	    $self->{backup}->put_image(0, 0, $tmp);
+	    $self->{prev} = "@size";
+	}
+	$canvas->put_image(0, 0, $self->{backup});
 	my @r = $self-> get_active_area( 0, @size);
 	$canvas-> clipRect( @r);
 	$canvas-> translate( @r[0,1]);
@@ -797,7 +822,7 @@ PAINT:
 	$canvas-> clear( $atx, $aty, $atx + $imXz, $aty + $imYz)
 	    if $self-> {icon} and ! $self->{overlay};
 
-	my @ret;		# tell caller where we put it!
+	my @ret; # tell caller where we put it, for face rectangles see above!
 
 	if ( $self-> {scaling} != ist::Box && ( $imXz != $imX || $imYz != $imY ) ) {
 		my (
@@ -850,8 +875,8 @@ PAINT:
 			    $xFrom, $yFrom,
 			    $xDestLen, $yDestLen,
 			    $xLen, $yLen,
-			    rop::CopyPut)
-		    ) or warn $@;
+		    )) or warn $@;
+		$self->{backup}->put_image_indirect(@ret);
 		return @ret;
 	}
 
@@ -860,8 +885,8 @@ PAINT:
 		    $atx, $aty,
 		    $xDest, $yDest,
 		    $imXz, $imYz, $imX, $imY,
-		    rop::CopyPut)
-	    ) or warn $@;
+	    )) or warn $@;
+	$self->{backup}->put_image_indirect(@ret);
 	return @ret;
 }
 
@@ -879,7 +904,7 @@ Timothy D Witham <twitham@sbcglobal.net>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013-2024 Timothy D Witham.
+Copyright 2013-2026 Timothy D Witham.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
