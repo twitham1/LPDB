@@ -628,7 +628,7 @@ sub on_selectitem { # update metadata labels, later in front of earlier
 	$this->height or return;
 	my($x, $y) = $self->xofy($idx);
 	$owner->NORTH->N->text(($self->lpdb->conf('maxstars') > 1
-				? $this->stars . ' - '
+				? ($this->stars // 0) . ' - '
 				: $this->stars ? '* - ' : '')
 			       . $this->basename . ' ');
 	$owner->NORTH->NE->text(sprintf ' %d / %d  %d / %d  %s ', $x, $y,

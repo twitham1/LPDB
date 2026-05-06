@@ -92,11 +92,11 @@ sub init {
     $self->{backup} = Prima::Image->new(width => $w, height => $h, type => im::RGB);
     $self->{prev} = "$w $h";	# backing store and its size
 
-    $self->insert('Prima::LPDB::Slider', name => 'showprog',
+    $self->insert('Prima::LPDB::Slider', name => 'showprog', min => 1,
 		  growMode => gm::GrowHiX,
 		  left => 0, right => $w, top => $h, height => 15);
 
-    $self->insert('Prima::LPDB::Slider', name => 'galprog',
+    $self->insert('Prima::LPDB::Slider', name => 'galprog', min => 1,
 		  growMode => gm::Left, vertical => 1,
 		  bottom => 0, top => $h, left => 0, width => 15);
 
@@ -746,16 +746,20 @@ sub SUPERon_paint
 	my @size   = $self-> size;
 	$self-> draw_border( $canvas, $self-> {image} ? undef : $self->backColor, @size);
 	return 1 unless $self->{image};
+
 	# warn "size: @size";
-	unless ($self->{prev} eq "@size") {
+	unless ($self->{prev} eq "@size") { # backing store for overlay mode
 	    # warn "resizing backup @size";
 	    my $tmp = $self->{backup};
-	    $self->{backup} = Prima::Image->new(width => $size[0], height => $size[1], type   => im::RGB);
-	    $self->{backup}->clear();
-	    $self->{backup}->put_image(0, 0, $tmp);
+	    my $b = $self->{backup} = Prima::Image->new(size => \@size, type => im::RGB);
+	    $b->clear();
+	    $b->color(cl::Black);
+	    $b->bar(0, 0, @size);
+	    $b->put_image(0, 0, $tmp);
 	    $self->{prev} = "@size";
 	}
 	$canvas->put_image(0, 0, $self->{backup});
+
 	my @r = $self-> get_active_area( 0, @size);
 	$canvas-> clipRect( @r);
 	$canvas-> translate( @r[0,1]);
